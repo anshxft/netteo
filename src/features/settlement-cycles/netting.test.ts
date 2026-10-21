@@ -95,9 +95,38 @@ function runTests() {
   assert.throws(() => {
     calculateNetting(manyObligations, 10, 30);
   }, /Participant count exceeds cycle limit/);
-  console.log('✔ Passed: Max participant bound enforcement');
+  // 7. Cryptographic Keccak256 Commitment Invariants
+  const ob1: ObligationInput = { id: 'ob-1', debtor: addrA, creditor: addrB, amount: 100n * base };
+  const ob2: ObligationInput = { id: 'ob-2', debtor: addrB, creditor: addrC, amount: 80n * base };
+  const ob3: ObligationInput = { id: 'ob-3', debtor: addrC, creditor: addrA, amount: 20n * base };
+
+  // 7a. Order Independence: Shuffled input order must produce identical commitment hash
+  const resOrderA = calculateNetting([ob1, ob2, ob3]);
+  const resOrderB = calculateNetting([ob3, ob1, ob2]);
+  const resOrderC = calculateNetting([ob2, ob3, ob1]);
+  assert.strictEqual(resOrderA.canonicalCommitmentHash, resOrderB.canonicalCommitmentHash, 'Commitment must be order independent (A vs B)');
+  assert.strictEqual(resOrderA.canonicalCommitmentHash, resOrderC.canonicalCommitmentHash, 'Commitment must be order independent (A vs C)');
+  assert.ok(resOrderA.canonicalCommitmentHash.startsWith('0x'), 'Commitment must be 0x-prefixed hex');
+  assert.strictEqual(resOrderA.canonicalCommitmentHash.length, 66, 'Commitment must be 32 bytes (66 hex characters)');
+  console.log('✔ Passed: Commitment order independence (shuffled arrays match)');
+
+  // 7b. Amount Sensitivity: 1 wei change produces completely distinct commitment
+  const resAmountDiff = calculateNetting([{ ...ob1, amount: ob1.amount + 1n }, ob2, ob3]);
+  assert.notStrictEqual(resOrderA.canonicalCommitmentHash, resAmountDiff.canonicalCommitmentHash, 'Commitment must change with amount');
+  console.log('✔ Passed: Commitment amount sensitivity (1 wei delta alters hash)');
+
+  // 7c. Chain ID Sensitivity: Different chain IDs produce distinct commitments
+  const resChainDiff = calculateNetting([ob1, ob2, ob3], 10, 30, { chainId: 1 });
+  assert.notStrictEqual(resOrderA.canonicalCommitmentHash, resChainDiff.canonicalCommitmentHash, 'Commitment must change with chain ID');
+  console.log('✔ Passed: Commitment chain ID sensitivity');
+
+  // 7d. Token Address Sensitivity: Different token addresses produce distinct commitments
+  const resTokenDiff = calculateNetting([ob1, ob2, ob3], 10, 30, { tokenAddress: '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503' });
+  assert.notStrictEqual(resOrderA.canonicalCommitmentHash, resTokenDiff.canonicalCommitmentHash, 'Commitment must change with token address');
+  console.log('✔ Passed: Commitment token address sensitivity');
 
   console.log('All Netting Tests Passed Successfully!');
 }
 
 runTests();
+

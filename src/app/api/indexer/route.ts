@@ -5,13 +5,24 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Route Handler for running the settlement event indexer.
- * Can be triggered via external cron job, scheduler, or maintenance script.
- * Conforms to Secure_Vibe_Coding.pdf Rule 04 (safe error handling, zero leaked internals).
+ * Conforms to Secure_Vibe_Coding.pdf Rule 04 & Prompt 5:
+ * - Requires authorization token in production.
+ * - POST-only (GET is rejected with 405 Method Not Allowed).
+ * - Sanitized responses (zero internal stack traces or connection strings).
  */
 export async function POST(req: NextRequest) {
   try {
-    // Optional bearer token verification for production cron protection
     const cronSecret = process.env.INDEXER_CRON_SECRET;
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isProduction && !cronSecret) {
+      console.error('[API /api/indexer] INDEXER_CRON_SECRET must be configured in production.');
+      return NextResponse.json(
+        { error: 'Indexer configuration error.' },
+        { status: 500 }
+      );
+    }
+
     if (cronSecret) {
       const authHeader = req.headers.get('authorization');
       if (authHeader !== `Bearer ${cronSecret}`) {
@@ -38,8 +49,7 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (err: unknown) {
-    console.error('[API /api/indexer] Execution error:', err);
-    // Sanitize error message to prevent leaking internal stack traces or connection strings
+    console.error('[API /api/indexer] Execution error occurred during indexing');
     return NextResponse.json(
       { error: 'Indexer job failed to complete.' },
       { status: 500 }
@@ -47,6 +57,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
-  return POST(req);
+export async function GET() {
+  return NextResponse.json(
+    { error: 'Method Not Allowed. Use POST with authorization.' },
+    { status: 405, headers: { Allow: 'POST' } }
+  );
 }

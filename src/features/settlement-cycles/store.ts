@@ -4,6 +4,7 @@ import { SettlementCycle, CycleState } from './types';
 import { calculateNetting, ObligationInput, NETTING_ALGORITHM_VERSION } from './netting';
 import { loadObligations, updateObligationStatus } from '../obligations/store';
 import { normalizeAddress } from './netting';
+import { MEZO_TESTNET_CHAIN_ID, CONTRACT_ADDRESSES } from '@/lib/chain/config';
 
 const STORAGE_KEY = 'netteo_cycles_v1';
 
@@ -225,7 +226,10 @@ export function createCycleFromObligations(
   }));
 
   // Run pure deterministic netting algorithm
-  const nettingResult = calculateNetting(nettingInputs);
+  const nettingResult = calculateNetting(nettingInputs, 10, 30, {
+    chainId: MEZO_TESTNET_CHAIN_ID,
+    tokenAddress: CONTRACT_ADDRESSES.musd,
+  });
 
   const existingCycles = loadCycles();
   const cycleNumber = existingCycles.length + 1;
