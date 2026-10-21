@@ -109,7 +109,7 @@ sequenceDiagram
 ### Setup
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/netteo.git
+git clone https://github.com/syther069/netteo.git
 cd netteo
 
 # Install dependencies
@@ -121,7 +121,7 @@ cp .env.example .env.local
 
 ### Run Tests
 ```bash
-# Run pure netting algorithm tests (6/6 passing)
+# Run unit and integration tests (25/25 passing)
 npm test
 
 # Run Solidity kernel invariant tests (6/6 passing)
