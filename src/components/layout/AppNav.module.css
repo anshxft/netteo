@@ -1,0 +1,142 @@
+/* ==========================================================================
+   Netteo App Header & Navigation Styles
+   Adheres to design-addendum.md §14, Navbar Gallery app-shell pattern
+   ========================================================================== */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  width: 100%;
+}
+
+.headerInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-xl);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  text-decoration: none;
+  color: var(--color-ink);
+}
+
+.brandTitle {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.brandTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  background-color: var(--color-sand);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink);
+  letter-spacing: 0.02em;
+}
+
+.networkDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-wine);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  height: 100%;
+}
+
+.navItem {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0 var(--space-md);
+  height: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color var(--motion-fast) var(--ease-standard);
+  border-bottom: 2px solid transparent;
+}
+
+.navItem:hover {
+  color: var(--color-ink);
+}
+
+.navItemActive {
+  color: var(--color-ink);
+  font-weight: 600;
+  border-bottom: 2px solid var(--color-wine); /* Slim wine line per §14 */
+}
+
+.navItem:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: -2px;
+}
+
+.walletGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.walletBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background-color: var(--color-sand-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+/* Mobile responsive collapsing */
+@media (max-width: 768px) {
+  .headerInner {
+    padding: 0 var(--space-md);
+    height: auto;
+    flex-wrap: wrap;
+    padding-top: var(--space-sm);
+    padding-bottom: var(--space-sm);
+  }
+
+  .nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    padding-top: var(--space-xs);
+    gap: var(--space-xs);
+  }
+
+  .navItem {
+    padding: var(--space-xs) var(--space-sm);
+    height: 38px;
+    font-size: 13px;
+  }
+}

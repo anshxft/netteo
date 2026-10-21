@@ -1,0 +1,148 @@
+/* ==========================================================================
+   Netteo Standard Button Styles
+   Adheres to design-addendum.md §7, motion tokens, and Prototype Checklist §4
+   ========================================================================== */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: var(--radius-md); /* 8-10px per §3 and §7 */
+  padding: 0 var(--space-lg);
+  min-height: 44px; /* Mobile touch-target rule (44px min) */
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* --- Variants --- */
+
+/* Primary: Wine fill, sand/white text, 1px press translate, no glow */
+.primary {
+  background-color: var(--color-wine);
+  color: #FFFFFF;
+  border: 1px solid transparent;
+}
+
+.primary:hover:not(:disabled) {
+  background-color: var(--color-wine-hover);
+}
+
+.primary:active:not(:disabled) {
+  background-color: var(--color-wine-active);
+  transform: translateY(1px);
+}
+
+/* Secondary: Surface fill, ink text, strong border */
+.secondary {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+}
+
+.secondary:hover:not(:disabled) {
+  background-color: var(--color-sand-light);
+  border-color: var(--color-border-strong);
+  color: var(--color-ink);
+}
+
+.secondary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Tertiary: Text only, underline on hover/focus */
+.tertiary {
+  background-color: transparent;
+  color: var(--color-ink);
+  border: 1px solid transparent;
+  padding: 0 var(--space-sm);
+}
+
+.tertiary:hover:not(:disabled) {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.tertiary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Destructive: Outline with danger text, subtle fill on hover */
+.destructive {
+  background-color: var(--color-surface);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
+}
+
+.destructive:hover:not(:disabled) {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger);
+}
+
+.destructive:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* --- Focus-visible (2px ring with 2px offset, 3:1 contrast) --- */
+.button:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+}
+
+/* --- Disabled State --- */
+.button:disabled,
+.button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none !important;
+}
+
+/* --- Loading State & Spinner (Width-Locked) --- */
+.loading {
+  position: relative;
+  cursor: wait;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin var(--motion-slow) linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none !important;
+  }
+  .spinner {
+    animation-duration: 1.5s;
+  }
+}

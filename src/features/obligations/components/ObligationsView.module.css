@@ -1,0 +1,257 @@
+/* ==========================================================================
+   Netteo Obligation Desk Ledger Styles
+   Adheres to design-addendum.md §15 (Ledger layout, no generic cards),
+   UI.md §6 & §8 (Tabular figures, financial precision)
+   ========================================================================== */
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.titleArea h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--color-muted);
+  margin: 0;
+  max-width: 580px;
+  line-height: 1.5;
+}
+
+/* --- Filter Bar --- */
+.filterRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-sm);
+}
+
+.tabList {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  overflow-x: auto;
+}
+
+.tabButton {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.tabButton:hover {
+  color: var(--color-ink);
+  background-color: var(--color-sand-light);
+}
+
+.tabButtonActive {
+  color: var(--color-wine);
+  background-color: var(--color-sand);
+  font-weight: 600;
+}
+
+.tabCount {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: rgba(33, 26, 27, 0.08);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Financial Ledger Table (design-addendum.md §15) --- */
+.ledgerContainer {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(33, 26, 27, 0.04);
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.ledgerTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+
+.ledgerTable th {
+  background-color: var(--color-sand-light);
+  color: var(--color-ink-secondary);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.ledgerTable td {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-ink);
+  vertical-align: middle;
+}
+
+.ledgerTable tr:last-child td {
+  border-bottom: none;
+}
+
+.ledgerTable tr:hover td {
+  background-color: rgba(245, 235, 208, 0.2);
+}
+
+.amountCell {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.addressCode {
+  font-family: monospace;
+  font-size: 13px;
+  background-color: var(--color-sand-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  color: var(--color-ink);
+}
+
+.labelCell {
+  font-size: 13px;
+  color: var(--color-ink-secondary);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Status Badges --- */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.statusProposed {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning-border);
+}
+
+.statusAccepted {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
+}
+
+.statusDisputed {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger-border);
+}
+
+.statusWithdrawn {
+  background-color: var(--color-sand);
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+}
+
+.statusFrozen {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+  border: 1px solid var(--color-info-border);
+}
+
+/* --- Empty / Error / Loading States --- */
+.emptyState {
+  background-color: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3xl) var(--space-xl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.emptyStateTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.emptyStateDesc {
+  font-size: 14px;
+  color: var(--color-muted);
+  max-width: 460px;
+  margin: 0 0 var(--space-md) 0;
+  line-height: 1.5;
+}
+
+.errorBanner {
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.skeletonRow td {
+  padding: var(--space-md);
+}
+
+.skeletonLine {
+  height: 16px;
+  background-color: var(--color-sand);
+  border-radius: var(--radius-xs);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
