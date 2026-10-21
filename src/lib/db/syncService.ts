@@ -215,3 +215,67 @@ export async function syncCycleToSupabase(cycle: SettlementCycle): Promise<boole
     return false;
   }
 }
+
+export async function syncCyclesFromSupabase(): Promise<SettlementCycle[] | null> {
+  if (!supabase) return null;
+  try {
+    const { data: dbCycles, error } = await supabase
+      .from('cycles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !dbCycles || dbCycles.length === 0) return null;
+
+    // Read cycle projections for updated total_funded and state if available
+    const { data: projections } = await supabase
+      .from('cycle_projection')
+      .select('*');
+
+    const projMap: Record<string, any> = {};
+    if (projections) {
+      for (const p of projections) {
+        projMap[p.cycle_id.toLowerCase()] = p;
+      }
+    }
+
+    return dbCycles.map((c, index) => {
+      const proj = projMap[c.cycle_id.toLowerCase()];
+      return {
+        id: c.cycle_id,
+        groupId: c.group_id,
+        cycleNumber: index + 1,
+        snapshotCommitment: c.snapshot_commitment,
+        algorithmVersion: c.algorithm_version || 'netteo-v1.0-deterministic',
+        grossObligationTotal: BigInt(c.gross_obligation_total || '0'),
+        netDebtTotal: BigInt(c.net_debtor_total || '0'),
+        totalFunded: proj ? BigInt(proj.total_funded || '0') : 0n,
+        totalDistributed: proj ? BigInt(proj.total_distributed || '0') : 0n,
+        totalRefunded: proj ? BigInt(proj.total_refunded || '0') : 0n,
+        fundingDeadline: c.funding_deadline || new Date().toISOString(),
+        state: (proj?.state || c.state || 'Funding') as any,
+        creatorAddress: c.creator_address,
+        createdAt: c.created_at,
+        completedAt: c.settled_at || null,
+        includedObligationIds: [],
+        nettingResult: {
+          positions: {},
+          creditors: [],
+          debtors: [],
+          allocations: [],
+          grossObligationTotal: BigInt(c.gross_obligation_total || '0'),
+          netFundingRequirement: BigInt(c.net_debtor_total || '0'),
+          participantCount: c.participant_count || 2,
+          obligationCount: c.obligation_count || 1,
+          zeroPositions: [],
+          algorithmVersion: c.algorithm_version || 'netteo-v1.0-deterministic',
+          canonicalCommitmentHash: c.snapshot_commitment,
+        },
+        deposits: {},
+      };
+    });
+  } catch (err) {
+    console.warn('[Supabase] Failed to fetch cycles from database:', err);
+    return null;
+  }
+}
+
