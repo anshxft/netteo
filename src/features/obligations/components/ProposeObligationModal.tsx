@@ -5,10 +5,12 @@ import styles from './ObligationsView.module.css';
 import modalStyles from '@/features/groups/components/GroupsView.module.css';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
-import { proposeObligation } from '../store';
+import { proposeObligation, parseMusdToBaseUnits } from '../store';
 import { syncObligationToSupabase } from '@/lib/db/syncService';
 import { loadGroups } from '@/features/groups/store';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
+import { useAccount, useSignMessage } from 'wagmi';
+import { buildProposeObligationMessage } from '@/lib/auth/challenge';
 import { X } from 'lucide-react';
 
 export interface ProposeObligationModalProps {
@@ -19,6 +21,8 @@ export interface ProposeObligationModalProps {
 
 export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeObligationModalProps) {
   const { mode } = useWorkspace();
+  const { address: userAddress, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupId, setGroupId] = useState('');
   const [debtorAddress, setDebtorAddress] = useState('');
@@ -54,26 +58,78 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
     setIsSubmitting(true);
 
     try {
-      const created = proposeObligation(
-        {
-          groupId,
-          debtorAddress,
-          creditorAddress,
-          amountMusd,
-          referenceLabel,
-        },
-        '0x1111111111111111111111111111111111111111',
-        mode
-      );
-
-      // Background sync to Supabase (only in live mode)
       if (mode === 'live') {
-        syncObligationToSupabase(created, groupId).catch((err) => {
-          console.warn('[Sync] Supabase sync deferred:', err);
+        if (!isConnected || !userAddress) {
+          throw new Error('Please connect your wallet to propose an obligation on Mezo.');
+        }
+
+        const amountUnits = parseMusdToBaseUnits(amountMusd).toString();
+        const nonce = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `nonce-${Date.now()}`;
+        const timestamp = Date.now();
+
+        const challengeMsg = buildProposeObligationMessage({
+          action: 'propose',
+          groupId,
+          debtorAddress: debtorAddress.trim(),
+          creditorAddress: creditorAddress.trim(),
+          amountUnits,
+          referenceLabel: referenceLabel.trim(),
+          nonce,
+          timestamp,
         });
+
+        const signature = await signMessageAsync({ message: challengeMsg });
+
+        const res = await fetch('/api/obligations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'propose',
+            groupId,
+            debtorAddress: debtorAddress.trim(),
+            creditorAddress: creditorAddress.trim(),
+            amountUnits,
+            referenceLabel: referenceLabel.trim(),
+            signerAddress: userAddress,
+            signature,
+            nonce,
+            timestamp,
+          }),
+        });
+
+        const result = await res.json();
+        if (!res.ok) {
+          throw new Error(result.error || 'Failed to persist obligation to shared ledger.');
+        }
+
+        // Also record in local live store
+        proposeObligation(
+          {
+            groupId,
+            debtorAddress,
+            creditorAddress,
+            amountMusd,
+            referenceLabel,
+          },
+          userAddress,
+          'live'
+        );
+      } else {
+        // Demo mode (mock simulation)
+        proposeObligation(
+          {
+            groupId,
+            debtorAddress,
+            creditorAddress,
+            amountMusd,
+            referenceLabel,
+          },
+          '0x1111111111111111111111111111111111111111',
+          'demo'
+        );
       }
 
-      // Clear only upon successful creation (input preservation on error)
+      // Clear form inputs only upon successful proposal (input preservation)
       setDebtorAddress('');
       setCreditorAddress('');
       setAmountMusd('');

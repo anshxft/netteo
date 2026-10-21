@@ -6,6 +6,8 @@ import { Button } from '@/components/common/Button';
 import { createGroup } from '../store';
 import { syncGroupToSupabase } from '@/lib/db/syncService';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
+import { useAccount, useSignMessage } from 'wagmi';
+import { buildCreateGroupMessage } from '@/lib/auth/challenge';
 import { X } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 
@@ -17,6 +19,8 @@ export interface CreateGroupModalProps {
 
 export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModalProps) {
   const { mode } = useWorkspace();
+  const { address: userAddress, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [participantsRaw, setParticipantsRaw] = useState('');
@@ -47,21 +51,67 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const created = createGroup(
-        {
-          name,
-          description,
-          initialParticipants: initialAddresses,
-        },
-        mode
-      );
-
-      // Background sync to Supabase (only in live mode)
       if (mode === 'live') {
-        const creator = created.participants[0] || '0x1111111111111111111111111111111111111111';
-        syncGroupToSupabase(created, creator).catch((err) => {
-          console.warn('[Sync] Supabase group sync deferred:', err);
+        if (!isConnected || !userAddress) {
+          throw new Error('Please connect your wallet to create a working group on Mezo.');
+        }
+
+        const participantList = [...initialAddresses];
+        if (!participantList.some((p) => p.toLowerCase() === userAddress.toLowerCase())) {
+          participantList.push(userAddress);
+        }
+
+        const nonce = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `nonce-${Date.now()}`;
+        const timestamp = Date.now();
+
+        const challengeMsg = buildCreateGroupMessage({
+          action: 'create_group',
+          name: name.trim(),
+          description: description.trim(),
+          participants: participantList,
+          nonce,
+          timestamp,
         });
+
+        const signature = await signMessageAsync({ message: challengeMsg });
+
+        const res = await fetch('/api/groups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create_group',
+            name: name.trim(),
+            description: description.trim(),
+            participants: participantList,
+            signerAddress: userAddress,
+            signature,
+            nonce,
+            timestamp,
+          }),
+        });
+
+        const result = await res.json();
+        if (!res.ok) {
+          throw new Error(result.error || 'Failed to create shared working group.');
+        }
+
+        createGroup(
+          {
+            name: name.trim(),
+            description: description.trim(),
+            initialParticipants: participantList,
+          },
+          'live'
+        );
+      } else {
+        createGroup(
+          {
+            name: name.trim(),
+            description: description.trim(),
+            initialParticipants: initialAddresses,
+          },
+          'demo'
+        );
       }
 
       // Reset form upon successful creation

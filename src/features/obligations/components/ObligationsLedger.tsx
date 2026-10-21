@@ -6,6 +6,8 @@ import { Obligation, ObligationStatus } from '../types';
 import { updateObligationStatus, getParticipantDisplayName } from '../store';
 import { syncObligationStatusToSupabase } from '@/lib/db/syncService';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
+import { useAccount, useSignMessage } from 'wagmi';
+import { buildObligationActionMessage } from '@/lib/auth/challenge';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { Check, X, Ban, Copy } from 'lucide-react';
@@ -31,23 +33,93 @@ export function ObligationsLedger({
   isOffline = false,
 }: ObligationsLedgerProps) {
   const { mode } = useWorkspace();
+  const { address: userAddress, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const [activeFilter, setActiveFilter] = useState<ObligationStatus | 'All'>('All');
   const [actionError, setActionError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
 
   const filtered = activeFilter === 'All'
     ? obligations
     : obligations.filter((o) => o.status === activeFilter);
 
-  const handleStatusChange = (id: string, newStatus: ObligationStatus) => {
+  const handleStatusChange = async (id: string, newStatus: ObligationStatus) => {
     setActionError(null);
-    try {
-      updateObligationStatus(id, newStatus, mode);
-      if (mode === 'live') {
-        syncObligationStatusToSupabase(id, newStatus).catch((err) => {
-          console.warn('[Sync] Supabase status sync deferred:', err);
-        });
+    const targetObligation = obligations.find((o) => o.id === id);
+    if (!targetObligation) return;
+
+    if (mode === 'live') {
+      if (!isConnected || !userAddress) {
+        setActionError('Please connect your wallet to authorize this action on Mezo.');
+        return;
       }
+
+      // Check role permissions before prompting signature
+      if (newStatus === 'Accepted' || newStatus === 'Disputed') {
+        if (targetObligation.debtorAddress.toLowerCase() !== userAddress.toLowerCase()) {
+          setActionError(
+            `Forbidden: Only designated debtor (${targetObligation.debtorAddress.slice(0, 6)}...${targetObligation.debtorAddress.slice(-4)}) can ${newStatus.toLowerCase()} this debt obligation.`
+          );
+          return;
+        }
+      }
+
+      if (newStatus === 'Withdrawn') {
+        const isProposer = targetObligation.proposerAddress.toLowerCase() === userAddress.toLowerCase();
+        const isCreditor = targetObligation.creditorAddress.toLowerCase() === userAddress.toLowerCase();
+        if (!isProposer && !isCreditor) {
+          setActionError('Forbidden: Only the proposer or creditor can withdraw this obligation.');
+          return;
+        }
+      }
+
+      setIsAuthorizing(true);
+      try {
+        const action = newStatus.toLowerCase() as 'accept' | 'dispute' | 'withdraw';
+        const nonce = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `nonce-${Date.now()}`;
+        const timestamp = Date.now();
+
+        const challengeMsg = buildObligationActionMessage({
+          action,
+          obligationId: id,
+          nonce,
+          timestamp,
+        });
+
+        const signature = await signMessageAsync({ message: challengeMsg });
+
+        const res = await fetch('/api/obligations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action,
+            obligationId: id,
+            signerAddress: userAddress,
+            signature,
+            nonce,
+            timestamp,
+          }),
+        });
+
+        const result = await res.json();
+        if (!res.ok) {
+          throw new Error(result.error || 'Server rejected obligation update.');
+        }
+
+        updateObligationStatus(id, newStatus, 'live');
+        onUpdate();
+      } catch (err: any) {
+        setActionError(err.message || 'Signature authorization was rejected or failed.');
+      } finally {
+        setIsAuthorizing(false);
+      }
+      return;
+    }
+
+    // Demo Sandbox mode (mock simulation)
+    try {
+      updateObligationStatus(id, newStatus, 'demo');
       onUpdate();
     } catch (err: any) {
       setActionError(err.message || 'Failed to update obligation status.');
@@ -201,17 +273,17 @@ export function ObligationsLedger({
                         <div style={{ display: 'inline-flex', gap: 'var(--space-2xs)' }}>
                           <Button
                             variant="primary"
-                            disabled={isOffline}
+                            disabled={isOffline || isAuthorizing}
                             onClick={() => handleStatusChange(ob.id, 'Accepted')}
                             style={{ minHeight: '30px', padding: '0 8px', fontSize: '12px' }}
                             title="Accept obligation debt"
                           >
                             <Icon icon={Check} size="sm" color="#FFFFFF" />
-                            Accept
+                            {isAuthorizing ? 'Signing...' : 'Accept'}
                           </Button>
                           <Button
                             variant="destructive"
-                            disabled={isOffline}
+                            disabled={isOffline || isAuthorizing}
                             onClick={() => handleStatusChange(ob.id, 'Disputed')}
                             style={{ minHeight: '30px', padding: '0 6px', fontSize: '12px' }}
                             title="Dispute claim"
@@ -221,7 +293,7 @@ export function ObligationsLedger({
                           </Button>
                           <Button
                             variant="tertiary"
-                            disabled={isOffline}
+                            disabled={isOffline || isAuthorizing}
                             onClick={() => handleStatusChange(ob.id, 'Withdrawn')}
                             style={{ minHeight: '30px', padding: '0 4px', fontSize: '11px', color: 'var(--color-muted)' }}
                             title="Withdraw claim"
