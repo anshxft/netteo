@@ -12,17 +12,36 @@ async function runIndexerTests() {
   const mockDbState: Record<string, any[]> = {
     cycle_projection: [],
     participant_position_projection: [],
+    indexed_events: [],
+    indexer_cursor: [],
   };
 
   const createMockDb = (options: { failOnTable?: string } = {}) => ({
     from: (table: string) => ({
+      select: (_cols?: string) => ({
+        eq: (col1: string, val1: any) => ({
+          eq: (col2: string, val2: any) => ({
+            single: async () => {
+              const row = mockDbState[table]?.find((r: any) => r[col1] === val1 && r[col2] === val2);
+              return { data: row || null, error: row ? null : { message: 'Row not found' } };
+            },
+          }),
+          single: async () => {
+            const row = mockDbState[table]?.find((r: any) => r[col1] === val1);
+            return { data: row || null, error: row ? null : { message: 'Row not found' } };
+          },
+        }),
+      }),
       upsert: async (record: any) => {
         if (options.failOnTable === table) {
           return { error: { message: `Simulated write error on ${table}` } };
         }
         mockDbState[table] = mockDbState[table] || [];
         const existingIdx = mockDbState[table].findIndex(
-          (r: any) => r.cycle_id === record.cycle_id && (!record.participant_address || r.participant_address === record.participant_address)
+          (r: any) =>
+            r.cycle_id === record.cycle_id &&
+            (!record.participant_address || r.participant_address === record.participant_address) &&
+            (!record.id || r.id === record.id)
         );
         if (existingIdx >= 0) {
           mockDbState[table][existingIdx] = { ...mockDbState[table][existingIdx], ...record };
@@ -56,21 +75,27 @@ async function runIndexerTests() {
     }),
   });
 
-  // Mock public client that returns authoritative contract getDebtorStatus
+  // Mock public client that returns authoritative contract status
   const mockClient = {
     readContract: async ({ functionName, args }: any) => {
+      if (functionName === 'getCycleParticipants') {
+        return [[debtorAddr], [creditorAddr]];
+      }
       if (functionName === 'getDebtorStatus') {
         const required = 80n * 10n ** 18n;
         const funded = 80n * 10n ** 18n;
         return [required, funded, true];
       }
+      if (functionName === 'getCreditorPayout') {
+        return 80n * 10n ** 18n;
+      }
       return null;
     },
   };
 
-  // Test 1: CycleCreated projection
+  // Test 1: CycleCreated projection & participant initialization
   const mockDb1 = createMockDb();
-  await applyEventProjection(mockDb1, mockClient, '0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA', {
+  await applyEventProjection(mockDb1, mockClient, '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5', {
     blockNumber: 100n,
     eventName: 'CycleCreated',
     args: {
@@ -87,10 +112,22 @@ async function runIndexerTests() {
   assert.ok(cycleProj, 'CycleCreated must insert cycle_projection row');
   assert.strictEqual(cycleProj.state, 'Funding');
   assert.strictEqual(cycleProj.last_updated_block, 100);
-  console.log('✔ Passed: CycleCreated projection');
+
+  const initialDebtor = mockDbState.participant_position_projection.find(
+    (p: any) => p.cycle_id === cycleId && p.participant_address === debtorAddr
+  );
+  assert.ok(initialDebtor, 'CycleCreated must initialize debtor in participant_position_projection');
+  assert.strictEqual(initialDebtor.required_amount, (80n * 10n ** 18n).toString());
+
+  const initialCreditor = mockDbState.participant_position_projection.find(
+    (p: any) => p.cycle_id === cycleId && p.participant_address === creditorAddr
+  );
+  assert.ok(initialCreditor, 'CycleCreated must initialize creditor in participant_position_projection');
+  assert.strictEqual(initialCreditor.required_amount, (80n * 10n ** 18n).toString());
+  console.log('✔ Passed: CycleCreated projection and participant initialization');
 
   // Test 2: DepositReceived with Solidity parameter names (debtor, totalDebtorFunded, totalCycleFunded)
-  await applyEventProjection(mockDb1, mockClient, '0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA', {
+  await applyEventProjection(mockDb1, mockClient, '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5', {
     blockNumber: 105n,
     eventName: 'DepositReceived',
     args: {
@@ -105,14 +142,39 @@ async function runIndexerTests() {
   const debtorProj = mockDbState.participant_position_projection.find(
     (p: any) => p.cycle_id === cycleId && p.participant_address === debtorAddr
   );
-  assert.ok(debtorProj, 'DepositReceived must upsert participant_position_projection');
+  assert.ok(debtorProj, 'DepositReceived must update participant_position_projection');
   assert.strictEqual(debtorProj.position_type, 'debtor');
   assert.strictEqual(debtorProj.funded_amount, (80n * 10n ** 18n).toString());
   assert.strictEqual(debtorProj.is_fully_funded, true);
   console.log('✔ Passed: DepositReceived projection with matching Solidity args');
 
-  // Test 3: CycleReadyToSettle projection
-  await applyEventProjection(mockDb1, mockClient, '0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA', {
+  // Test 3: DepositReceived without client read preserves existing DB required_amount
+  const clientWithoutRead = {};
+  await applyEventProjection(mockDb1, clientWithoutRead, '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5', {
+    blockNumber: 105n,
+    eventName: 'DepositReceived',
+    args: {
+      cycleId,
+      debtor: debtorAddr,
+      amount: 40n * 10n ** 18n,
+      totalDebtorFunded: 40n * 10n ** 18n,
+      totalCycleFunded: 40n * 10n ** 18n,
+    },
+  });
+  const partialDebtor = mockDbState.participant_position_projection.find(
+    (p: any) => p.cycle_id === cycleId && p.participant_address === debtorAddr
+  );
+  // required_amount must remain 80 MUSD, NOT fall back to 40 MUSD!
+  assert.strictEqual(partialDebtor.required_amount, (80n * 10n ** 18n).toString());
+  assert.strictEqual(partialDebtor.is_fully_funded, false);
+  console.log('✔ Passed: DepositReceived preserves authoritative required_amount without client read');
+
+  // Reset to full funding for subsequent settlement tests
+  debtorProj.funded_amount = (80n * 10n ** 18n).toString();
+  debtorProj.is_fully_funded = true;
+
+  // Test 4: CycleReadyToSettle projection
+  await applyEventProjection(mockDb1, mockClient, '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5', {
     blockNumber: 106n,
     eventName: 'CycleReadyToSettle',
     args: { cycleId, totalFunded: 80n * 10n ** 18n },
@@ -120,20 +182,46 @@ async function runIndexerTests() {
   assert.strictEqual(cycleProj.state, 'ReadyToSettle');
   console.log('✔ Passed: CycleReadyToSettle projection');
 
-  // Test 4: CycleSettled projection
-  await applyEventProjection(mockDb1, mockClient, '0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA', {
+  // Test 5: CycleSettled projection and creditor payout distribution
+  await applyEventProjection(mockDb1, mockClient, '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5', {
     blockNumber: 110n,
     eventName: 'CycleSettled',
-    args: { cycleId, totalDistributed: 80n * 10n ** 18n, creditorCount: 2n, timestamp: 1780000050n },
+    args: { cycleId, totalDistributed: 80n * 10n ** 18n, creditorCount: 1n, timestamp: 1780000050n },
   });
   assert.strictEqual(cycleProj.state, 'Completed');
-  console.log('✔ Passed: CycleSettled projection');
+  assert.strictEqual(cycleProj.total_distributed, (80n * 10n ** 18n).toString());
+  const settledCreditor = mockDbState.participant_position_projection.find(
+    (p: any) => p.cycle_id === cycleId && p.participant_address === creditorAddr
+  );
+  assert.strictEqual(settledCreditor.distributed_amount, (80n * 10n ** 18n).toString());
+  console.log('✔ Passed: CycleSettled projection and creditor payout distribution');
 
-  // Test 5: Replay & Failure Atomicity: Error in projection throws without updating state
+  // Test 6: CycleExpired projection
+  await applyEventProjection(mockDb1, mockClient, '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5', {
+    blockNumber: 112n,
+    eventName: 'CycleExpired',
+    args: { cycleId, totalFunded: 40n * 10n ** 18n, timestamp: 1780000100n },
+  });
+  assert.strictEqual(cycleProj.state, 'Expired');
+  console.log('✔ Passed: CycleExpired projection');
+
+  // Test 7: RefundClaimed projection
+  await applyEventProjection(mockDb1, mockClient, '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5', {
+    blockNumber: 114n,
+    eventName: 'RefundClaimed',
+    args: { cycleId, participant: debtorAddr, amount: 40n * 10n ** 18n, timestamp: 1780000120n },
+  });
+  const refundedDebtor = mockDbState.participant_position_projection.find(
+    (p: any) => p.cycle_id === cycleId && p.participant_address === debtorAddr
+  );
+  assert.strictEqual(refundedDebtor.refunded_amount, (40n * 10n ** 18n).toString());
+  console.log('✔ Passed: RefundClaimed projection');
+
+  // Test 8: Replay & Failure Atomicity: Error in projection halts batch and holds cursor
   const failingDb = createMockDb({ failOnTable: 'participant_position_projection' });
   let threw = false;
   try {
-    await applyEventProjection(failingDb, mockClient, '0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA', {
+    await applyEventProjection(failingDb, mockClient, '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5', {
       blockNumber: 115n,
       eventName: 'DepositReceived',
       args: {
@@ -151,7 +239,24 @@ async function runIndexerTests() {
   assert.strictEqual(threw, true, 'Worker must throw on projection error to prevent advancing cursor');
   console.log('✔ Passed: Failure atomicity prevents advancing cursor on error');
 
-  console.log('All Indexer Worker Tests Passed Successfully!');
+  // Test 9: Idempotent Replay Verification: Re-applying events does not corrupt or duplicate state
+  const preReplayCount = mockDbState.participant_position_projection.length;
+  await applyEventProjection(mockDb1, mockClient, '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5', {
+    blockNumber: 105n,
+    eventName: 'DepositReceived',
+    args: {
+      cycleId,
+      debtor: debtorAddr,
+      amount: 80n * 10n ** 18n,
+      totalDebtorFunded: 80n * 10n ** 18n,
+      totalCycleFunded: 80n * 10n ** 18n,
+    },
+  });
+  const postReplayCount = mockDbState.participant_position_projection.length;
+  assert.strictEqual(preReplayCount, postReplayCount, 'Replay must be idempotent and not create duplicate rows');
+  console.log('✔ Passed: Idempotent replay maintains clean projection state without duplication');
+
+  console.log('\nAll Indexer Worker Tests Passed Successfully!');
 }
 
 runIndexerTests();
