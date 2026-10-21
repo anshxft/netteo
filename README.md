@@ -9,7 +9,8 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.4.2-black.svg)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org)
 
-**Live Production Application:** [https://netteo-six.vercel.app](https://netteo-six.vercel.app)
+**Live Production Application:** [https://netteo-six.vercel.app](https://netteo-six.vercel.app)  
+**Verified Release & Demo Checklist:** [walkthrough.md](walkthrough.md)
 
 ---
 
