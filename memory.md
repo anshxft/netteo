@@ -142,7 +142,7 @@ c:/netteo/
 - [x] **Testing & Security Audits (Phase 6):** 5-state audit, double-click protection verification, frontend security review (zero hardcoded secrets, safe error reporting), and 30-item slop audit passed.
 - [x] **Documentation & Roadmap:** `PrD.md`, `architecture.md`, `rules.md`, `design-addendum.md`, `phases.md`, and `tasks.md` fully synchronized.
 
-- [x] **Smart Contract Live Deployment (Mezo Testnet):** `SettlementKernel.sol` deployed at `0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA` and `MockMUSD.sol` deployed at `0xAEE79F4B1909E10dD2B7Fd3B3170B6087020FB38`.
+- [x] **Smart Contract Live Deployment (Mezo Testnet):** Live `SettlementKernel.sol` deployed at `0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5` bound to canonical Mezo Testnet MUSD `0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503` (Transaction: `0x0a1291923d40d4915810a4ce80059464a3cd5ba9b1b8b071bf5c9882a0407dbb`, block `16281871`). Legacy contract `0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA` (MockMUSD) marked deprecated.
 - [x] **End-to-End Live Settlement Acceptance Test:** Broadcast 4-step canonical settlement cycle on Mezo Testnet (Approve, Create, Deposit, Execute) with 100% verified state transitions and token transfers to Creditor B (20 MUSD) and Creditor C (60 MUSD).
 - [x] **Project Documentation (`README.md`):** Complete production README with contracts table, verified Mezo Explorer transaction hashes, sequence diagrams, and disclosures.
 
