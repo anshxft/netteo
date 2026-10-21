@@ -72,20 +72,60 @@ export const CANONICAL_OBLIGATIONS: Obligation[] = [
   },
 ];
 
-export function loadObligations(): Obligation[] {
+export function getActiveWorkspaceMode(): 'demo' | 'live' {
+  if (typeof window === 'undefined') return 'demo';
+  try {
+    const mode = localStorage.getItem('netteo_workspace_mode_v1');
+    return mode === 'live' ? 'live' : 'demo';
+  } catch {
+    return 'demo';
+  }
+}
+
+function getStorageKey(mode?: 'demo' | 'live'): string {
+  const m = mode || getActiveWorkspaceMode();
+  return m === 'live' ? 'netteo_live_obligations_v1' : 'netteo_demo_obligations_v1';
+}
+
+/**
+ * Human-readable friendly aliases for demo participants
+ */
+export const DEMO_PARTICIPANT_NAMES: Record<string, string> = {
+  '0x1111111111111111111111111111111111111111': 'Alice (Design)',
+  '0x2222222222222222222222222222222222222222': 'Bob (Infra)',
+  '0x3333333333333333333333333333333333333333': 'Charlie (Audit)',
+};
+
+export function getParticipantDisplayName(address: string, isDemo: boolean = false): string {
+  const normalized = address.toLowerCase();
+  if (isDemo && DEMO_PARTICIPANT_NAMES[normalized]) {
+    return DEMO_PARTICIPANT_NAMES[normalized];
+  }
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+export function loadObligations(mode?: 'demo' | 'live'): Obligation[] {
+  const activeMode = mode || getActiveWorkspaceMode();
   if (typeof window === 'undefined') {
-    return CANONICAL_OBLIGATIONS;
+    return activeMode === 'demo' ? CANONICAL_OBLIGATIONS : [];
   }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const storageKey = getStorageKey(activeMode);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) {
-      saveObligations(CANONICAL_OBLIGATIONS);
-      return CANONICAL_OBLIGATIONS;
+      if (activeMode === 'demo') {
+        saveObligations(CANONICAL_OBLIGATIONS, 'demo');
+        return CANONICAL_OBLIGATIONS;
+      }
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      saveObligations(CANONICAL_OBLIGATIONS);
-      return CANONICAL_OBLIGATIONS;
+      if (activeMode === 'demo') {
+        saveObligations(CANONICAL_OBLIGATIONS, 'demo');
+        return CANONICAL_OBLIGATIONS;
+      }
+      return [];
     }
     return parsed.map((item) => ({
       ...item,
@@ -96,18 +136,19 @@ export function loadObligations(): Obligation[] {
       amount: BigInt(item.amount),
     }));
   } catch {
-    return CANONICAL_OBLIGATIONS;
+    return activeMode === 'demo' ? CANONICAL_OBLIGATIONS : [];
   }
 }
 
-export function saveObligations(obligations: Obligation[]): void {
+export function saveObligations(obligations: Obligation[], mode?: 'demo' | 'live'): void {
   if (typeof window === 'undefined') return;
   try {
+    const storageKey = getStorageKey(mode);
     const serialized = obligations.map((ob) => ({
       ...ob,
       amount: ob.amount.toString(),
     }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+    localStorage.setItem(storageKey, JSON.stringify(serialized));
   } catch (err) {
     console.error('Failed to save obligations to local storage', err);
   }
@@ -115,7 +156,8 @@ export function saveObligations(obligations: Obligation[]): void {
 
 export function proposeObligation(
   input: ProposeObligationInput,
-  proposerAddress: string = '0x1111111111111111111111111111111111111111'
+  proposerAddress: string = '0x1111111111111111111111111111111111111111',
+  mode?: 'demo' | 'live'
 ): Obligation {
   const debtor = normalizeAddress(input.debtorAddress.trim());
   const creditor = normalizeAddress(input.creditorAddress.trim());
@@ -148,14 +190,18 @@ export function proposeObligation(
     createdAt: new Date().toISOString(),
   };
 
-  const current = loadObligations();
+  const current = loadObligations(mode);
   const updated = [newObligation, ...current];
-  saveObligations(updated);
+  saveObligations(updated, mode);
   return newObligation;
 }
 
-export function updateObligationStatus(id: string, newStatus: ObligationStatus): Obligation {
-  const obligations = loadObligations();
+export function updateObligationStatus(
+  id: string,
+  newStatus: ObligationStatus,
+  mode?: 'demo' | 'live'
+): Obligation {
+  const obligations = loadObligations(mode);
   const index = obligations.findIndex((o) => o.id === id);
   if (index === -1) {
     throw new Error('Obligation not found.');
@@ -175,6 +221,6 @@ export function updateObligationStatus(id: string, newStatus: ObligationStatus):
   };
 
   obligations[index] = updated;
-  saveObligations(obligations);
+  saveObligations(obligations, mode);
   return updated;
 }

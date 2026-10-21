@@ -7,7 +7,8 @@ import obStyles from '@/features/obligations/components/ObligationsView.module.c
 import { SettlementCycle } from '../types';
 import { getCycleById, depositToCycle, executeCycleSettlement, claimRefundFromCycle, saveCycles, loadCycles } from '../store';
 import { syncCycleToSupabase } from '@/lib/db/syncService';
-import { formatBaseUnitsToDisplay } from '@/features/obligations/store';
+import { formatBaseUnitsToDisplay, getParticipantDisplayName } from '@/features/obligations/store';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { CycleIcon, SnapshotIcon, NetPositionIcon } from '@/components/icons/netteo';
@@ -34,6 +35,7 @@ export interface CycleExecutionViewProps {
 const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.test.mezo.org';
 
 export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
+  const { mode, resetCounter } = useWorkspace();
   const { address: userAddress, isConnected, chainId } = useAccount();
   const musd = useMusdToken({ spenderAddress: CONTRACT_ADDRESSES.settlementKernel });
   const kernel = useSettlementKernel();
@@ -53,7 +55,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
 
   const refreshCycle = () => {
     setIsLoading(true);
-    const found = getCycleById(cycleId);
+    const found = getCycleById(cycleId, mode);
     setCycle(found || null);
     setIsLoading(false);
   };
@@ -72,28 +74,28 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
         window.removeEventListener('offline', onOffline);
       };
     }
-  }, [cycleId]);
+  }, [cycleId, mode, resetCounter]);
 
   // Handle on-chain write completion
   useEffect(() => {
     if (kernel.isConfirmed && cycle) {
       if (activeTxAction === 'deposit') {
         const remaining = cycle.deposits[userAddress?.toLowerCase() || '']?.required || 0n;
-        const updated = depositToCycle(cycleId, userAddress || '', remaining);
+        const updated = depositToCycle(cycleId, userAddress || '', remaining, 'live');
         updated.txDepositHash = kernel.txHash;
-        saveCycles(loadCycles().map((c) => (c.id === updated.id ? updated : c)));
+        saveCycles(loadCycles('live').map((c) => (c.id === updated.id ? updated : c)), 'live');
         syncCycleToSupabase(updated).catch((err) => console.warn('[Sync] Supabase cycle update deferred:', err));
         refreshCycle();
         setActionSuccess('Deposit confirmed on Mezo Testnet!');
       } else if (activeTxAction === 'execute') {
-        const updated = executeCycleSettlement(cycleId);
+        const updated = executeCycleSettlement(cycleId, 'live');
         updated.txSettlementHash = kernel.txHash;
-        saveCycles(loadCycles().map((c) => (c.id === updated.id ? updated : c)));
+        saveCycles(loadCycles('live').map((c) => (c.id === updated.id ? updated : c)), 'live');
         syncCycleToSupabase(updated).catch((err) => console.warn('[Sync] Supabase cycle update deferred:', err));
         refreshCycle();
         setActionSuccess('Settlement successfully executed! Funds distributed on Mezo Testnet.');
       } else if (activeTxAction === 'refund') {
-        const updated = claimRefundFromCycle(cycleId, userAddress || '');
+        const updated = claimRefundFromCycle(cycleId, userAddress || '', 'live');
         syncCycleToSupabase(updated).catch((err) => console.warn('[Sync] Supabase cycle update deferred:', err));
         refreshCycle();
         setActionSuccess('Refund confirmed on Mezo Testnet.');
@@ -116,7 +118,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
         <Icon icon={CycleIcon} size="lg" color="var(--color-wine)" />
         <h2 className={obStyles.emptyStateTitle}>Settlement Cycle Not Found</h2>
         <p className={obStyles.emptyStateDesc}>
-          The requested cycle ID "{cycleId}" does not exist in local storage or has been archived.
+          The requested cycle ID "{cycleId}" does not exist in the {mode === 'demo' ? 'Demo Sandbox' : 'Live Mezo'} workspace.
         </p>
         <Link href="/cycles" style={{ textDecoration: 'none' }}>
           <Button variant="primary">View All Cycles</Button>
@@ -148,8 +150,19 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    // If connected wallet matches debtor on Mezo Testnet, submit real on-chain deposit!
-    if (isLiveContractReady && cycleId.startsWith('0x') && userAddress?.toLowerCase() === debtorAddr.toLowerCase()) {
+    // In Live Mode: strictly require on-chain transaction on Mezo Testnet (no simulated fallback)
+    if (mode === 'live') {
+      if (!isLiveContractReady) {
+        setErrorMsg('Live deposits require a wallet connected to Mezo Testnet (Chain ID 31611). Switch to Demo Sandbox in the header to simulate.');
+        setIsSubmitting(false);
+        return;
+      }
+      if (userAddress?.toLowerCase() !== debtorAddr.toLowerCase()) {
+        setErrorMsg(`In Live Mode, only debtor ${debtorAddr.slice(0, 6)}...${debtorAddr.slice(-4)} can submit this deposit on Mezo Testnet. Switch connected wallet or switch to Demo Sandbox in the header.`);
+        setIsSubmitting(false);
+        return;
+      }
+
       try {
         setActiveTxAction('deposit');
         await kernel.deposit(cycleId as `0x${string}`, remainingDue);
@@ -161,14 +174,14 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
       return;
     }
 
-    // Local / simulation fallback
+    // In Demo Mode: simulate instant mock token deposit
     try {
-      depositToCycle(cycleId, debtorAddr, remainingDue);
+      depositToCycle(cycleId, debtorAddr, remainingDue, 'demo');
       refreshCycle();
-      setActionSuccess(`Deposit of ${formatBaseUnitsToDisplay(remainingDue)} confirmed for ${debtorAddr.slice(0, 6)}...`);
-      setTimeout(() => setActionSuccess(null), 3000);
+      setActionSuccess(`[Demo Sandbox] Simulated deposit of ${formatBaseUnitsToDisplay(remainingDue)} for ${getParticipantDisplayName(debtorAddr, true)}.`);
+      setTimeout(() => setActionSuccess(null), 3500);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Deposit transaction failed.');
+      setErrorMsg(err.message || 'Demo deposit transaction failed.');
     } finally {
       setIsSubmitting(false);
     }
@@ -179,7 +192,14 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    if (isLiveContractReady && cycleId.startsWith('0x')) {
+    // In Live Mode: strictly call on-chain contract
+    if (mode === 'live') {
+      if (!isLiveContractReady) {
+        setErrorMsg('Executing live settlement requires your wallet connected to Mezo Testnet (Chain ID 31611).');
+        setIsSubmitting(false);
+        return;
+      }
+
       try {
         setActiveTxAction('execute');
         await kernel.executeSettlement(cycleId as `0x${string}`);
@@ -191,13 +211,14 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
       return;
     }
 
+    // In Demo Mode: simulate instant mock settlement distribution
     try {
-      executeCycleSettlement(cycleId);
+      executeCycleSettlement(cycleId, 'demo');
       refreshCycle();
-      setActionSuccess('Settlement successfully executed! Funds distributed atomically to net creditors.');
+      setActionSuccess('[Demo Sandbox] Settlement executed! Mock tokens distributed atomically to net creditors.');
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Execution failed.');
+      setErrorMsg(err.message || 'Demo execution failed.');
     } finally {
       setIsSubmitting(false);
     }
@@ -208,7 +229,19 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    if (isLiveContractReady && cycleId.startsWith('0x') && userAddress?.toLowerCase() === debtorAddr.toLowerCase()) {
+    // In Live Mode: strictly call on-chain contract
+    if (mode === 'live') {
+      if (!isLiveContractReady) {
+        setErrorMsg('Claiming refund on Mezo Testnet requires a connected wallet.');
+        setIsSubmitting(false);
+        return;
+      }
+      if (userAddress?.toLowerCase() !== debtorAddr.toLowerCase()) {
+        setErrorMsg('Only the debtor address who made the deposit can claim a refund on-chain.');
+        setIsSubmitting(false);
+        return;
+      }
+
       try {
         setActiveTxAction('refund');
         await kernel.claimRefund(cycleId as `0x${string}`);
@@ -220,10 +253,11 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
       return;
     }
 
+    // In Demo Mode: simulate instant refund
     try {
-      claimRefundFromCycle(cycleId, debtorAddr);
+      claimRefundFromCycle(cycleId, debtorAddr, 'demo');
       refreshCycle();
-      setActionSuccess('Refund claimed successfully.');
+      setActionSuccess(`[Demo Sandbox] Refund claimed for ${getParticipantDisplayName(debtorAddr, true)}.`);
       setTimeout(() => setActionSuccess(null), 3000);
     } catch (err: any) {
       setErrorMsg(err.message || 'Refund claim failed.');
@@ -284,6 +318,19 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             >
               {cycle.state === 'ReadyToSettle' ? 'Ready to Settle (100% Funded)' : cycle.state}
             </span>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: mode === 'demo' ? 'var(--color-wine-subtle, #f5e8e8)' : 'var(--color-sand)',
+                color: mode === 'demo' ? 'var(--color-wine)' : 'var(--color-ink)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              {mode === 'demo' ? 'Demo Sandbox' : 'Mezo Testnet'}
+            </span>
           </div>
           <p className={obStyles.subtitle}>
             Cycle ID: <code style={{ fontSize: '13px' }}>{cycle.id}</code>
@@ -303,10 +350,12 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
               icon={<Icon icon={Zap} size="sm" color="#FFFFFF" />}
               disabled={isOffline || isSubmitting || isKernelPending}
               isLoading={isSubmitting || isKernelPending}
-              loadingText="Executing Settlement..."
+              loadingText={mode === 'live' ? 'Broadcasting Settlement to Mezo...' : 'Executing Settlement...'}
               onClick={handleExecute}
             >
-              Execute Settlement (Atomic Distribution)
+              {mode === 'live'
+                ? 'Execute Settlement on Mezo (Atomic)'
+                : 'Execute Demo Settlement (Simulated)'}
             </Button>
           )}
         </div>
@@ -515,8 +564,13 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2xs)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
-                      <span className={obStyles.addressCode}>{debtorAddr}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)' }}>
+                        {getParticipantDisplayName(debtorAddr, mode === 'demo')}
+                      </span>
+                      <span className={obStyles.addressCode}>
+                        {debtorAddr.length > 14 ? `${debtorAddr.slice(0, 6)}...${debtorAddr.slice(-4)}` : debtorAddr}
+                      </span>
                       {isCurrentUser && (
                         <span style={{ fontSize: '11px', backgroundColor: 'var(--color-sand)', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
                           You
@@ -554,7 +608,9 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                           onClick={() => handleDeposit(debtorAddr, remaining)}
                           style={{ width: '100%', minHeight: '36px', fontSize: '13px' }}
                         >
-                          {isCurrentUser && isLiveContractReady
+                          {mode === 'demo'
+                            ? `Simulate Deposit (${formatBaseUnitsToDisplay(remaining)})`
+                            : isCurrentUser && isLiveContractReady
                             ? `Deposit on Mezo (${formatBaseUnitsToDisplay(remaining)})`
                             : `Deposit ${formatBaseUnitsToDisplay(remaining)}`}
                         </Button>
@@ -603,7 +659,14 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2xs)' }}>
-                  <span className={obStyles.addressCode}>{creditor.address}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)' }}>
+                      {getParticipantDisplayName(creditor.address, mode === 'demo')}
+                    </span>
+                    <span className={obStyles.addressCode}>
+                      {creditor.address.length > 14 ? `${creditor.address.slice(0, 6)}...${creditor.address.slice(-4)}` : creditor.address}
+                    </span>
+                  </div>
                   <span
                     style={{
                       fontSize: '12px',

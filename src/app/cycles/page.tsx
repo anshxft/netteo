@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { SettlementCycle } from '@/features/settlement-cycles/types';
 import { loadCycles } from '@/features/settlement-cycles/store';
 import { formatBaseUnitsToDisplay } from '@/features/obligations/store';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { CycleIcon, SnapshotIcon } from '@/components/icons/netteo';
@@ -13,23 +14,39 @@ import obStyles from '@/features/obligations/components/ObligationsView.module.c
 import { Plus, ArrowRight } from 'lucide-react';
 
 export default function CyclesPage() {
+  const { mode, resetCounter } = useWorkspace();
   const [cycles, setCycles] = useState<SettlementCycle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     try {
-      const data = loadCycles();
+      const data = loadCycles(mode);
       setCycles(data);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [mode, resetCounter]);
 
   return (
     <AppLayout>
       <div className={obStyles.pageHeader}>
         <div className={obStyles.titleArea}>
-          <h1>Settlement Cycles</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <h1>Settlement Cycles</h1>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: mode === 'demo' ? 'var(--color-wine-subtle, #f5e8e8)' : 'var(--color-sand)',
+                color: mode === 'demo' ? 'var(--color-wine)' : 'var(--color-ink)',
+                border: '1px solid var(--color-border)',
+              }}
+            >
+              {mode === 'demo' ? 'Demo Sandbox' : 'Live Mezo'}
+            </span>
+          </div>
           <p className={obStyles.subtitle}>
             Discrete multilateral settlement operations reconciling accepted obligations into single atomic net transfers on Mezo.
           </p>

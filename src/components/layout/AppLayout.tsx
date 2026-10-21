@@ -7,6 +7,7 @@ import { NetworkGuard } from '../wallet/NetworkGuard';
 import { WalletConnectModal } from '../wallet/WalletConnectModal';
 import { AlertTriangle, WifiOff } from 'lucide-react';
 import { Icon } from '../icons/Icon';
+import { DemoExplainerBanner } from '@/features/workspace/DemoExplainerBanner';
 
 export interface AppLayoutProps {
   children: React.ReactNode;
@@ -16,16 +17,6 @@ export interface AppLayoutProps {
   onDisconnectWallet?: () => void;
 }
 
-/**
- * Universal Application Layout Shell
- * Features:
- * - Persistent header and navigation
- * - Direct wagmi wallet connection and disconnect trigger
- * - NetworkGuard wrong-network banner and switch action
- * - Offline / network drop banner detection (Prototype_vs_Production_Checklist §4)
- * - Accessible landmarks (<header>, <nav>, <main>)
- * - Viewport-resilient container sizing (320px to 1440px)
- */
 export function AppLayout({
   children,
   walletAddress,
@@ -104,6 +95,9 @@ export function AppLayout({
         onConnectWallet={handleConnect}
         onDisconnectWallet={handleDisconnect}
       />
+
+      {/* Demo Explainer Banner: Shows simple English netting breakdown in Demo Mode */}
+      <DemoExplainerBanner />
 
       {/* Connect Wallet Modal */}
       <WalletConnectModal

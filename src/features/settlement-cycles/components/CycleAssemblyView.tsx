@@ -20,9 +20,11 @@ import { ArrowLeft, Check, AlertCircle, RefreshCw, Send } from 'lucide-react';
 import { useSettlementKernel, CycleInput } from '@/lib/chain/useSettlementKernel';
 import { CONTRACT_ADDRESSES, isSupportedNetwork, MEZO_TESTNET_CHAIN_ID } from '@/lib/chain/config';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 
 export function CycleAssemblyView() {
   const router = useRouter();
+  const { mode, resetCounter } = useWorkspace();
   const { isConnected, chainId, address: userAddress } = useAccount();
   const { createCycle, isPending: isTxPending, isConfirming, isConfirmed, txHash, error: txError, resetWrite } = useSettlementKernel();
 
@@ -41,7 +43,7 @@ export function CycleAssemblyView() {
 
   useEffect(() => {
     try {
-      const all = loadObligations();
+      const all = loadObligations(mode);
       const accepted = all.filter((o) => o.status === 'Accepted');
       setObligations(accepted);
       setSelectedIds(accepted.map((o) => o.id));
@@ -54,7 +56,7 @@ export function CycleAssemblyView() {
     if (typeof window !== 'undefined') {
       setIsOffline(!navigator.onLine);
     }
-  }, []);
+  }, [mode, resetCounter]);
 
   // When on-chain cycle creation confirms
   useEffect(() => {
@@ -121,8 +123,20 @@ export function CycleAssemblyView() {
     setIsSubmitting(true);
     setError(null);
 
-    // If connected to Mezo Testnet, broadcast to live smart contract!
-    if (isLiveContractReady) {
+    // In Live Mode: strictly require live contract on Mezo Testnet (fail-closed, no fake simulation)
+    if (mode === 'live') {
+      if (!isLiveContractReady) {
+        setError(
+          !isConnected
+            ? 'Live cycle creation requires a connected wallet. Please connect your wallet to Mezo Testnet (Chain ID 31611) or switch to Demo Sandbox in the header.'
+            : !isSupportedNetwork(chainId)
+            ? `Please switch your wallet to Mezo Testnet (Chain ID ${MEZO_TESTNET_CHAIN_ID}).`
+            : 'SettlementKernel contract address is not configured.'
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       try {
         const randSeed = Math.floor(Math.random() * 1000000000);
         const generatedCycleId = keccak256(toHex(`netteo-cycle-${Date.now()}-${randSeed}`)) as `0x${string}`;
@@ -148,15 +162,17 @@ export function CycleAssemblyView() {
       return;
     }
 
-    // Local simulation fallback
+    // In Demo Sandbox: simulate freezing in isolated demo storage
     try {
       const cycle = createCycleFromObligations(
-        selectedObligations[0]?.groupId || 'grp-genesis-001',
-        selectedIds
+        selectedObligations[0]?.groupId || '00000000-0000-0000-0000-000000000001',
+        selectedIds,
+        '0x1111111111111111111111111111111111111111',
+        'demo'
       );
       router.push(`/cycles/${cycle.id}`);
     } catch (err: any) {
-      setError(err.message || 'Failed to assemble and freeze settlement cycle.');
+      setError(err.message || 'Failed to assemble and freeze demo settlement cycle.');
       setIsSubmitting(false);
     }
   };
@@ -222,13 +238,23 @@ export function CycleAssemblyView() {
             loadingText={isConfirming ? 'Confirming on Mezo...' : 'Freezing Cycle...'}
             onClick={handleFreezeCycle}
           >
-            {isLiveContractReady
-              ? `Freeze & Create on Mezo (${selectedIds.length} included)`
-              : `Freeze & Create Cycle (${selectedIds.length} included)`}
+            {mode === 'live'
+              ? isLiveContractReady
+                ? `Freeze & Create on Mezo (${selectedIds.length} included)`
+                : `Connect Mezo to Freeze (${selectedIds.length} included)`
+              : `Freeze & Create Demo Cycle (${selectedIds.length} included)`}
           </Button>
-          {isLiveContractReady && (
+          {mode === 'demo' ? (
+            <span style={{ fontSize: '11px', color: 'var(--color-wine)', fontWeight: 500 }}>
+              &bull; Demo Sandbox Mode (Mock Settlement Simulation)
+            </span>
+          ) : isLiveContractReady ? (
             <span style={{ fontSize: '11px', color: 'var(--color-success)', fontWeight: 500 }}>
-              &bull; Connected to Mezo Testnet (Kernel 0x50bb...1BbA)
+              &bull; Connected to Mezo Testnet ({CONTRACT_ADDRESSES.settlementKernel.slice(0, 6)}...{CONTRACT_ADDRESSES.settlementKernel.slice(-4)})
+            </span>
+          ) : (
+            <span style={{ fontSize: '11px', color: 'var(--color-danger)', fontWeight: 500 }}>
+              &bull; Wallet/Kernel not connected to Mezo Testnet
             </span>
           )}
         </div>
