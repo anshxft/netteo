@@ -43,6 +43,8 @@ export const wagmiConfig = createConfig({
 });
 
 export const CANONICAL_MEZO_TESTNET_MUSD = '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503' as const;
+export const CANONICAL_SETTLEMENT_KERNEL_DEPLOY_BLOCK = 16281871n;
+export const DEFAULT_INDEXER_CONFIRMATION_DEPTH = 2n;
 
 /**
  * Verified contract addresses

@@ -1,5 +1,11 @@
 import { createPublicClient, http, parseEventLogs, type Address } from 'viem';
-import { mezoTestnet, MEZO_TESTNET_CHAIN_ID, CONTRACT_ADDRESSES } from '../chain/config';
+import {
+  mezoTestnet,
+  MEZO_TESTNET_CHAIN_ID,
+  CONTRACT_ADDRESSES,
+  CANONICAL_SETTLEMENT_KERNEL_DEPLOY_BLOCK,
+  DEFAULT_INDEXER_CONFIRMATION_DEPTH,
+} from '../chain/config';
 import { settlementKernelAbi } from '../chain/abi';
 import { getServiceRoleClient } from '../db/supabase';
 
@@ -47,6 +53,80 @@ export async function applyEventProjection(
       { onConflict: 'cycle_id' }
     );
     if (error) throw new Error(`CycleCreated projection failed: ${error.message}`);
+
+    // Initialize participant positions from contract if client is available
+    if (client && typeof client.readContract === 'function') {
+      try {
+        const [debtors, creditors] = (await client.readContract({
+          address: contractAddress as Address,
+          abi: settlementKernelAbi,
+          functionName: 'getCycleParticipants',
+          args: [cycleId as `0x${string}`],
+        })) as [Address[], Address[]];
+
+        // 1. Initialize debtors with authoritative required amounts
+        if (Array.isArray(debtors)) {
+          for (const debtor of debtors) {
+            const debtorAddr = debtor.toLowerCase();
+            const debtorStatus = (await client.readContract({
+              address: contractAddress as Address,
+              abi: settlementKernelAbi,
+              functionName: 'getDebtorStatus',
+              args: [cycleId as `0x${string}`, debtor],
+            })) as [bigint, bigint, boolean];
+
+            const requiredAmount = debtorStatus?.[0] !== undefined ? debtorStatus[0].toString() : '0';
+            const fundedAmount = debtorStatus?.[1] !== undefined ? debtorStatus[1].toString() : '0';
+            const isFullyFunded = !!debtorStatus?.[2];
+
+            const { error: debErr } = await db.from('participant_position_projection').upsert(
+              {
+                cycle_id: cycleId,
+                participant_address: debtorAddr,
+                position_type: 'debtor',
+                required_amount: requiredAmount,
+                funded_amount: fundedAmount,
+                is_fully_funded: isFullyFunded,
+                last_updated_block: blockNum,
+              },
+              { onConflict: 'cycle_id,participant_address' }
+            );
+            if (debErr) throw new Error(`CycleCreated debtor participant projection failed: ${debErr.message}`);
+          }
+        }
+
+        // 2. Initialize creditors with calculated payout amounts
+        if (Array.isArray(creditors)) {
+          for (const creditor of creditors) {
+            const creditorAddr = creditor.toLowerCase();
+            const payout = (await client.readContract({
+              address: contractAddress as Address,
+              abi: settlementKernelAbi,
+              functionName: 'getCreditorPayout',
+              args: [cycleId as `0x${string}`, creditor],
+            })) as bigint;
+
+            const { error: credErr } = await db.from('participant_position_projection').upsert(
+              {
+                cycle_id: cycleId,
+                participant_address: creditorAddr,
+                position_type: 'creditor',
+                required_amount: payout ? payout.toString() : '0',
+                distributed_amount: '0',
+                refunded_amount: '0',
+                is_fully_funded: false,
+                last_updated_block: blockNum,
+              },
+              { onConflict: 'cycle_id,participant_address' }
+            );
+            if (credErr) throw new Error(`CycleCreated creditor participant projection failed: ${credErr.message}`);
+          }
+        }
+      } catch (readErr: any) {
+        // Log cleanly without leaking internal internals
+        console.warn(`[Indexer] Could not read cycle participants during CycleCreated:`, readErr?.message || readErr);
+      }
+    }
   } else if (eventName === 'DepositReceived') {
     // Aligns with SettlementKernel.sol: (cycleId, debtor, amount, totalDebtorFunded, totalCycleFunded)
     const debtor = (args.debtor as string).toLowerCase();
@@ -65,7 +145,7 @@ export async function applyEventProjection(
     if (cycleErr) throw new Error(`DepositReceived cycle_projection failed: ${cycleErr.message}`);
 
     // 2. Fetch authoritative required debtor amount from contract if client is available
-    let requiredAmount = totalDebtorFunded;
+    let requiredAmount: string | null = null;
     let isFullyFunded = false;
 
     if (client && typeof client.readContract === 'function') {
@@ -79,8 +159,28 @@ export async function applyEventProjection(
 
         requiredAmount = debtorStatus[0].toString();
         isFullyFunded = debtorStatus[2];
-      } catch (readErr) {
-        console.warn(`[Indexer] Authoritative debtor read failed, using emitted funded:`, readErr);
+      } catch (readErr: any) {
+        console.warn(`[Indexer] Authoritative debtor read failed:`, readErr?.message || readErr);
+      }
+    }
+
+    // If client read was not available or failed, check existing DB row to preserve required_amount
+    if (!requiredAmount) {
+      const { data: existingPos } = await db
+        .from('participant_position_projection')
+        .select('required_amount')
+        .eq('cycle_id', cycleId)
+        .eq('participant_address', debtor)
+        .single();
+
+      if (existingPos?.required_amount) {
+        const reqStr = existingPos.required_amount.toString();
+        requiredAmount = reqStr;
+        isFullyFunded = BigInt(totalDebtorFunded) >= BigInt(reqStr);
+      } else {
+        // Fallback default: set to totalDebtorFunded with unverified status
+        requiredAmount = totalDebtorFunded;
+        isFullyFunded = false;
       }
     }
 
@@ -99,26 +199,68 @@ export async function applyEventProjection(
     );
     if (posErr) throw new Error(`DepositReceived participant_position_projection failed: ${posErr.message}`);
   } else if (eventName === 'CycleReadyToSettle') {
+    const totalFunded = args.totalFunded ? (args.totalFunded as bigint).toString() : undefined;
+    const updates: Record<string, any> = {
+      state: 'ReadyToSettle',
+      last_updated_block: blockNum,
+      last_updated_at: new Date().toISOString(),
+    };
+    if (totalFunded !== undefined) {
+      updates.total_funded = totalFunded;
+    }
     const { error } = await db
       .from('cycle_projection')
-      .update({
-        state: 'ReadyToSettle',
-        last_updated_block: blockNum,
-        last_updated_at: new Date().toISOString(),
-      })
+      .update(updates)
       .eq('cycle_id', cycleId);
     if (error) throw new Error(`CycleReadyToSettle projection failed: ${error.message}`);
   } else if (eventName === 'CycleSettled') {
+    const totalDistributed = (args.totalDistributed as bigint).toString();
     const { error } = await db
       .from('cycle_projection')
       .update({
         state: 'Completed',
-        total_distributed: args.totalDistributed.toString(),
+        total_distributed: totalDistributed,
         last_updated_block: blockNum,
         last_updated_at: new Date().toISOString(),
       })
       .eq('cycle_id', cycleId);
     if (error) throw new Error(`CycleSettled projection failed: ${error.message}`);
+
+    // Update creditor distributed amounts in participant_position_projection if client is available
+    if (client && typeof client.readContract === 'function') {
+      try {
+        const [, creditors] = (await client.readContract({
+          address: contractAddress as Address,
+          abi: settlementKernelAbi,
+          functionName: 'getCycleParticipants',
+          args: [cycleId as `0x${string}`],
+        })) as [Address[], Address[]];
+
+        if (Array.isArray(creditors)) {
+          for (const creditor of creditors) {
+            const creditorAddr = creditor.toLowerCase();
+            const payout = (await client.readContract({
+              address: contractAddress as Address,
+              abi: settlementKernelAbi,
+              functionName: 'getCreditorPayout',
+              args: [cycleId as `0x${string}`, creditor],
+            })) as bigint;
+
+            const distributedAmount = payout ? payout.toString() : '0';
+            await db
+              .from('participant_position_projection')
+              .update({
+                distributed_amount: distributedAmount,
+                last_updated_block: blockNum,
+              })
+              .eq('cycle_id', cycleId)
+              .eq('participant_address', creditorAddr);
+          }
+        }
+      } catch (readErr: any) {
+        console.warn(`[Indexer] Could not read creditor payouts during CycleSettled:`, readErr?.message || readErr);
+      }
+    }
   } else if (eventName === 'CycleExpired') {
     const { error } = await db
       .from('cycle_projection')
@@ -204,14 +346,17 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
   const startBlockEnv = BigInt(
     process.env.INDEXER_START_BLOCK ||
     process.env.NEXT_PUBLIC_SETTLEMENT_KERNEL_DEPLOY_BLOCK ||
-    '0'
+    CANONICAL_SETTLEMENT_KERNEL_DEPLOY_BLOCK.toString()
   );
   const fromBlock = cursorData?.last_processed_block !== undefined && cursorData?.last_processed_block !== null
     ? BigInt(cursorData.last_processed_block) + 1n
     : startBlockEnv;
 
   // 2. Reorg protection: require confirmation depth
-  const confirmationDepth = BigInt(process.env.INDEXER_CONFIRMATION_DEPTH || '2');
+  const confirmationDepth = BigInt(
+    process.env.INDEXER_CONFIRMATION_DEPTH ||
+    DEFAULT_INDEXER_CONFIRMATION_DEPTH.toString()
+  );
   const currentBlock = await client.getBlockNumber();
   const safeTargetBlock = currentBlock > confirmationDepth ? currentBlock - confirmationDepth : currentBlock;
 
@@ -244,7 +389,8 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
   });
 
   let processedCount = 0;
-  let lastSuccessfulBlock = fromBlock - 1n;
+  let lastFullyCompletedBlock = fromBlock - 1n;
+  let currentBlockUnderProcess: bigint | null = null;
   let batchError: Error | null = null;
 
   for (const log of parsedLogs) {
@@ -255,6 +401,12 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
     const args = log.args as any;
 
     if (!txHash || logIndex === undefined || !blockNum) continue;
+
+    // Track block completion: when transitioning to a higher block, the previous block is fully done!
+    if (currentBlockUnderProcess !== null && blockNum > currentBlockUnderProcess) {
+      lastFullyCompletedBlock = currentBlockUnderProcess;
+    }
+    currentBlockUnderProcess = blockNum;
 
     try {
       // Idempotent record insert in indexed_events
@@ -287,7 +439,6 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
       });
 
       processedCount++;
-      lastSuccessfulBlock = blockNum;
     } catch (err: any) {
       console.error(`[Indexer] Failure at block ${blockNum} on event ${eventName}:`, err?.message || err);
       batchError = err;
@@ -295,8 +446,18 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
     }
   }
 
-  // 5. Update indexer cursor: advance to toBlock only if no batch failure occurred
-  const cursorBlock = batchError ? lastSuccessfulBlock : toBlock;
+  // If no error occurred during processing:
+  if (!batchError) {
+    if (currentBlockUnderProcess !== null) {
+      lastFullyCompletedBlock = currentBlockUnderProcess;
+    } else {
+      // No events in range: the entire range up to toBlock is completed
+      lastFullyCompletedBlock = toBlock;
+    }
+  }
+
+  // 5. Update indexer cursor: hold at lastFullyCompletedBlock on error, or advance to toBlock
+  const cursorBlock = batchError ? lastFullyCompletedBlock : toBlock;
 
   if (cursorBlock >= fromBlock) {
     await db.from('indexer_cursor').upsert(
@@ -313,7 +474,7 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
 
   if (batchError) {
     throw new Error(
-      `Indexer batch failed at block ${lastSuccessfulBlock + 1n}. Cursor held safely at ${cursorBlock}: ${batchError.message}`
+      `Indexer batch failed during block ${currentBlockUnderProcess}. Cursor held safely at ${cursorBlock}: ${batchError.message}`
     );
   }
 
