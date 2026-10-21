@@ -152,12 +152,15 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
           marginBottom: 'var(--space-xl)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginBottom: 'var(--space-sm)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginBottom: 'var(--space-xs)' }}>
           <Icon icon={ShieldCheck} size="md" color="var(--color-wine)" />
           <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', margin: 0 }}>
-            Cryptographic Integrity Proof
+            Snapshot Commitment & On-Chain Trust Boundary
           </h2>
         </div>
+        <p style={{ fontSize: '12px', color: 'var(--color-muted)', margin: '0 0 var(--space-md) 0', lineHeight: 1.5 }}>
+          <strong>Trust Boundary:</strong> The <code>SettlementKernel</code> smart contract enforces atomic zero-sum solvency on-chain (requiring 100% net debtor deposits before creditor distribution). The snapshot commitment below is immutably stored on-chain as a cryptographic anchor (keccak256 binding chain ID, token, sorted obligations, and net positions) allowing independent auditors to verify that the executed cycle matches the agreed off-chain obligations.
+        </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-md)' }}>
           <div>
@@ -165,12 +168,12 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
             <code style={{ fontSize: '13px', color: 'var(--color-ink)' }}>{cycle.id}</code>
           </div>
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Snapshot Commitment Hash</div>
+            <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Snapshot Commitment Hash (Keccak256)</div>
             <code style={{ fontSize: '12px', color: 'var(--color-wine)' }}>{cycle.snapshotCommitment}</code>
           </div>
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Algorithm Invariant</div>
-            <span style={{ fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>&Sigma; net positions = 0 (Verified)</span>
+            <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>On-Chain Solvency Invariant</div>
+            <span style={{ fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>&Sigma; net positions = 0 (Enforced)</span>
           </div>
         </div>
       </div>

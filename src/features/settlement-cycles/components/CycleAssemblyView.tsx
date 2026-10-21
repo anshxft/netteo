@@ -18,7 +18,7 @@ import { Icon } from '@/components/icons/Icon';
 import { CycleIcon, SnapshotIcon } from '@/components/icons/netteo';
 import { ArrowLeft, Check, AlertCircle, RefreshCw, Send } from 'lucide-react';
 import { useSettlementKernel, CycleInput } from '@/lib/chain/useSettlementKernel';
-import { CONTRACT_ADDRESSES, isSupportedNetwork } from '@/lib/chain/config';
+import { CONTRACT_ADDRESSES, isSupportedNetwork, MEZO_TESTNET_CHAIN_ID } from '@/lib/chain/config';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
 
 export function CycleAssemblyView() {
@@ -110,7 +110,10 @@ export function CycleAssemblyView() {
   }));
 
   const nettingResult = selectedObligations.length > 0
-    ? calculateNetting(nettingInputs)
+    ? calculateNetting(nettingInputs, 10, 30, {
+        chainId: chainId || MEZO_TESTNET_CHAIN_ID,
+        tokenAddress: CONTRACT_ADDRESSES.musd,
+      })
     : null;
 
   const handleFreezeCycle = async () => {
@@ -296,11 +299,14 @@ export function CycleAssemblyView() {
         >
           <div>
             <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Canonical Snapshot Commitment Hash
+              Canonical Snapshot Commitment Hash (Keccak256)
             </div>
             <code style={{ fontSize: '12px', color: 'var(--color-ink)', fontVariantNumeric: 'tabular-nums' }}>
               {nettingResult.canonicalCommitmentHash}
             </code>
+            <div style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '2px' }}>
+              Off-chain snapshot cryptographically bound to Mezo chain ID, token, sorted obligations, and net positions.
+            </div>
           </div>
           <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 500 }}>
             &bull; Invariant &Sigma; net = 0 Verified

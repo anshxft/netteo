@@ -13,11 +13,154 @@ export interface IndexerResult {
 }
 
 /**
+ * Apply state projection for a single parsed contract event into Supabase tables.
+ * Separated as an exported unit for direct testability and replay safety.
+ */
+export async function applyEventProjection(
+  db: any,
+  client: any,
+  contractAddress: string,
+  log: { blockNumber: bigint; eventName: string; args: any }
+): Promise<void> {
+  const { blockNumber, eventName, args } = log;
+  const cycleId = args.cycleId as string;
+  if (!cycleId) return;
+
+  const blockNum = Number(blockNumber);
+
+  if (eventName === 'CycleCreated') {
+    const { error } = await db.from('cycle_projection').upsert(
+      {
+        cycle_id: cycleId,
+        chain_id: MEZO_TESTNET_CHAIN_ID,
+        snapshot_commitment: args.snapshotCommitment,
+        gross_obligation_total: args.grossObligationTotal.toString(),
+        net_debt_total: args.netDebtTotal.toString(),
+        total_funded: '0',
+        total_distributed: '0',
+        total_refunded: '0',
+        funding_deadline: Number(args.fundingDeadline),
+        state: 'Funding',
+        creator: (args.creator as string).toLowerCase(),
+        last_updated_block: blockNum,
+      },
+      { onConflict: 'cycle_id' }
+    );
+    if (error) throw new Error(`CycleCreated projection failed: ${error.message}`);
+  } else if (eventName === 'DepositReceived') {
+    // Aligns with SettlementKernel.sol: (cycleId, debtor, amount, totalDebtorFunded, totalCycleFunded)
+    const debtor = (args.debtor as string).toLowerCase();
+    const totalCycleFunded = (args.totalCycleFunded as bigint).toString();
+    const totalDebtorFunded = (args.totalDebtorFunded as bigint).toString();
+
+    // 1. Update cycle projection total funded
+    const { error: cycleErr } = await db
+      .from('cycle_projection')
+      .update({
+        total_funded: totalCycleFunded,
+        last_updated_block: blockNum,
+        last_updated_at: new Date().toISOString(),
+      })
+      .eq('cycle_id', cycleId);
+    if (cycleErr) throw new Error(`DepositReceived cycle_projection failed: ${cycleErr.message}`);
+
+    // 2. Fetch authoritative required debtor amount from contract if client is available
+    let requiredAmount = totalDebtorFunded;
+    let isFullyFunded = false;
+
+    if (client && typeof client.readContract === 'function') {
+      try {
+        const debtorStatus = (await client.readContract({
+          address: contractAddress as Address,
+          abi: settlementKernelAbi,
+          functionName: 'getDebtorStatus',
+          args: [cycleId as `0x${string}`, args.debtor as Address],
+        })) as [bigint, bigint, boolean];
+
+        requiredAmount = debtorStatus[0].toString();
+        isFullyFunded = debtorStatus[2];
+      } catch (readErr) {
+        console.warn(`[Indexer] Authoritative debtor read failed, using emitted funded:`, readErr);
+      }
+    }
+
+    // 3. Update participant position projection
+    const { error: posErr } = await db.from('participant_position_projection').upsert(
+      {
+        cycle_id: cycleId,
+        participant_address: debtor,
+        position_type: 'debtor',
+        funded_amount: totalDebtorFunded,
+        required_amount: requiredAmount,
+        is_fully_funded: isFullyFunded,
+        last_updated_block: blockNum,
+      },
+      { onConflict: 'cycle_id,participant_address' }
+    );
+    if (posErr) throw new Error(`DepositReceived participant_position_projection failed: ${posErr.message}`);
+  } else if (eventName === 'CycleReadyToSettle') {
+    const { error } = await db
+      .from('cycle_projection')
+      .update({
+        state: 'ReadyToSettle',
+        last_updated_block: blockNum,
+        last_updated_at: new Date().toISOString(),
+      })
+      .eq('cycle_id', cycleId);
+    if (error) throw new Error(`CycleReadyToSettle projection failed: ${error.message}`);
+  } else if (eventName === 'CycleSettled') {
+    const { error } = await db
+      .from('cycle_projection')
+      .update({
+        state: 'Completed',
+        total_distributed: args.totalDistributed.toString(),
+        last_updated_block: blockNum,
+        last_updated_at: new Date().toISOString(),
+      })
+      .eq('cycle_id', cycleId);
+    if (error) throw new Error(`CycleSettled projection failed: ${error.message}`);
+  } else if (eventName === 'CycleExpired') {
+    const { error } = await db
+      .from('cycle_projection')
+      .update({
+        state: 'Expired',
+        last_updated_block: blockNum,
+        last_updated_at: new Date().toISOString(),
+      })
+      .eq('cycle_id', cycleId);
+    if (error) throw new Error(`CycleExpired projection failed: ${error.message}`);
+  } else if (eventName === 'RefundClaimed') {
+    const participant = (args.participant as string).toLowerCase();
+    const amount = (args.amount as bigint).toString();
+
+    const { error: cycleErr } = await db
+      .from('cycle_projection')
+      .update({
+        last_updated_block: blockNum,
+        last_updated_at: new Date().toISOString(),
+      })
+      .eq('cycle_id', cycleId);
+    if (cycleErr) throw new Error(`RefundClaimed cycle_projection failed: ${cycleErr.message}`);
+
+    const { error: posErr } = await db
+      .from('participant_position_projection')
+      .update({
+        refunded_amount: amount,
+        last_updated_block: blockNum,
+      })
+      .eq('cycle_id', cycleId)
+      .eq('participant_address', participant);
+    if (posErr) throw new Error(`RefundClaimed participant_position_projection failed: ${posErr.message}`);
+  }
+}
+
+/**
  * Server-side event indexer worker for Netteo SettlementKernel on Mezo Testnet.
- * Conforms to architecture.md §8:
+ * Conforms to architecture.md §8 & Prompt 5:
  * - Filter logs by SettlementKernel address and chain ID 31611.
+ * - Reorg/confirmation window: only indexes blocks with at least N confirmations.
  * - Idempotent event persistence keyed by (chain_id, transaction_hash, log_index).
- * - Updates read-optimized projections (cycle_projection, participant_position_projection).
+ * - Projection updates with strict failure atomicity: never advance cursor past a failed block.
  */
 export async function runIndexerWorker(): Promise<IndexerResult> {
   const contractAddress = CONTRACT_ADDRESSES.settlementKernel;
@@ -58,27 +201,34 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
     .eq('id', cursorId)
     .single();
 
-  const startBlockEnv = BigInt(process.env.INDEXER_START_BLOCK || '0');
-  const fromBlock = cursorData?.last_processed_block
+  const startBlockEnv = BigInt(
+    process.env.INDEXER_START_BLOCK ||
+    process.env.NEXT_PUBLIC_SETTLEMENT_KERNEL_DEPLOY_BLOCK ||
+    '0'
+  );
+  const fromBlock = cursorData?.last_processed_block !== undefined && cursorData?.last_processed_block !== null
     ? BigInt(cursorData.last_processed_block) + 1n
     : startBlockEnv;
 
-  // 2. Get latest block from Mezo RPC
+  // 2. Reorg protection: require confirmation depth
+  const confirmationDepth = BigInt(process.env.INDEXER_CONFIRMATION_DEPTH || '2');
   const currentBlock = await client.getBlockNumber();
-  if (fromBlock > currentBlock) {
+  const safeTargetBlock = currentBlock > confirmationDepth ? currentBlock - confirmationDepth : currentBlock;
+
+  if (fromBlock > safeTargetBlock) {
     return {
       fromBlock,
-      toBlock: currentBlock,
+      toBlock: safeTargetBlock,
       logsCount: 0,
       eventsProcessed: 0,
       skipped: true,
-      message: 'Indexer is already caught up to the latest block.',
+      message: 'Indexer is already caught up to the latest confirmed block.',
     };
   }
 
   // Bound batch size to 2000 blocks to prevent RPC timeouts
   const maxBatch = 2000n;
-  const toBlock = currentBlock > fromBlock + maxBatch ? fromBlock + maxBatch : currentBlock;
+  const toBlock = safeTargetBlock > fromBlock + maxBatch ? fromBlock + maxBatch : safeTargetBlock;
 
   // 3. Fetch contract logs
   const rawLogs = await client.getLogs({
@@ -94,6 +244,8 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
   });
 
   let processedCount = 0;
+  let lastSuccessfulBlock = fromBlock - 1n;
+  let batchError: Error | null = null;
 
   for (const log of parsedLogs) {
     const txHash = log.transactionHash;
@@ -104,142 +256,66 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
 
     if (!txHash || logIndex === undefined || !blockNum) continue;
 
-    // Idempotent record insert in indexed_events
-    const { error: insertError } = await db.from('indexed_events').upsert(
-      {
-        chain_id: MEZO_TESTNET_CHAIN_ID,
-        contract_address: contractAddress.toLowerCase(),
-        block_number: Number(blockNum),
-        transaction_hash: txHash,
-        log_index: logIndex,
-        event_name: eventName,
-        event_data: JSON.parse(
-          JSON.stringify(args, (_key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
-          )
-        ),
-      },
-      { onConflict: 'chain_id,transaction_hash,log_index', ignoreDuplicates: true }
-    );
-
-    if (insertError) {
-      console.error(`[Indexer] Failed to insert event ${eventName}:`, insertError.message);
-      continue;
-    }
-
-    // Update Projections according to event type
-    const cycleId = args.cycleId as string;
-
-    if (eventName === 'CycleCreated' && cycleId) {
-      await db.from('cycle_projection').upsert(
+    try {
+      // Idempotent record insert in indexed_events
+      const { error: insertError } = await db.from('indexed_events').upsert(
         {
-          cycle_id: cycleId,
           chain_id: MEZO_TESTNET_CHAIN_ID,
-          snapshot_commitment: args.snapshotCommitment,
-          gross_obligation_total: args.grossObligationTotal.toString(),
-          net_debt_total: args.netDebtTotal.toString(),
-          total_funded: '0',
-          total_distributed: '0',
-          total_refunded: '0',
-          funding_deadline: Number(args.fundingDeadline),
-          state: 'Funding',
-          creator: args.creator.toLowerCase(),
-          last_updated_block: Number(blockNum),
+          contract_address: contractAddress.toLowerCase(),
+          block_number: Number(blockNum),
+          transaction_hash: txHash,
+          log_index: logIndex,
+          event_name: eventName,
+          event_data: JSON.parse(
+            JSON.stringify(args, (_key, value) =>
+              typeof value === 'bigint' ? value.toString() : value
+            )
+          ),
         },
-        { onConflict: 'cycle_id' }
+        { onConflict: 'chain_id,transaction_hash,log_index', ignoreDuplicates: true }
       );
-    } else if (eventName === 'DepositReceived' && cycleId) {
-      const participant = (args.participant as string).toLowerCase();
-      const amount = args.amount as bigint;
-      const totalFunded = args.cycleTotalFunded as bigint;
-      const participantTotal = args.totalFundedByParticipant as bigint;
 
-      // Update cycle projection
-      await db
-        .from('cycle_projection')
-        .update({
-          total_funded: totalFunded.toString(),
-          last_updated_block: Number(blockNum),
-          last_updated_at: new Date().toISOString(),
-        })
-        .eq('cycle_id', cycleId);
+      if (insertError) {
+        throw new Error(`Indexed event insert error: ${insertError.message}`);
+      }
 
-      // Update participant position projection
-      await db.from('participant_position_projection').upsert(
-        {
-          cycle_id: cycleId,
-          participant_address: participant,
-          position_type: 'debtor',
-          funded_amount: participantTotal.toString(),
-          required_amount: participantTotal.toString(), // will be exact or verified
-          last_updated_block: Number(blockNum),
-        },
-        { onConflict: 'cycle_id,participant_address' }
-      );
-    } else if (eventName === 'CycleReadyToSettle' && cycleId) {
-      await db
-        .from('cycle_projection')
-        .update({
-          state: 'ReadyToSettle',
-          last_updated_block: Number(blockNum),
-          last_updated_at: new Date().toISOString(),
-        })
-        .eq('cycle_id', cycleId);
-    } else if (eventName === 'CycleSettled' && cycleId) {
-      await db
-        .from('cycle_projection')
-        .update({
-          state: 'Completed',
-          total_distributed: args.totalDistributed.toString(),
-          last_updated_block: Number(blockNum),
-          last_updated_at: new Date().toISOString(),
-        })
-        .eq('cycle_id', cycleId);
-    } else if (eventName === 'CycleExpired' && cycleId) {
-      await db
-        .from('cycle_projection')
-        .update({
-          state: 'Expired',
-          last_updated_block: Number(blockNum),
-          last_updated_at: new Date().toISOString(),
-        })
-        .eq('cycle_id', cycleId);
-    } else if (eventName === 'RefundClaimed' && cycleId) {
-      const participant = (args.participant as string).toLowerCase();
-      const amount = (args.amount as bigint).toString();
+      // Update projections
+      await applyEventProjection(db, client, contractAddress, {
+        blockNumber: blockNum,
+        eventName,
+        args,
+      });
 
-      await db
-        .from('cycle_projection')
-        .update({
-          last_updated_block: Number(blockNum),
-          last_updated_at: new Date().toISOString(),
-        })
-        .eq('cycle_id', cycleId);
-
-      await db
-        .from('participant_position_projection')
-        .update({
-          refunded_amount: amount,
-          last_updated_block: Number(blockNum),
-        })
-        .eq('cycle_id', cycleId)
-        .eq('participant_address', participant);
+      processedCount++;
+      lastSuccessfulBlock = blockNum;
+    } catch (err: any) {
+      console.error(`[Indexer] Failure at block ${blockNum} on event ${eventName}:`, err?.message || err);
+      batchError = err;
+      break; // Halt batch immediately; do NOT advance cursor past the failed block!
     }
-
-    processedCount++;
   }
 
-  // 5. Update indexer cursor
-  await db.from('indexer_cursor').upsert(
-    {
-      id: cursorId,
-      chain_id: MEZO_TESTNET_CHAIN_ID,
-      contract_address: contractAddress.toLowerCase(),
-      last_processed_block: Number(toBlock),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'id' }
-  );
+  // 5. Update indexer cursor: advance to toBlock only if no batch failure occurred
+  const cursorBlock = batchError ? lastSuccessfulBlock : toBlock;
+
+  if (cursorBlock >= fromBlock) {
+    await db.from('indexer_cursor').upsert(
+      {
+        id: cursorId,
+        chain_id: MEZO_TESTNET_CHAIN_ID,
+        contract_address: contractAddress.toLowerCase(),
+        last_processed_block: Number(cursorBlock),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' }
+    );
+  }
+
+  if (batchError) {
+    throw new Error(
+      `Indexer batch failed at block ${lastSuccessfulBlock + 1n}. Cursor held safely at ${cursorBlock}: ${batchError.message}`
+    );
+  }
 
   return {
     fromBlock,

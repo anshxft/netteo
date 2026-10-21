@@ -12,6 +12,13 @@
  *    - Reproducible and verifiable off-chain and on-chain.
  */
 
+import { keccak256, encodeAbiParameters, parseAbiParameters, stringToBytes } from 'viem';
+
+export interface NettingContext {
+  chainId?: number;
+  tokenAddress?: string;
+}
+
 export interface ObligationInput {
   id: string;
   debtor: string;
@@ -44,7 +51,7 @@ export interface NettingResult {
   debtors: { address: string; amount: bigint }[];
   zeroPositions: string[];
   allocations: AllocationTransfer[];
-  canonicalCommitmentHash: string; // SHA-256 or keccak256 commitment of sorted inputs
+  canonicalCommitmentHash: `0x${string}`; // Canonical keccak256 cryptographic commitment
 }
 
 export const NETTING_ALGORITHM_VERSION = 'netteo-v1.0-deterministic';
@@ -67,7 +74,8 @@ export function normalizeAddress(addr: string): string {
 export function calculateNetting(
   obligations: ObligationInput[],
   maxParticipants = MAX_PARTICIPANTS_PER_CYCLE,
-  maxObligations = MAX_OBLIGATIONS_PER_CYCLE
+  maxObligations = MAX_OBLIGATIONS_PER_CYCLE,
+  context?: NettingContext
 ): NettingResult {
   if (!obligations || obligations.length === 0) {
     throw new Error('Cannot run netting on empty obligation set.');
@@ -209,14 +217,14 @@ export function calculateNetting(
     );
   }
 
-  // Compute canonical deterministic commitment hash
-  const canonicalString = obligations
-    .map((o) => `${o.id}:${normalizeAddress(o.debtor)}:${normalizeAddress(o.creditor)}:${o.amount.toString()}`)
-    .sort()
-    .join('|');
-
-  // Simple string-based hash for preview integrity (real keccak256 used in Web3 contract calls)
-  const canonicalCommitmentHash = hashCanonicalRepresentation(canonicalString);
+  // Compute canonical deterministic keccak256 commitment hash
+  const canonicalCommitmentHash = computeCanonicalCommitment(
+    obligations,
+    positions,
+    sortedParticipants,
+    allocations,
+    context
+  );
 
   return {
     algorithmVersion: NETTING_ALGORITHM_VERSION,
@@ -234,12 +242,61 @@ export function calculateNetting(
 }
 
 /**
- * Lightweight deterministic SHA-256 representation without external crypto deps for browser/edge environments.
+ * Compute an immutable, cryptographic keccak256 commitment of the cycle snapshot.
+ * Binds:
+ * - Chain ID (uint256)
+ * - Token address (address)
+ * - Algorithm version (string)
+ * - Canonical sorted obligations hash (bytes32)
+ * - Canonical sorted net positions hash (bytes32)
+ * - Canonical sorted allocations hash (bytes32)
+ *
+ * Guarantees: Order-independent, amount-sensitive, chain/token-sensitive.
  */
-function hashCanonicalRepresentation(input: string): string {
-  let hash = 0n;
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash * 31n + BigInt(input.charCodeAt(i))) & 0xffffffffffffffffffffffffffffffffn;
-  }
-  return '0x' + hash.toString(16).padStart(64, '0');
+export function computeCanonicalCommitment(
+  obligations: ObligationInput[],
+  positions: Record<string, ParticipantPosition>,
+  sortedParticipants: string[],
+  allocations: AllocationTransfer[],
+  context?: NettingContext
+): `0x${string}` {
+  const chainId = BigInt(context?.chainId ?? 31611);
+  const token = (context?.tokenAddress && /^0x[a-fA-F0-9]{40}$/.test(context.tokenAddress))
+    ? (context.tokenAddress.toLowerCase() as `0x${string}`)
+    : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
+
+  // 1. Canonical sorted obligations (order-independent)
+  const canonicalObligationEntries = [...obligations]
+    .map((o) => `${o.id}:${normalizeAddress(o.debtor)}:${normalizeAddress(o.creditor)}:${o.amount.toString()}`)
+    .sort();
+  const obligationsPayload = canonicalObligationEntries.join('|');
+  const obligationsHash = keccak256(stringToBytes(obligationsPayload));
+
+  // 2. Canonical positions in sorted participant order
+  const canonicalPositions = sortedParticipants
+    .map((addr) => `${addr}:${positions[addr].grossPayable.toString()}:${positions[addr].grossReceivable.toString()}:${positions[addr].netPosition.toString()}`)
+    .join('|');
+  const positionsHash = keccak256(stringToBytes(canonicalPositions));
+
+  // 3. Canonical allocations (sorted by from, to, amount)
+  const canonicalAllocations = allocations
+    .map((a) => `${normalizeAddress(a.from)}:${normalizeAddress(a.to)}:${a.amount.toString()}`)
+    .sort()
+    .join('|');
+  const allocationsHash = keccak256(stringToBytes(canonicalAllocations));
+
+  // 4. Root keccak256 commitment binding chainId, token, version, and the component hashes
+  return keccak256(
+    encodeAbiParameters(
+      parseAbiParameters('uint256, address, string, bytes32, bytes32, bytes32'),
+      [
+        chainId,
+        token,
+        NETTING_ALGORITHM_VERSION,
+        obligationsHash,
+        positionsHash,
+        allocationsHash,
+      ]
+    )
+  );
 }
