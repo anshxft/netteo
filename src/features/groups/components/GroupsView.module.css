@@ -1,0 +1,308 @@
+/* ==========================================================================
+   Netteo Group Management Styles
+   Adheres to design-addendum.md, UI.md §16 tokens, Roundo typography
+   ========================================================================== */
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-2xl);
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.titleArea h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--color-muted);
+  margin: 0;
+  max-width: 540px;
+  line-height: 1.5;
+}
+
+/* --- Group Cards Grid --- */
+.groupGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.groupCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+.groupCard:hover {
+  border-color: var(--color-border-strong);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.groupName {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-2xs) 0;
+}
+
+.groupDesc {
+  font-size: 14px;
+  color: var(--color-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.participantBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: 4px 10px;
+  background-color: var(--color-sand);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+/* --- Table of Participants --- */
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-md);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+
+.table th {
+  background-color: var(--color-sand-light);
+  color: var(--color-ink-secondary);
+  font-weight: 600;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table td {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-ink);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.addressCode {
+  font-family: monospace;
+  font-size: 13px;
+  background-color: var(--color-sand-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  color: var(--color-ink);
+}
+
+/* --- Add Participant Inline Form --- */
+.addParticipantForm {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.input {
+  flex: 1;
+  min-width: 280px;
+  height: 40px;
+  padding: 0 var(--space-sm);
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 1px;
+  border-color: var(--color-wine);
+}
+
+/* --- Feedback Messages (UX.md §7) --- */
+.errorBanner {
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.successBanner {
+  background-color: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  color: var(--color-success);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+/* --- Empty State Container (Prototype Checklist §4) --- */
+.emptyState {
+  background-color: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3xl) var(--space-xl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.emptyStateTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.emptyStateDesc {
+  font-size: 14px;
+  color: var(--color-muted);
+  max-width: 440px;
+  margin: 0 0 var(--space-md) 0;
+  line-height: 1.5;
+}
+
+/* --- Skeleton Loading State --- */
+.skeletonCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.skeletonLine {
+  height: 20px;
+  background-color: var(--color-sand);
+  border-radius: var(--radius-sm);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
+
+/* --- Modal Styles --- */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(33, 26, 27, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  z-index: 1000;
+}
+
+.modalContent {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  maxWidth: 520px;
+  padding: var(--space-xl);
+  box-shadow: 0 8px 32px rgba(33, 26, 27, 0.12);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.fieldGroup {
+  margin-bottom: var(--space-md);
+}
+
+.fieldLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: var(--space-2xs);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-sm);
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.textarea:focus {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 1px;
+}

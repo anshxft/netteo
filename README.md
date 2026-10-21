@@ -1,0 +1,148 @@
+# Netteo — Multilateral Obligation Netting & MUSD Settlement on Mezo
+
+> **Many obligations. One net settlement.**  
+> Reconcile mutual payment obligations across Web3 service collectives and DAO working groups, calculate deterministic zero-sum net positions, and settle atomically in MUSD on Mezo Testnet.
+
+[![Mezo Testnet](https://img.shields.io/badge/Mezo%20Testnet-Chain%2031611-7F011F.svg)](https://explorer.test.mezo.org)
+[![Live dApp](https://img.shields.io/badge/Vercel%20Production-netteo--six.vercel.app-success.svg)](https://netteo-six.vercel.app)
+[![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636.svg)](https://docs.soliditylang.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16.4.2-black.svg)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org)
+
+**Live Production Application:** [https://netteo-six.vercel.app](https://netteo-six.vercel.app)
+
+---
+
+## 1. Verified Smart Contract Deployments (Mezo Testnet)
+
+The core protocol smart contracts have been compiled with Foundry (`via_ir = true`), tested, and broadcast live to Mezo Testnet (Chain ID `31611`):
+
+| Contract | Address | Block Explorer |
+|---|---|---|
+| **SettlementKernel** | `0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA` | [View on Mezo Explorer](https://explorer.test.mezo.org/address/0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA) |
+| **MockMUSD (ERC-20)** | `0xAEE79F4B1909E10dD2B7Fd3B3170B6087020FB38` | [View on Mezo Explorer](https://explorer.test.mezo.org/address/0xAEE79F4B1909E10dD2B7Fd3B3170B6087020FB38) |
+
+---
+
+## 2. Verified Live On-Chain Acceptance Settlement
+
+A live multi-party settlement cycle was executed directly on Mezo Testnet:
+- **Scenario:** 3 Participants:
+  - Participant A owes Participant B: 100 MUSD gross
+  - Participant B owes Participant C: 80 MUSD gross
+  - Participant C owes Participant A: 20 MUSD gross
+  - *Gross Obligation Volume:* **200 MUSD**
+- **Deterministic Netting Calculation:**
+  - Net Debtor A pays: **80 MUSD**
+  - Net Creditor B receives: **20 MUSD**
+  - Net Creditor C receives: **60 MUSD**
+  - *Net Settlement Volume:* **80 MUSD** (60% reduction in capital lockup & transaction overhead)
+
+### Verified Mezo Testnet Transaction Hashes
+
+1. **Step 1: MUSD Allowance Approval**  
+   Hash: [`0xaa2ca34635a170456620174a4bff6b55f391e1f56fbd31a7093113a98a46452a`](https://explorer.test.mezo.org/tx/0xaa2ca34635a170456620174a4bff6b55f391e1f56fbd31a7093113a98a46452a)
+2. **Step 2: Cycle Creation (`createCycle`)**  
+   Cycle ID: `0x86f68074ecf1bd09816578912b271440fe1c40cfd1887614961fed0d17e2f88a`  
+   Hash: [`0x5b7af5268145527e548a179c36ccb7b31a553b9686aea5a9c7bbdad5d3863802`](https://explorer.test.mezo.org/tx/0x5b7af5268145527e548a179c36ccb7b31a553b9686aea5a9c7bbdad5d3863802)
+3. **Step 3: Net Debtor Funding (`deposit`)**  
+   Hash: [`0xff9ea9bae2f4991caac5f0dcafbddcc0af8794f4b83a74e2fa4d31165ee5593e`](https://explorer.test.mezo.org/tx/0xff9ea9bae2f4991caac5f0dcafbddcc0af8794f4b83a74e2fa4d31165ee5593e)
+4. **Step 4: Atomic Settlement Payout (`executeSettlement`)**  
+   Hash: [`0x93cf1524135d55c63f93a2c43fa7a98c4951d16c4ec58fc3bbd227ff89531bff`](https://explorer.test.mezo.org/tx/0x93cf1524135d55c63f93a2c43fa7a98c4951d16c4ec58fc3bbd227ff89531bff)
+
+*Result:* Creditor B received 20 MUSD, Creditor C received 60 MUSD atomically. Cycle reached terminal `Completed` state.
+
+---
+
+## 3. Architecture & Core Invariants
+
+```mermaid
+sequenceDiagram
+    participant D as Net Debtors
+    participant UI as Netteo App Desk
+    participant K as SettlementKernel
+    participant M as MUSD Token
+    participant C as Net Creditors
+
+    Note over UI: Calculate canonical net positions (sum(net) = 0)
+    UI->>K: createCycle(CycleInput struct)
+    loop Each Net Debtor
+        D->>M: approve(SettlementKernel, amount)
+        D->>K: deposit(cycleId, amount)
+        K->>M: transferFrom(debtor, kernel, amount)
+    end
+    Note over K: 100% funded check passed
+    UI->>K: executeSettlement(cycleId) [Permissionless trigger]
+    loop Each Net Creditor
+        K->>M: transfer(creditor, payout)
+        M-->>C: Credit received
+    end
+    Note over K: Terminal Completed state reached
+```
+
+### Safety & Integrity Invariants
+1. **Zero-Sum Balance ($\sum \text{net} = 0$):** Contract strictly verifies that total net debits equal total net credits before freezing a cycle.
+2. **Collect-Then-Distribute:** No funds can be distributed until 100% of required net deposits have been locked.
+3. **Mutual-Exclusion Refund:** If the funding deadline passes before 100% funding is reached, any deposited debtor can claim a 100% refund (`claimRefund`).
+4. **Bounded Gas:** Participation is capped at 10 participants per cycle to guarantee execution within EVM block gas limits.
+5. **Checks-Effects-Interactions & ReentrancyGuard:** Cycle state transitions occur prior to external token transfers.
+
+---
+
+## 4. Technology Stack
+
+- **Smart Contracts:** Solidity `0.8.24`, OpenZeppelin Contracts v5 (`SafeERC20`, `ReentrancyGuard`), Foundry toolchain.
+- **Frontend:** Next.js 16 (App Router, Turbopack), React 19, TypeScript strict mode.
+- **Web3 Integration:** Viem 2.x, Wagmi 3.x, TanStack React Query.
+- **Database & SSR:** Supabase (`@supabase/ssr`, `@supabase/supabase-js`) with Postgres Row-Level Security (RLS).
+- **Design System:** Bespoke Netteo token system (`tokens.css`), Roundo typography, 120–240ms motion tokens, zero AI-slop guarantees.
+
+---
+
+## 5. Local Development & Testing
+
+### Prerequisites
+- Node.js >= 20.x
+- Foundry (`forge`, `cast`)
+
+### Setup
+```bash
+# Clone the repository
+git clone https://github.com/your-org/netteo.git
+cd netteo
+
+# Install dependencies
+npm install
+
+# Copy environment variables
+cp .env.example .env.local
+```
+
+### Run Tests
+```bash
+# Run pure netting algorithm tests (6/6 passing)
+npm test
+
+# Run Solidity kernel invariant tests (6/6 passing)
+forge test
+
+# Run TypeScript typecheck
+npm run typecheck
+
+# Run production build
+npm run build
+```
+
+### Run Dev Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## 6. Disclosures & Known Limitations
+
+- **Gas Limit Boundaries:** Cycles are hard-capped at 10 participants to bound single-transaction loops within Mezo block gas limits. Larger groups settle in multiple sub-cycles.
+- **Token Scope:** Settlement executes in single-currency MUSD (18 decimals). Multi-currency netting requires prior FX conversion.
+- **Coordinator Liveness Independence:** Once 100% funded, `executeSettlement` is permissionless and can be triggered by any participant or automated bot.
