@@ -3,8 +3,6 @@
 import { Group, CreateGroupInput } from './types';
 import { normalizeAddress, MAX_PARTICIPANTS_PER_CYCLE } from '../settlement-cycles/netting';
 
-const STORAGE_KEY = 'netteo_groups_v1';
-
 export const CANONICAL_GROUP: Group = {
   id: '00000000-0000-0000-0000-000000000001',
   name: 'Genesis Design & Infra Collective',
@@ -19,40 +17,64 @@ export const CANONICAL_GROUP: Group = {
   status: 'active',
 };
 
-export function loadGroups(): Group[] {
+export function getActiveWorkspaceMode(): 'demo' | 'live' {
+  if (typeof window === 'undefined') return 'demo';
+  try {
+    const mode = localStorage.getItem('netteo_workspace_mode_v1');
+    return mode === 'live' ? 'live' : 'demo';
+  } catch {
+    return 'demo';
+  }
+}
+
+function getStorageKey(mode?: 'demo' | 'live'): string {
+  const m = mode || getActiveWorkspaceMode();
+  return m === 'live' ? 'netteo_live_groups_v1' : 'netteo_demo_groups_v1';
+}
+
+export function loadGroups(mode?: 'demo' | 'live'): Group[] {
+  const activeMode = mode || getActiveWorkspaceMode();
   if (typeof window === 'undefined') {
-    return [CANONICAL_GROUP];
+    return activeMode === 'demo' ? [CANONICAL_GROUP] : [];
   }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const storageKey = getStorageKey(activeMode);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) {
-      saveGroups([CANONICAL_GROUP]);
-      return [CANONICAL_GROUP];
+      if (activeMode === 'demo') {
+        saveGroups([CANONICAL_GROUP], 'demo');
+        return [CANONICAL_GROUP];
+      }
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      saveGroups([CANONICAL_GROUP]);
-      return [CANONICAL_GROUP];
+      if (activeMode === 'demo') {
+        saveGroups([CANONICAL_GROUP], 'demo');
+        return [CANONICAL_GROUP];
+      }
+      return [];
     }
     return parsed.map((g: any) => ({
       ...g,
       id: g.id === 'grp-genesis-001' ? CANONICAL_GROUP.id : g.id,
     }));
   } catch {
-    return [CANONICAL_GROUP];
+    return activeMode === 'demo' ? [CANONICAL_GROUP] : [];
   }
 }
 
-export function saveGroups(groups: Group[]): void {
+export function saveGroups(groups: Group[], mode?: 'demo' | 'live'): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(groups));
+    const storageKey = getStorageKey(mode);
+    localStorage.setItem(storageKey, JSON.stringify(groups));
   } catch (err) {
     console.error('Failed to save groups to local storage', err);
   }
 }
 
-export function createGroup(input: CreateGroupInput): Group {
+export function createGroup(input: CreateGroupInput, mode?: 'demo' | 'live'): Group {
   const trimmedName = input.name.trim();
   if (!trimmedName) {
     throw new Error('Group name is required.');
@@ -92,15 +114,15 @@ export function createGroup(input: CreateGroupInput): Group {
     status: 'active',
   };
 
-  const current = loadGroups();
+  const current = loadGroups(mode);
   const updated = [newGroup, ...current];
-  saveGroups(updated);
+  saveGroups(updated, mode);
   return newGroup;
 }
 
-export function addParticipantToGroup(groupId: string, rawAddress: string): Group {
+export function addParticipantToGroup(groupId: string, rawAddress: string, mode?: 'demo' | 'live'): Group {
   const normalized = normalizeAddress(rawAddress.trim());
-  const groups = loadGroups();
+  const groups = loadGroups(mode);
   const groupIndex = groups.findIndex((g) => g.id === groupId);
   if (groupIndex === -1) {
     throw new Error('Working group not found.');
@@ -121,13 +143,13 @@ export function addParticipantToGroup(groupId: string, rawAddress: string): Grou
   };
 
   groups[groupIndex] = updatedGroup;
-  saveGroups(groups);
+  saveGroups(groups, mode);
   return updatedGroup;
 }
 
-export function removeParticipantFromGroup(groupId: string, address: string): Group {
+export function removeParticipantFromGroup(groupId: string, address: string, mode?: 'demo' | 'live'): Group {
   const normalized = normalizeAddress(address.trim());
-  const groups = loadGroups();
+  const groups = loadGroups(mode);
   const groupIndex = groups.findIndex((g) => g.id === groupId);
   if (groupIndex === -1) {
     throw new Error('Working group not found.');
@@ -140,6 +162,6 @@ export function removeParticipantFromGroup(groupId: string, address: string): Gr
   };
 
   groups[groupIndex] = updatedGroup;
-  saveGroups(groups);
+  saveGroups(groups, mode);
   return updatedGroup;
 }

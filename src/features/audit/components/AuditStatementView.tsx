@@ -7,6 +7,7 @@ import { getCycleById } from '@/features/settlement-cycles/store';
 import { SettlementCycle } from '@/features/settlement-cycles/types';
 import { loadObligations, formatBaseUnitsToDisplay } from '@/features/obligations/store';
 import { Obligation } from '@/features/obligations/types';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { SnapshotIcon } from '@/components/icons/netteo';
@@ -17,21 +18,22 @@ export interface AuditStatementViewProps {
 }
 
 export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
+  const { mode } = useWorkspace();
   const [cycle, setCycle] = useState<SettlementCycle | null>(null);
   const [includedObligations, setIncludedObligations] = useState<Obligation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (cycleId) {
-      const found = getCycleById(cycleId);
+      const found = getCycleById(cycleId, mode);
       if (found) {
         setCycle(found);
-        const allObs = loadObligations();
+        const allObs = loadObligations(mode);
         setIncludedObligations(allObs.filter((o) => found.includedObligationIds.includes(o.id)));
       }
     }
     setIsLoading(false);
-  }, [cycleId]);
+  }, [cycleId, mode]);
 
   const handleExportCSV = () => {
     if (!cycle) return;

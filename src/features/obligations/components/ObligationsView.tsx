@@ -6,6 +6,7 @@ import styles from './ObligationsView.module.css';
 import { Obligation } from '../types';
 import { loadObligations, saveObligations, formatBaseUnitsToDisplay } from '../store';
 import { syncObligationsFromSupabase } from '@/lib/db/syncService';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { ObligationsLedger } from './ObligationsLedger';
@@ -14,6 +15,7 @@ import { ObligationIcon, CycleIcon } from '@/components/icons/netteo';
 import { Plus, AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
 
 export function ObligationsView() {
+  const { mode, resetCounter } = useWorkspace();
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,18 +27,22 @@ export function ObligationsView() {
     setIsLoading(true);
     setError(null);
     try {
-      // First attempt Supabase remote synchronization
-      const remote = await syncObligationsFromSupabase();
-      if (remote && remote.length > 0) {
-        setObligations(remote);
-        saveObligations(remote);
+      if (mode === 'live') {
+        const remote = await syncObligationsFromSupabase();
+        if (remote && remote.length > 0) {
+          setObligations(remote);
+          saveObligations(remote, 'live');
+        } else {
+          const data = loadObligations('live');
+          setObligations(data);
+        }
       } else {
-        const data = loadObligations();
+        const data = loadObligations('demo');
         setObligations(data);
       }
     } catch {
       try {
-        const data = loadObligations();
+        const data = loadObligations(mode);
         setObligations(data);
       } catch {
         setError('Unable to load obligations. Please retry.');
@@ -60,7 +66,7 @@ export function ObligationsView() {
         window.removeEventListener('offline', onOffline);
       };
     }
-  }, []);
+  }, [mode, resetCounter]);
 
   const handleCreated = () => {
     fetchObligations();

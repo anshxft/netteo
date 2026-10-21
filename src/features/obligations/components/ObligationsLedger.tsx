@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import styles from './ObligationsView.module.css';
 import { Obligation, ObligationStatus } from '../types';
-import { updateObligationStatus } from '../store';
+import { updateObligationStatus, getParticipantDisplayName } from '../store';
 import { syncObligationStatusToSupabase } from '@/lib/db/syncService';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { Check, X, Ban, Copy } from 'lucide-react';
@@ -29,6 +30,7 @@ export function ObligationsLedger({
   onUpdate,
   isOffline = false,
 }: ObligationsLedgerProps) {
+  const { mode } = useWorkspace();
   const [activeFilter, setActiveFilter] = useState<ObligationStatus | 'All'>('All');
   const [actionError, setActionError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -40,10 +42,12 @@ export function ObligationsLedger({
   const handleStatusChange = (id: string, newStatus: ObligationStatus) => {
     setActionError(null);
     try {
-      updateObligationStatus(id, newStatus);
-      syncObligationStatusToSupabase(id, newStatus).catch((err) => {
-        console.warn('[Sync] Supabase status sync deferred:', err);
-      });
+      updateObligationStatus(id, newStatus, mode);
+      if (mode === 'live') {
+        syncObligationStatusToSupabase(id, newStatus).catch((err) => {
+          console.warn('[Sync] Supabase status sync deferred:', err);
+        });
+      }
       onUpdate();
     } catch (err: any) {
       setActionError(err.message || 'Failed to update obligation status.');
@@ -160,14 +164,24 @@ export function ObligationsLedger({
                       </div>
                     </td>
                     <td>
-                      <span className={styles.addressCode} title={ob.debtorAddress}>
-                        {ob.debtorAddress.slice(0, 6)}...{ob.debtorAddress.slice(-4)}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)' }}>
+                          {getParticipantDisplayName(ob.debtorAddress, mode === 'demo')}
+                        </span>
+                        <span className={styles.addressCode} title={ob.debtorAddress}>
+                          {ob.debtorAddress.slice(0, 6)}...{ob.debtorAddress.slice(-4)}
+                        </span>
+                      </div>
                     </td>
                     <td>
-                      <span className={styles.addressCode} title={ob.creditorAddress}>
-                        {ob.creditorAddress.slice(0, 6)}...{ob.creditorAddress.slice(-4)}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-ink)' }}>
+                          {getParticipantDisplayName(ob.creditorAddress, mode === 'demo')}
+                        </span>
+                        <span className={styles.addressCode} title={ob.creditorAddress}>
+                          {ob.creditorAddress.slice(0, 6)}...{ob.creditorAddress.slice(-4)}
+                        </span>
+                      </div>
                     </td>
                     <td>
                       <div className={styles.labelCell} title={ob.referenceLabel}>

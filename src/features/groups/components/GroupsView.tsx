@@ -5,6 +5,7 @@ import styles from './GroupsView.module.css';
 import { Group } from '../types';
 import { loadGroups, saveGroups } from '../store';
 import { syncGroupsFromSupabase } from '@/lib/db/syncService';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { ParticipantTable } from './ParticipantTable';
@@ -12,6 +13,7 @@ import { CreateGroupModal } from './CreateGroupModal';
 import { Users, Plus, AlertCircle, RefreshCw } from 'lucide-react';
 
 export function GroupsView() {
+  const { mode, resetCounter } = useWorkspace();
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,18 +25,22 @@ export function GroupsView() {
     setIsLoading(true);
     setError(null);
     try {
-      // First attempt Supabase remote synchronization
-      const remote = await syncGroupsFromSupabase();
-      if (remote && remote.length > 0) {
-        setGroups(remote);
-        saveGroups(remote);
+      if (mode === 'live') {
+        const remote = await syncGroupsFromSupabase();
+        if (remote && remote.length > 0) {
+          setGroups(remote);
+          saveGroups(remote, 'live');
+        } else {
+          const data = loadGroups('live');
+          setGroups(data);
+        }
       } else {
-        const data = loadGroups();
+        const data = loadGroups('demo');
         setGroups(data);
       }
     } catch {
       try {
-        const data = loadGroups();
+        const data = loadGroups(mode);
         setGroups(data);
       } catch {
         setError('Failed to load working groups. Please refresh or try again.');
@@ -58,7 +64,7 @@ export function GroupsView() {
         window.removeEventListener('offline', onOffline);
       };
     }
-  }, []);
+  }, [mode, resetCounter]);
 
   const handleGroupCreated = () => {
     fetchGroups();

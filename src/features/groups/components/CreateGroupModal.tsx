@@ -5,6 +5,7 @@ import styles from './GroupsView.module.css';
 import { Button } from '@/components/common/Button';
 import { createGroup } from '../store';
 import { syncGroupToSupabase } from '@/lib/db/syncService';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { X } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 
@@ -15,6 +16,7 @@ export interface CreateGroupModalProps {
 }
 
 export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModalProps) {
+  const { mode } = useWorkspace();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [participantsRaw, setParticipantsRaw] = useState('');
@@ -45,17 +47,22 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const created = createGroup({
-        name,
-        description,
-        initialParticipants: initialAddresses,
-      });
+      const created = createGroup(
+        {
+          name,
+          description,
+          initialParticipants: initialAddresses,
+        },
+        mode
+      );
 
-      // Background sync to Supabase (non-blocking)
-      const creator = created.participants[0] || '0x1111111111111111111111111111111111111111';
-      syncGroupToSupabase(created, creator).catch((err) => {
-        console.warn('[Sync] Supabase group sync deferred:', err);
-      });
+      // Background sync to Supabase (only in live mode)
+      if (mode === 'live') {
+        const creator = created.participants[0] || '0x1111111111111111111111111111111111111111';
+        syncGroupToSupabase(created, creator).catch((err) => {
+          console.warn('[Sync] Supabase group sync deferred:', err);
+        });
+      }
 
       // Reset form upon successful creation
       setName('');

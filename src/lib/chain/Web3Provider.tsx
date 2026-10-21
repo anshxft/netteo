@@ -5,6 +5,8 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { wagmiConfig } from './config';
 
+import { WorkspaceProvider } from '@/features/workspace/WorkspaceContext';
+
 export function Web3Provider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
@@ -18,7 +20,9 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        {children}
+        <WorkspaceProvider>
+          {children}
+        </WorkspaceProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

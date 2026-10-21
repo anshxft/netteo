@@ -90,20 +90,43 @@ export const VERIFIED_MEZO_CYCLE: SettlementCycle = {
   },
 };
 
-export function loadCycles(): SettlementCycle[] {
+export function getActiveWorkspaceMode(): 'demo' | 'live' {
+  if (typeof window === 'undefined') return 'demo';
+  try {
+    const mode = localStorage.getItem('netteo_workspace_mode_v1');
+    return mode === 'live' ? 'live' : 'demo';
+  } catch {
+    return 'demo';
+  }
+}
+
+function getStorageKey(mode?: 'demo' | 'live'): string {
+  const m = mode || getActiveWorkspaceMode();
+  return m === 'live' ? 'netteo_live_cycles_v1' : 'netteo_demo_cycles_v1';
+}
+
+export function loadCycles(mode?: 'demo' | 'live'): SettlementCycle[] {
+  const activeMode = mode || getActiveWorkspaceMode();
   if (typeof window === 'undefined') {
-    return [VERIFIED_MEZO_CYCLE];
+    return activeMode === 'demo' ? [VERIFIED_MEZO_CYCLE] : [];
   }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const storageKey = getStorageKey(activeMode);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) {
-      saveCycles([VERIFIED_MEZO_CYCLE]);
-      return [VERIFIED_MEZO_CYCLE];
+      if (activeMode === 'demo') {
+        saveCycles([VERIFIED_MEZO_CYCLE], 'demo');
+        return [VERIFIED_MEZO_CYCLE];
+      }
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      saveCycles([VERIFIED_MEZO_CYCLE]);
-      return [VERIFIED_MEZO_CYCLE];
+      if (activeMode === 'demo') {
+        saveCycles([VERIFIED_MEZO_CYCLE], 'demo');
+        return [VERIFIED_MEZO_CYCLE];
+      }
+      return [];
     }
 
     return parsed.map((item) => ({
@@ -147,9 +170,10 @@ export function loadCycles(): SettlementCycle[] {
   }
 }
 
-export function saveCycles(cycles: SettlementCycle[]): void {
+export function saveCycles(cycles: SettlementCycle[], mode?: 'demo' | 'live'): void {
   if (typeof window === 'undefined') return;
   try {
+    const storageKey = getStorageKey(mode);
     const serialized = cycles.map((c) => ({
       ...c,
       grossObligationTotal: c.grossObligationTotal.toString(),
@@ -186,27 +210,28 @@ export function saveCycles(cycles: SettlementCycle[]): void {
         ])
       ),
     }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized));
+    localStorage.setItem(storageKey, JSON.stringify(serialized));
   } catch (err) {
     console.error('Failed to save settlement cycles to storage', err);
   }
 }
 
-export function getCycleById(id: string): SettlementCycle | undefined {
-  const cycles = loadCycles();
+export function getCycleById(id: string, mode?: 'demo' | 'live'): SettlementCycle | undefined {
+  const cycles = loadCycles(mode);
   return cycles.find((c) => c.id === id);
 }
 
 export function createCycleFromObligations(
   groupId: string,
   obligationIds: string[],
-  creatorAddress: string = '0xC00100000000000000000000000000000000C001'
+  creatorAddress: string = '0xC00100000000000000000000000000000000C001',
+  mode?: 'demo' | 'live'
 ): SettlementCycle {
   if (!obligationIds || obligationIds.length === 0) {
     throw new Error('At least one accepted obligation is required to assemble a settlement cycle.');
   }
 
-  const allObligations = loadObligations();
+  const allObligations = loadObligations(mode);
   const selected = allObligations.filter((o) => obligationIds.includes(o.id));
 
   // Verify all are Accepted and belonging to groupId
@@ -231,7 +256,7 @@ export function createCycleFromObligations(
     tokenAddress: CONTRACT_ADDRESSES.musd,
   });
 
-  const existingCycles = loadCycles();
+  const existingCycles = loadCycles(mode);
   const cycleNumber = existingCycles.length + 1;
   const cycleId = `cycle-${Date.now().toString(36)}`;
   const deadline = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(); // 72-hour funding window
@@ -267,17 +292,22 @@ export function createCycleFromObligations(
 
   // Mark all selected obligations as Frozen
   for (const id of obligationIds) {
-    updateObligationStatus(id, 'Frozen');
+    updateObligationStatus(id, 'Frozen', mode);
   }
 
   const updatedCycles = [newCycle, ...existingCycles];
-  saveCycles(updatedCycles);
+  saveCycles(updatedCycles, mode);
   return newCycle;
 }
 
-export function depositToCycle(cycleId: string, debtorAddress: string, amount: bigint): SettlementCycle {
+export function depositToCycle(
+  cycleId: string,
+  debtorAddress: string,
+  amount: bigint,
+  mode?: 'demo' | 'live'
+): SettlementCycle {
   const normalizedDebtor = normalizeAddress(debtorAddress);
-  const cycles = loadCycles();
+  const cycles = loadCycles(mode);
   const cycleIndex = cycles.findIndex((c) => c.id === cycleId);
   if (cycleIndex === -1) {
     throw new Error('Settlement cycle not found.');
@@ -291,7 +321,7 @@ export function depositToCycle(cycleId: string, debtorAddress: string, amount: b
   if (new Date() > new Date(cycle.fundingDeadline)) {
     cycle.state = 'Expired';
     cycles[cycleIndex] = cycle;
-    saveCycles(cycles);
+    saveCycles(cycles, mode);
     throw new Error('Funding deadline has expired. Depositors may claim refunds.');
   }
 
@@ -313,12 +343,12 @@ export function depositToCycle(cycleId: string, debtorAddress: string, amount: b
   }
 
   cycles[cycleIndex] = cycle;
-  saveCycles(cycles);
+  saveCycles(cycles, mode);
   return cycle;
 }
 
-export function executeCycleSettlement(cycleId: string): SettlementCycle {
-  const cycles = loadCycles();
+export function executeCycleSettlement(cycleId: string, mode?: 'demo' | 'live'): SettlementCycle {
+  const cycles = loadCycles(mode);
   const cycleIndex = cycles.findIndex((c) => c.id === cycleId);
   if (cycleIndex === -1) {
     throw new Error('Settlement cycle not found.');
@@ -335,17 +365,21 @@ export function executeCycleSettlement(cycleId: string): SettlementCycle {
 
   // Mark all included obligations as Settled
   for (const obId of cycle.includedObligationIds) {
-    updateObligationStatus(obId, 'Settled');
+    updateObligationStatus(obId, 'Settled', mode);
   }
 
   cycles[cycleIndex] = cycle;
-  saveCycles(cycles);
+  saveCycles(cycles, mode);
   return cycle;
 }
 
-export function claimRefundFromCycle(cycleId: string, debtorAddress: string): SettlementCycle {
+export function claimRefundFromCycle(
+  cycleId: string,
+  debtorAddress: string,
+  mode?: 'demo' | 'live'
+): SettlementCycle {
   const normalized = normalizeAddress(debtorAddress);
-  const cycles = loadCycles();
+  const cycles = loadCycles(mode);
   const cycleIndex = cycles.findIndex((c) => c.id === cycleId);
   if (cycleIndex === -1) {
     throw new Error('Settlement cycle not found.');
@@ -371,6 +405,6 @@ export function claimRefundFromCycle(cycleId: string, debtorAddress: string): Se
   }
 
   cycles[cycleIndex] = cycle;
-  saveCycles(cycles);
+  saveCycles(cycles, mode);
   return cycle;
 }

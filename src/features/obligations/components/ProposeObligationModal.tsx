@@ -8,6 +8,7 @@ import { Icon } from '@/components/icons/Icon';
 import { proposeObligation } from '../store';
 import { syncObligationToSupabase } from '@/lib/db/syncService';
 import { loadGroups } from '@/features/groups/store';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { X } from 'lucide-react';
 
 export interface ProposeObligationModalProps {
@@ -17,6 +18,7 @@ export interface ProposeObligationModalProps {
 }
 
 export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeObligationModalProps) {
+  const { mode } = useWorkspace();
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const [groupId, setGroupId] = useState('');
   const [debtorAddress, setDebtorAddress] = useState('');
@@ -28,13 +30,13 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
 
   useEffect(() => {
     if (isOpen) {
-      const loaded = loadGroups();
+      const loaded = loadGroups(mode);
       setGroups(loaded.map((g) => ({ id: g.id, name: g.name })));
       if (loaded.length > 0 && !groupId) {
         setGroupId(loaded[0].id);
       }
     }
-  }, [isOpen, groupId]);
+  }, [isOpen, groupId, mode]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,18 +54,24 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
     setIsSubmitting(true);
 
     try {
-      const created = proposeObligation({
-        groupId,
-        debtorAddress,
-        creditorAddress,
-        amountMusd,
-        referenceLabel,
-      });
+      const created = proposeObligation(
+        {
+          groupId,
+          debtorAddress,
+          creditorAddress,
+          amountMusd,
+          referenceLabel,
+        },
+        '0x1111111111111111111111111111111111111111',
+        mode
+      );
 
-      // Background sync to Supabase (non-blocking)
-      syncObligationToSupabase(created, groupId).catch((err) => {
-        console.warn('[Sync] Supabase sync deferred:', err);
-      });
+      // Background sync to Supabase (only in live mode)
+      if (mode === 'live') {
+        syncObligationToSupabase(created, groupId).catch((err) => {
+          console.warn('[Sync] Supabase sync deferred:', err);
+        });
+      }
 
       // Clear only upon successful creation (input preservation on error)
       setDebtorAddress('');
