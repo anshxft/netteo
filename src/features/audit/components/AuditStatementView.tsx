@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import obStyles from '@/features/obligations/components/ObligationsView.module.css';
-import { getCycleById } from '@/features/settlement-cycles/store';
+import { getCycleById, VERIFIED_MEZO_CYCLE } from '@/features/settlement-cycles/store';
+import { syncCyclesFromSupabase } from '@/lib/db/syncService';
 import { SettlementCycle } from '@/features/settlement-cycles/types';
 import { loadObligations, formatBaseUnitsToDisplay } from '@/features/obligations/store';
 import { Obligation } from '@/features/obligations/types';
@@ -11,11 +12,14 @@ import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { SnapshotIcon } from '@/components/icons/netteo';
-import { ArrowLeft, Download, ShieldCheck, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Download, ShieldCheck, CheckCircle, ExternalLink } from 'lucide-react';
+import { CONTRACT_ADDRESSES } from '@/lib/chain/config';
 
 export interface AuditStatementViewProps {
   cycleId?: string;
 }
+
+const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.test.mezo.org';
 
 export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
   const { mode } = useWorkspace();
@@ -24,15 +28,45 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isCancelled = false;
     if (cycleId) {
       const found = getCycleById(cycleId, mode);
       if (found) {
         setCycle(found);
         const allObs = loadObligations(mode);
         setIncludedObligations(allObs.filter((o) => found.includedObligationIds.includes(o.id)));
+        setIsLoading(false);
+      } else if (mode === 'live') {
+        if (cycleId.toLowerCase() === VERIFIED_MEZO_CYCLE.id.toLowerCase()) {
+          setCycle(VERIFIED_MEZO_CYCLE);
+          const allObs = loadObligations('live');
+          setIncludedObligations(allObs.filter((o) => VERIFIED_MEZO_CYCLE.includedObligationIds.includes(o.id)));
+          setIsLoading(false);
+        } else {
+          syncCyclesFromSupabase()
+            .then((remote) => {
+              if (isCancelled) return;
+              const remoteFound = remote?.find((c) => c.id.toLowerCase() === cycleId.toLowerCase());
+              if (remoteFound) {
+                setCycle(remoteFound);
+                const allObs = loadObligations('live');
+                setIncludedObligations(allObs.filter((o) => remoteFound.includedObligationIds.includes(o.id)));
+              }
+            })
+            .finally(() => {
+              if (!isCancelled) setIsLoading(false);
+            });
+        }
+      } else {
+        setIsLoading(false);
       }
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
+
+    return () => {
+      isCancelled = true;
+    };
   }, [cycleId, mode]);
 
   const handleExportCSV = () => {
@@ -45,37 +79,48 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
     rows.push(`Status,${cycle.state}`);
     rows.push(`Snapshot Commitment Hash,${cycle.snapshotCommitment}`);
     rows.push(`Algorithm Version,${cycle.algorithmVersion}`);
-    rows.push(`Gross Obligation Total,${formatBaseUnitsToDisplay(cycle.grossObligationTotal)}`);
-    rows.push(`Net Funding Requirement,${formatBaseUnitsToDisplay(cycle.netDebtTotal)}`);
+    rows.push(`Settlement Contract Address,${CONTRACT_ADDRESSES.settlementKernel}`);
+    rows.push(`Network,Mezo Testnet (Chain ID 31611)`);
+    rows.push(`Gross Obligation Total (Base Units),${cycle.grossObligationTotal.toString()}`);
+    rows.push(`Gross Obligation Total (Formatted),${formatBaseUnitsToDisplay(cycle.grossObligationTotal)}`);
+    rows.push(`Net Funding Requirement (Base Units),${cycle.netDebtTotal.toString()}`);
+    rows.push(`Net Funding Requirement (Formatted),${formatBaseUnitsToDisplay(cycle.netDebtTotal)}`);
+    rows.push(`Total Funded (Base Units),${cycle.totalFunded.toString()}`);
+    rows.push(`Total Distributed (Base Units),${cycle.totalDistributed.toString()}`);
+    rows.push(`Total Refunded (Base Units),${cycle.totalRefunded.toString()}`);
     rows.push(`Created At,${cycle.createdAt}`);
+    if (cycle.completedAt) rows.push(`Completed At,${cycle.completedAt}`);
+    if (cycle.txCreationHash) rows.push(`Creation Tx Hash,${cycle.txCreationHash},${EXPLORER_BASE}/tx/${cycle.txCreationHash}`);
+    if (cycle.txDepositHash) rows.push(`Deposit Tx Hash,${cycle.txDepositHash},${EXPLORER_BASE}/tx/${cycle.txDepositHash}`);
+    if (cycle.txSettlementHash) rows.push(`Settlement Tx Hash,${cycle.txSettlementHash},${EXPLORER_BASE}/tx/${cycle.txSettlementHash}`);
     rows.push('');
     rows.push('--- INCLUDED GROSS OBLIGATIONS ---');
-    rows.push('Obligation ID,Debtor,Creditor,Amount,Reference Label,Status');
+    rows.push('Obligation ID,Debtor,Creditor,Amount (Base Units),Amount (Formatted),Reference Label,Status');
 
     for (const ob of includedObligations) {
       rows.push(
-        `"${ob.id}","${ob.debtorAddress}","${ob.creditorAddress}","${ob.amountDisplay}","${ob.referenceLabel.replace(/"/g, '""')}","${ob.status}"`
+        `"${ob.id}","${ob.debtorAddress}","${ob.creditorAddress}","${ob.amount.toString()}","${ob.amountDisplay}","${ob.referenceLabel.replace(/"/g, '""')}","${ob.status}"`
       );
     }
 
     rows.push('');
     rows.push('--- RECONCILED NET POSITIONS ---');
-    rows.push('Participant Address,Gross Payable,Gross Receivable,Net Position,Role');
+    rows.push('Participant Address,Gross Payable (Base Units),Gross Receivable (Base Units),Net Position (Base Units),Role');
 
     for (const [addr, pos] of Object.entries(cycle.nettingResult.positions)) {
       const role = pos.netPosition < 0n ? 'Debtor' : pos.netPosition > 0n ? 'Creditor' : 'Zero';
       rows.push(
-        `"${addr}","${formatBaseUnitsToDisplay(pos.grossPayable)}","${formatBaseUnitsToDisplay(pos.grossReceivable)}","${formatBaseUnitsToDisplay(pos.netPosition < 0n ? -pos.netPosition : pos.netPosition)}","${role}"`
+        `"${addr}","${pos.grossPayable.toString()}","${pos.grossReceivable.toString()}","${pos.netPosition.toString()}","${role}"`
       );
     }
 
     rows.push('');
     rows.push('--- NET SETTLEMENT TRANSFERS ---');
-    rows.push('From (Debtor),To (Creditor),Amount');
+    rows.push('From (Debtor),To (Creditor),Amount (Base Units),Amount (Formatted)');
 
     for (const alloc of cycle.nettingResult.allocations) {
       rows.push(
-        `"${alloc.from}","${alloc.to}","${formatBaseUnitsToDisplay(alloc.amount)}"`
+        `"${alloc.from}","${alloc.to}","${alloc.amount.toString()}","${formatBaseUnitsToDisplay(alloc.amount)}"`
       );
     }
 
@@ -174,10 +219,69 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
             <code style={{ fontSize: '12px', color: 'var(--color-wine)' }}>{cycle.snapshotCommitment}</code>
           </div>
           <div>
+            <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Settlement Contract (Mezo 31611)</div>
+            <a
+              href={`${EXPLORER_BASE}/address/${CONTRACT_ADDRESSES.settlementKernel}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: '12px', color: 'var(--color-ink)', textDecoration: 'underline' }}
+            >
+              {CONTRACT_ADDRESSES.settlementKernel.slice(0, 10)}...{CONTRACT_ADDRESSES.settlementKernel.slice(-8)}
+              <Icon icon={ExternalLink} size="sm" style={{ marginLeft: '4px', verticalAlign: 'middle' }} />
+            </a>
+          </div>
+          <div>
             <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>On-Chain Solvency Invariant</div>
             <span style={{ fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>&Sigma; net positions = 0 (Enforced)</span>
           </div>
         </div>
+
+        {(cycle.txCreationHash || cycle.txDepositHash || cycle.txSettlementHash) && (
+          <div style={{ marginTop: 'var(--space-md)', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--color-border-subtle)', display: 'flex', gap: 'var(--space-lg)', flexWrap: 'wrap', fontSize: '12px' }}>
+            {cycle.txCreationHash && (
+              <div>
+                <span style={{ color: 'var(--color-muted)' }}>Creation Tx: </span>
+                <a
+                  href={`${EXPLORER_BASE}/tx/${cycle.txCreationHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--color-wine)', fontWeight: 600, textDecoration: 'underline' }}
+                >
+                  {cycle.txCreationHash.slice(0, 10)}...{cycle.txCreationHash.slice(-8)}
+                  <Icon icon={ExternalLink} size="sm" style={{ marginLeft: '3px', verticalAlign: 'middle' }} />
+                </a>
+              </div>
+            )}
+            {cycle.txDepositHash && (
+              <div>
+                <span style={{ color: 'var(--color-muted)' }}>Deposit Tx: </span>
+                <a
+                  href={`${EXPLORER_BASE}/tx/${cycle.txDepositHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--color-wine)', fontWeight: 600, textDecoration: 'underline' }}
+                >
+                  {cycle.txDepositHash.slice(0, 10)}...{cycle.txDepositHash.slice(-8)}
+                  <Icon icon={ExternalLink} size="sm" style={{ marginLeft: '3px', verticalAlign: 'middle' }} />
+                </a>
+              </div>
+            )}
+            {cycle.txSettlementHash && (
+              <div>
+                <span style={{ color: 'var(--color-muted)' }}>Settlement Tx: </span>
+                <a
+                  href={`${EXPLORER_BASE}/tx/${cycle.txSettlementHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--color-wine)', fontWeight: 600, textDecoration: 'underline' }}
+                >
+                  {cycle.txSettlementHash.slice(0, 10)}...{cycle.txSettlementHash.slice(-8)}
+                  <Icon icon={ExternalLink} size="sm" style={{ marginLeft: '3px', verticalAlign: 'middle' }} />
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Section 1: Included Gross Obligations */}

@@ -1,12 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
 import obStyles from '@/features/obligations/components/ObligationsView.module.css';
 import { SettlementCycle } from '../types';
-import { getCycleById, depositToCycle, executeCycleSettlement, claimRefundFromCycle, saveCycles, loadCycles } from '../store';
-import { syncCycleToSupabase } from '@/lib/db/syncService';
+import {
+  getCycleById,
+  depositToCycle,
+  executeCycleSettlement,
+  claimRefundFromCycle,
+  saveCycles,
+  loadCycles,
+  VERIFIED_MEZO_CYCLE,
+} from '../store';
+import { syncCycleToSupabase, syncCyclesFromSupabase } from '@/lib/db/syncService';
 import { formatBaseUnitsToDisplay, getParticipantDisplayName } from '@/features/obligations/store';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
@@ -24,7 +32,13 @@ import {
   Zap,
 } from 'lucide-react';
 import { useMusdToken } from '@/lib/chain/useMusdToken';
-import { useSettlementKernel } from '@/lib/chain/useSettlementKernel';
+import {
+  useSettlementKernel,
+  useAuthoritativeCycle,
+  CYCLE_STATE_LABELS,
+  CycleStateOnChain,
+  OnChainCycle,
+} from '@/lib/chain/useSettlementKernel';
 import { CONTRACT_ADDRESSES, isSupportedNetwork } from '@/lib/chain/config';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
 
@@ -34,11 +48,68 @@ export interface CycleExecutionViewProps {
 
 const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.test.mezo.org';
 
+function buildSyntheticCycle(
+  cycleId: string,
+  onChain: OnChainCycle,
+  parts?: { debtors: string[]; creditors: string[] },
+  projection?: any
+): SettlementCycle {
+  const debtors = parts?.debtors || [];
+  const creditors = parts?.creditors || [];
+  const deposits: Record<string, { required: bigint; funded: bigint }> = {};
+  debtors.forEach((d) => {
+    const dLower = d.toLowerCase();
+    deposits[dLower] = {
+      required: onChain.netDebtTotal / (BigInt(debtors.length) || 1n),
+      funded: onChain.totalFunded >= onChain.netDebtTotal ? onChain.netDebtTotal / (BigInt(debtors.length) || 1n) : 0n,
+    };
+  });
+  return {
+    id: cycleId,
+    groupId: projection?.group_id || '00000000-0000-0000-0000-000000000001',
+    cycleNumber: projection?.cycle_number || 1,
+    snapshotCommitment: onChain.snapshotCommitment,
+    algorithmVersion: onChain.algorithmVersion || 'netteo-v1.0-deterministic',
+    grossObligationTotal: onChain.grossObligationTotal,
+    netDebtTotal: onChain.netDebtTotal,
+    totalFunded: onChain.totalFunded,
+    totalDistributed: onChain.totalDistributed,
+    totalRefunded: onChain.totalRefunded,
+    fundingDeadline: new Date(Number(onChain.fundingDeadline) * 1000).toISOString(),
+    state: (CYCLE_STATE_LABELS[onChain.state as CycleStateOnChain] as any) || 'Funding',
+    creatorAddress: onChain.creator,
+    createdAt: projection?.created_at || new Date().toISOString(),
+    includedObligationIds: [],
+    nettingResult: {
+      algorithmVersion: onChain.algorithmVersion || 'netteo-v1.0-deterministic',
+      participantCount: debtors.length + creditors.length,
+      obligationCount: 0,
+      grossObligationTotal: onChain.grossObligationTotal,
+      netFundingRequirement: onChain.netDebtTotal,
+      positions: {},
+      debtors: debtors.map((d) => ({
+        address: d,
+        amount: onChain.netDebtTotal / (BigInt(debtors.length) || 1n),
+      })),
+      creditors: creditors.map((c) => ({
+        address: c,
+        amount: onChain.totalDistributed / (BigInt(creditors.length) || 1n),
+      })),
+      zeroPositions: [],
+      allocations: [],
+      canonicalCommitmentHash: onChain.snapshotCommitment,
+    },
+    deposits,
+    txCreationHash: projection?.creation_tx_hash,
+  };
+}
+
 export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   const { mode, resetCounter } = useWorkspace();
   const { address: userAddress, isConnected, chainId } = useAccount();
   const musd = useMusdToken({ spenderAddress: CONTRACT_ADDRESSES.settlementKernel });
   const kernel = useSettlementKernel();
+  const authoritative = useAuthoritativeCycle(cycleId);
 
   const [cycle, setCycle] = useState<SettlementCycle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +127,26 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   const refreshCycle = () => {
     setIsLoading(true);
     const found = getCycleById(cycleId, mode);
-    setCycle(found || null);
+    if (found) {
+      setCycle(found);
+      setIsLoading(false);
+      return;
+    }
+    if (mode === 'live') {
+      if (cycleId.toLowerCase() === VERIFIED_MEZO_CYCLE.id.toLowerCase()) {
+        setCycle(VERIFIED_MEZO_CYCLE);
+        setIsLoading(false);
+        return;
+      }
+      syncCyclesFromSupabase()
+        .then((remote) => {
+          const remoteFound = remote?.find((c) => c.id.toLowerCase() === cycleId.toLowerCase());
+          if (remoteFound) setCycle(remoteFound);
+        })
+        .finally(() => setIsLoading(false));
+      return;
+    }
+    setCycle(null);
     setIsLoading(false);
   };
 
@@ -76,35 +166,88 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     }
   }, [cycleId, mode, resetCounter]);
 
-  // Handle on-chain write completion
+  // Handle on-chain write completion truthfully
   useEffect(() => {
-    if (kernel.isConfirmed && cycle) {
-      if (activeTxAction === 'deposit') {
-        const remaining = cycle.deposits[userAddress?.toLowerCase() || '']?.required || 0n;
-        const updated = depositToCycle(cycleId, userAddress || '', remaining, 'live');
-        updated.txDepositHash = kernel.txHash;
-        saveCycles(loadCycles('live').map((c) => (c.id === updated.id ? updated : c)), 'live');
-        syncCycleToSupabase(updated).catch((err) => console.warn('[Sync] Supabase cycle update deferred:', err));
-        refreshCycle();
-        setActionSuccess('Deposit confirmed on Mezo Testnet!');
-      } else if (activeTxAction === 'execute') {
-        const updated = executeCycleSettlement(cycleId, 'live');
-        updated.txSettlementHash = kernel.txHash;
-        saveCycles(loadCycles('live').map((c) => (c.id === updated.id ? updated : c)), 'live');
-        syncCycleToSupabase(updated).catch((err) => console.warn('[Sync] Supabase cycle update deferred:', err));
-        refreshCycle();
-        setActionSuccess('Settlement successfully executed! Funds distributed on Mezo Testnet.');
-      } else if (activeTxAction === 'refund') {
-        const updated = claimRefundFromCycle(cycleId, userAddress || '', 'live');
-        syncCycleToSupabase(updated).catch((err) => console.warn('[Sync] Supabase cycle update deferred:', err));
-        refreshCycle();
-        setActionSuccess('Refund confirmed on Mezo Testnet.');
+    if (kernel.isConfirmed) {
+      if (mode === 'live') {
+        authoritative.refetch();
+        // Record confirmed tx hashes in local cache without mutating financial amounts
+        if (activeTxAction === 'deposit' && kernel.txHash) {
+          const localCycles = loadCycles('live');
+          const existing = localCycles.find((c) => c.id.toLowerCase() === cycleId.toLowerCase());
+          if (existing) {
+            existing.txDepositHash = kernel.txHash;
+            saveCycles(localCycles, 'live');
+          }
+          setActionSuccess('Deposit confirmed on Mezo Testnet! On-chain state updated.');
+        } else if (activeTxAction === 'execute' && kernel.txHash) {
+          const localCycles = loadCycles('live');
+          const existing = localCycles.find((c) => c.id.toLowerCase() === cycleId.toLowerCase());
+          if (existing) {
+            existing.txSettlementHash = kernel.txHash;
+            saveCycles(localCycles, 'live');
+          }
+          setActionSuccess('Settlement successfully executed! Funds distributed atomically on Mezo Testnet.');
+        } else if (activeTxAction === 'refund') {
+          setActionSuccess('Refund confirmed on Mezo Testnet.');
+        }
+        setActiveTxAction(null);
+        setIsSubmitting(false);
       }
-      setActiveTxAction(null);
     }
   }, [kernel.isConfirmed]);
 
-  if (isLoading) {
+  // Derived display cycle combining local representation with on-chain financial truth
+  const displayCycle = useMemo(() => {
+    if (mode === 'demo') return cycle;
+
+    let base = cycle;
+    if (!base && cycleId.toLowerCase() === VERIFIED_MEZO_CYCLE.id.toLowerCase()) {
+      base = VERIFIED_MEZO_CYCLE;
+    }
+    if (!base && authoritative.cycle && authoritative.cycle.state !== CycleStateOnChain.NonExistent) {
+      base = buildSyntheticCycle(
+        cycleId,
+        authoritative.cycle,
+        authoritative.participants ?? undefined,
+        authoritative.projection
+      );
+    }
+
+    if (!base) return null;
+
+    if (authoritative.cycle && authoritative.cycle.state !== CycleStateOnChain.NonExistent) {
+      const onChain = authoritative.cycle;
+      const stateLabel = (CYCLE_STATE_LABELS[onChain.state as CycleStateOnChain] as any) || base.state;
+
+      const updatedDeposits = { ...base.deposits };
+      if (userAddress && authoritative.debtorStatus && authoritative.debtorStatus.required > 0n) {
+        const uLower = userAddress.toLowerCase();
+        updatedDeposits[uLower] = {
+          required: authoritative.debtorStatus.required,
+          funded: authoritative.debtorStatus.funded,
+        };
+      }
+
+      return {
+        ...base,
+        snapshotCommitment: onChain.snapshotCommitment,
+        grossObligationTotal: onChain.grossObligationTotal,
+        netDebtTotal: onChain.netDebtTotal,
+        totalFunded: onChain.totalFunded,
+        totalDistributed: onChain.totalDistributed,
+        totalRefunded: onChain.totalRefunded,
+        state: stateLabel,
+        deposits: updatedDeposits,
+      };
+    }
+
+    return base;
+  }, [cycle, mode, authoritative.cycle, authoritative.participants, authoritative.debtorStatus, authoritative.projection, userAddress, cycleId]);
+
+  const isViewLoading = isLoading && (!displayCycle && authoritative.isLoading);
+
+  if (isViewLoading) {
     return (
       <div style={{ padding: 'var(--space-2xl) 0' }}>
         <p style={{ color: 'var(--color-muted)' }}>Loading settlement cycle {cycleId}...</p>
@@ -112,7 +255,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     );
   }
 
-  if (!cycle) {
+  if (!displayCycle) {
     return (
       <div className={obStyles.emptyState}>
         <Icon icon={CycleIcon} size="lg" color="var(--color-wine)" />
@@ -127,9 +270,9 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     );
   }
 
-  const isFunded = cycle.netDebtTotal > 0n && cycle.totalFunded >= cycle.netDebtTotal;
-  const fundingPercent = cycle.netDebtTotal > 0n
-    ? Number((cycle.totalFunded * 100n) / cycle.netDebtTotal)
+  const isFunded = displayCycle.netDebtTotal > 0n && displayCycle.totalFunded >= displayCycle.netDebtTotal;
+  const fundingPercent = displayCycle.netDebtTotal > 0n
+    ? Number((displayCycle.totalFunded * 100n) / displayCycle.netDebtTotal)
     : 100;
 
   // Handle MUSD Approval
@@ -302,21 +445,21 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                 padding: '4px 10px',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor:
-                  cycle.state === 'Completed'
+                  displayCycle.state === 'Completed'
                     ? 'var(--color-success-bg)'
-                    : cycle.state === 'ReadyToSettle'
+                    : displayCycle.state === 'ReadyToSettle'
                     ? 'var(--color-sand-light)'
                     : 'var(--color-surface)',
                 color:
-                  cycle.state === 'Completed'
+                  displayCycle.state === 'Completed'
                     ? 'var(--color-success)'
-                    : cycle.state === 'ReadyToSettle'
+                    : displayCycle.state === 'ReadyToSettle'
                     ? 'var(--color-wine)'
                     : 'var(--color-ink)',
                 border: '1px solid var(--color-border)',
               }}
             >
-              {cycle.state === 'ReadyToSettle' ? 'Ready to Settle (100% Funded)' : cycle.state}
+              {displayCycle.state === 'ReadyToSettle' ? 'Ready to Settle (100% Funded)' : displayCycle.state}
             </span>
             <span
               style={{
@@ -333,7 +476,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             </span>
           </div>
           <p className={obStyles.subtitle}>
-            Cycle ID: <code style={{ fontSize: '13px' }}>{cycle.id}</code>
+            Cycle ID: <code style={{ fontSize: '13px' }}>{displayCycle.id}</code>
           </p>
         </div>
 
@@ -344,7 +487,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             </Button>
           </Link>
 
-          {isFunded && cycle.state !== 'Completed' && (
+          {isFunded && displayCycle.state !== 'Completed' && (
             <Button
               variant="primary"
               icon={<Icon icon={Zap} size="sm" color="#FFFFFF" />}
@@ -360,6 +503,30 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
           )}
         </div>
       </div>
+
+      {/* Indexer Lag Notice (design-addendum.md §7 Feedback Contracts & Truthful Interfaces) */}
+      {mode === 'live' && authoritative.indexerLag && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-sm)',
+            padding: 'var(--space-md) var(--space-lg)',
+            backgroundColor: 'var(--color-sand)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--space-lg)',
+            fontSize: '13px',
+            color: 'var(--color-ink)',
+          }}
+          role="status"
+        >
+          <Icon icon={Clock} size="sm" color="var(--color-wine)" />
+          <div>
+            <strong>On-Chain Financial Truth Active:</strong> SettlementKernel on Mezo Testnet confirmed the latest funds/state. Supabase indexer projection is syncing in the background.
+          </div>
+        </div>
+      )}
 
       {/* Web3 Transaction Status Banner */}
       {(isKernelPending || isMusdPending || activeTxHash || kernel.error || musd.error) && (
@@ -431,7 +598,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             Net Debtor Funding Progress
           </div>
           <div style={{ fontSize: '14px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isFunded ? 'var(--color-success)' : 'var(--color-wine)' }}>
-            {formatBaseUnitsToDisplay(cycle.totalFunded)} / {formatBaseUnitsToDisplay(cycle.netDebtTotal)} ({fundingPercent}%)
+            {formatBaseUnitsToDisplay(displayCycle.totalFunded)} / {formatBaseUnitsToDisplay(displayCycle.netDebtTotal)} ({fundingPercent}%)
           </div>
         </div>
 
@@ -464,7 +631,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
       </div>
 
       {/* On-Chain Verification Block */}
-      {(cycle.txCreationHash || cycle.txDepositHash || cycle.txSettlementHash) && (
+      {(displayCycle.txCreationHash || displayCycle.txDepositHash || displayCycle.txSettlementHash) && (
         <div
           style={{
             backgroundColor: 'var(--color-surface)',
@@ -478,44 +645,44 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             Verified On-Chain Transactions (Mezo Testnet Chain 31611)
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-lg)', flexWrap: 'wrap', fontSize: '12px' }}>
-            {cycle.txCreationHash && (
+            {displayCycle.txCreationHash && (
               <div>
                 <span style={{ color: 'var(--color-muted)' }}>Creation: </span>
                 <a
-                  href={`${EXPLORER_BASE}/tx/${cycle.txCreationHash}`}
+                  href={`${EXPLORER_BASE}/tx/${displayCycle.txCreationHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: 'var(--color-wine)', fontWeight: 600, textDecoration: 'underline' }}
                 >
-                  {cycle.txCreationHash.slice(0, 10)}...{cycle.txCreationHash.slice(-8)}
+                  {displayCycle.txCreationHash.slice(0, 10)}...{displayCycle.txCreationHash.slice(-8)}
                   <Icon icon={ExternalLink} size="sm" style={{ marginLeft: '3px', verticalAlign: 'middle' }} />
                 </a>
               </div>
             )}
-            {cycle.txDepositHash && (
+            {displayCycle.txDepositHash && (
               <div>
                 <span style={{ color: 'var(--color-muted)' }}>Deposit: </span>
                 <a
-                  href={`${EXPLORER_BASE}/tx/${cycle.txDepositHash}`}
+                  href={`${EXPLORER_BASE}/tx/${displayCycle.txDepositHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: 'var(--color-wine)', fontWeight: 600, textDecoration: 'underline' }}
                 >
-                  {cycle.txDepositHash.slice(0, 10)}...{cycle.txDepositHash.slice(-8)}
+                  {displayCycle.txDepositHash.slice(0, 10)}...{displayCycle.txDepositHash.slice(-8)}
                   <Icon icon={ExternalLink} size="sm" style={{ marginLeft: '3px', verticalAlign: 'middle' }} />
                 </a>
               </div>
             )}
-            {cycle.txSettlementHash && (
+            {displayCycle.txSettlementHash && (
               <div>
                 <span style={{ color: 'var(--color-muted)' }}>Settlement: </span>
                 <a
-                  href={`${EXPLORER_BASE}/tx/${cycle.txSettlementHash}`}
+                  href={`${EXPLORER_BASE}/tx/${displayCycle.txSettlementHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ color: 'var(--color-wine)', fontWeight: 600, textDecoration: 'underline' }}
                 >
-                  {cycle.txSettlementHash.slice(0, 10)}...{cycle.txSettlementHash.slice(-8)}
+                  {displayCycle.txSettlementHash.slice(0, 10)}...{displayCycle.txSettlementHash.slice(-8)}
                   <Icon icon={ExternalLink} size="sm" style={{ marginLeft: '3px', verticalAlign: 'middle' }} />
                 </a>
               </div>
@@ -543,11 +710,11 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
           }}
         >
           <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginTop: 0, marginBottom: 'var(--space-md)' }}>
-            Net Debtors ({Object.keys(cycle.deposits).length})
+            Net Debtors ({Object.keys(displayCycle.deposits).length})
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-            {Object.entries(cycle.deposits).map(([debtorAddr, deposit]) => {
+            {Object.entries(displayCycle.deposits).map(([debtorAddr, deposit]) => {
               const remaining = deposit.required - deposit.funded;
               const isDebtorDone = deposit.funded >= deposit.required;
               const isCurrentUser = userAddress?.toLowerCase() === debtorAddr.toLowerCase();
@@ -586,7 +753,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                     Required: {formatBaseUnitsToDisplay(deposit.required)} &bull; Deposited: {formatBaseUnitsToDisplay(deposit.funded)}
                   </div>
 
-                  {cycle.state === 'Funding' && !isDebtorDone && (
+                  {displayCycle.state === 'Funding' && !isDebtorDone && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                       {needsApproval ? (
                         <Button
@@ -618,7 +785,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                     </div>
                   )}
 
-                  {cycle.state === 'Expired' && deposit.funded > 0n && (
+                  {displayCycle.state === 'Expired' && deposit.funded > 0n && (
                     <Button
                       variant="destructive"
                       disabled={isOffline || isSubmitting || isKernelPending}
@@ -644,11 +811,11 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
           }}
         >
           <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginTop: 0, marginBottom: 'var(--space-md)' }}>
-            Net Creditors ({cycle.nettingResult.creditors.length})
+            Net Creditors ({displayCycle.nettingResult.creditors.length})
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-            {cycle.nettingResult.creditors.map((creditor) => (
+            {displayCycle.nettingResult.creditors.map((creditor) => (
               <div
                 key={creditor.address}
                 style={{
@@ -671,10 +838,10 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                     style={{
                       fontSize: '12px',
                       fontWeight: 600,
-                      color: cycle.state === 'Completed' ? 'var(--color-success)' : 'var(--color-muted)',
+                      color: displayCycle.state === 'Completed' ? 'var(--color-success)' : 'var(--color-muted)',
                     }}
                   >
-                    {cycle.state === 'Completed' ? 'Paid' : 'Awaiting Settlement'}
+                    {displayCycle.state === 'Completed' ? 'Paid' : 'Awaiting Settlement'}
                   </span>
                 </div>
 
