@@ -13,14 +13,15 @@
 
 ---
 
-## 1. Verified Smart Contract Deployments (Mezo Testnet)
+## 1. Smart Contract Deployments (Mezo Testnet Chain 31611)
 
-The core protocol smart contracts have been compiled with Foundry (`via_ir = true`), tested, and broadcast live to Mezo Testnet (Chain ID `31611`):
+The protocol settlement contracts are compiled with Foundry (`via_ir = true`):
 
-| Contract | Address | Block Explorer |
-|---|---|---|
-| **SettlementKernel** | `0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA` | [View on Mezo Explorer](https://explorer.test.mezo.org/address/0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA) |
-| **MockMUSD (ERC-20)** | `0xAEE79F4B1909E10dD2B7Fd3B3170B6087020FB38` | [View on Mezo Explorer](https://explorer.test.mezo.org/address/0xAEE79F4B1909E10dD2B7Fd3B3170B6087020FB38) |
+| Contract | Address | Status | Block Explorer |
+|---|---|---|---|
+| **Canonical Mezo MUSD** | `0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503` | Official Testnet Token | [View on Mezo Explorer](https://explorer.test.mezo.org/token/0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503) |
+| **SettlementKernel (Live)** | `0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5` | Deployed (Canonical MUSD) | [View on Mezo Explorer](https://explorer.test.mezo.org/address/0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5) |
+| **Legacy SettlementKernel** | `0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA` | Deprecated (MockMUSD) | [View on Mezo Explorer](https://explorer.test.mezo.org/address/0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA) |
 
 ---
 
