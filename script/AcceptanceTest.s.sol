@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
 import {SettlementKernel} from "../contracts/SettlementKernel.sol";
-import {MockMUSD} from "../contracts/MockMUSD.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract AcceptanceTest is Script {
     function run() external {
@@ -11,7 +11,7 @@ contract AcceptanceTest is Script {
         address musdAddress = vm.envAddress("NEXT_PUBLIC_MUSD_ADDRESS");
         address kernelAddress = vm.envAddress("NEXT_PUBLIC_SETTLEMENT_KERNEL_ADDRESS");
 
-        MockMUSD musd = MockMUSD(musdAddress);
+        IERC20 musd = IERC20(musdAddress);
         SettlementKernel kernel = SettlementKernel(kernelAddress);
 
         address debtorA = vm.addr(deployerKey);
