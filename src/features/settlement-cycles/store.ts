@@ -5,6 +5,7 @@ import { calculateNetting, ObligationInput, NETTING_ALGORITHM_VERSION } from './
 import { loadObligations, updateObligationStatus } from '../obligations/store';
 import { normalizeAddress } from './netting';
 import { MEZO_TESTNET_CHAIN_ID, CONTRACT_ADDRESSES } from '@/lib/chain/config';
+import { getTokenByAddress } from '@/lib/chain/tokens';
 
 const STORAGE_KEY = 'netteo_cycles_v1';
 
@@ -226,7 +227,8 @@ export function createCycleFromObligations(
   groupId: string,
   obligationIds: string[],
   creatorAddress: string = '0xC00100000000000000000000000000000000C001',
-  mode?: 'demo' | 'live'
+  mode?: 'demo' | 'live',
+  tokenAddress?: string
 ): SettlementCycle {
   if (!obligationIds || obligationIds.length === 0) {
     throw new Error('At least one accepted obligation is required to assemble a settlement cycle.');
@@ -242,6 +244,9 @@ export function createCycleFromObligations(
     }
   }
 
+  // Determine token metadata
+  const activeToken = getTokenByAddress(tokenAddress || CONTRACT_ADDRESSES.musd);
+
   // Convert to netting inputs
   const nettingInputs: ObligationInput[] = selected.map((o) => ({
     id: o.id,
@@ -254,7 +259,7 @@ export function createCycleFromObligations(
   // Run pure deterministic netting algorithm
   const nettingResult = calculateNetting(nettingInputs, 10, 30, {
     chainId: MEZO_TESTNET_CHAIN_ID,
-    tokenAddress: CONTRACT_ADDRESSES.musd,
+    tokenAddress: activeToken.address,
   });
 
   const existingCycles = loadCycles(mode);
@@ -289,6 +294,8 @@ export function createCycleFromObligations(
     includedObligationIds: obligationIds,
     nettingResult,
     deposits,
+    tokenAddress: activeToken.address,
+    tokenSymbol: activeToken.symbol,
   };
 
   // Mark all selected obligations as Frozen
