@@ -244,8 +244,8 @@ export function NettingGraph({ nettingResult, includedObligations }: NettingGrap
             Position Reconciliation Table
           </h3>
           {capitalSaved > 0n && (
-            <span style={{ fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>
-              &bull; Capital Efficiency: {formatBaseUnitsToDisplay(capitalSaved)} saved in netting
+            <span style={{ fontSize: '13px', color: 'var(--color-ink-secondary)', fontWeight: 600 }}>
+              &bull; Netting Reduction: {formatBaseUnitsToDisplay(capitalSaved)} offset against gross obligations
             </span>
           )}
         </div>

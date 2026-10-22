@@ -57,8 +57,8 @@ export default function HomePage() {
               marginBottom: 'var(--space-xl)',
             }}
           >
-            Reconcile bilateral payment claims across Web3 service collectives and DAO working groups.
-            Compute deterministic net balances and settle atomically in MUSD on Mezo.
+            Net bilateral payment obligations, then settle the remaining balance in Mezo MUSD.
+            Reconcile reciprocal debt loops across Web3 service collectives and DAO contributor pods with verified atomic execution.
           </p>
 
           <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>

@@ -206,10 +206,10 @@ export function DemoExplainerBanner() {
               }}
             >
               <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-wine)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                3. The Savings (60% Less Cash)
+                3. Net Settlement ($80 Funded vs $200 Gross)
               </div>
               <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.5, color: 'var(--color-ink)' }}>
-                Only <strong>$80</strong> moves instead of <strong>$200</strong>! All 3 obligations are paid off atomically in 1 single transaction on Mezo with zero counterparty risk.
+                Only <strong>$80 MUSD</strong> in net funding is required to clear all <strong>$200 MUSD</strong> in gross claims across 3 participants. All 3 obligations are cleared atomically in 1 transaction on Mezo. (Note: reduced settlement volume is a liquidity efficiency metric, not guaranteed economic savings).
               </p>
             </div>
           </div>
