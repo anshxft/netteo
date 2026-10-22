@@ -143,7 +143,7 @@ All 7 Cryptographic Authorization Tests Passed Successfully!
 
 ### Demo Script & Timing Guidelines
 - **0:00 - 0:45 (The Reciprocal Debt Problem):** Open `/obligations` in Demo Sandbox. Explain how Web3 service providers (Alice, Bob, Carol) accumulate circular bilateral debts ($200.00 MUSD gross volume) that choke liquidity.
-- **0:45 - 1:30 (Signature Netting Collapse):** Navigate to `/cycles/new`. Select the 3 claims and trigger the netting calculation. Showcase the signature transition where 3 claims collapse into 1 payment ($80.00 MUSD net) saving 60% of capital requirements.
+- **0:45 - 1:30 (Signature Netting Collapse):** Navigate to `/cycles/new`. Select the 3 claims and trigger the netting calculation. Showcase the signature transition where 3 claims collapse into 1 payment ($80.00 MUSD net funding vs $200.00 MUSD gross claim volume), demonstrating a 60% liquidity efficiency offset without claiming guaranteed savings.
 - **1:30 - 2:30 (Live On-Chain Settlement on Mezo Testnet):** Switch to "Live Mezo" mode. Open Cycle #1 (`0x156915a7...`). Show the live on-chain status ("Completed") and click through the verified Mezo Explorer links for Creation, Deposit, and Distribution.
 - **2:30 - 3:00 (Cryptographic Audit & Export):** Open `/cycles/.../audit`. Highlight the immutable snapshot commitment hash and download the base-unit reconciled CSV statement.
 
