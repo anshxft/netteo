@@ -21,12 +21,17 @@ export function parseMusdToBaseUnits(amountStr: string): bigint {
   return total;
 }
 
-export function formatBaseUnitsToDisplay(amount: bigint): string {
-  const base = 10n ** BASE_DECIMALS;
+export function formatBaseUnitsToDisplay(
+  amount: bigint,
+  symbol: string = 'MUSD',
+  decimals: number = 18
+): string {
+  const dec = BigInt(decimals);
+  const base = 10n ** dec;
   const whole = amount / base;
   const rem = amount % base;
-  const fracStr = rem.toString().padStart(Number(BASE_DECIMALS), '0').slice(0, 2);
-  return `${whole.toLocaleString()}.${fracStr} MUSD`;
+  const fracStr = rem.toString().padStart(Number(dec), '0').slice(0, 2);
+  return `${whole.toLocaleString()}.${fracStr} ${symbol}`;
 }
 
 // PRD §2 Canonical initial obligations
