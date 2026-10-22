@@ -27,6 +27,7 @@ export enum CycleStateOnChain {
   Completed = 3,
   Expired = 4,
   Refunded = 5,
+  Cancelled = 6,
 }
 
 export interface OnChainCycle {
@@ -175,6 +176,7 @@ export const CYCLE_STATE_LABELS: Record<CycleStateOnChain, string> = {
   [CycleStateOnChain.Completed]: 'Completed',
   [CycleStateOnChain.Expired]: 'Expired',
   [CycleStateOnChain.Refunded]: 'Refunded',
+  [CycleStateOnChain.Cancelled]: 'Cancelled',
 };
 
 /**
@@ -338,6 +340,33 @@ export function useSettlementKernel() {
     });
   };
 
+  const depositWithPermit = async (
+    cycleId: `0x${string}`,
+    amount: bigint,
+    deadline: bigint,
+    v: number,
+    r: `0x${string}`,
+    s: `0x${string}`
+  ) => {
+    checkNetwork();
+    return writeContract({
+      address: contractAddress,
+      abi: settlementKernelAbi,
+      functionName: 'depositWithPermit',
+      args: [cycleId, amount, deadline, v, r, s],
+    });
+  };
+
+  const cancelCycle = async (cycleId: `0x${string}`) => {
+    checkNetwork();
+    return writeContract({
+      address: contractAddress,
+      abi: settlementKernelAbi,
+      functionName: 'cancelCycle',
+      args: [cycleId],
+    });
+  };
+
   const executeSettlement = async (cycleId: `0x${string}`) => {
     checkNetwork();
     return writeContract({
@@ -365,6 +394,8 @@ export function useSettlementKernel() {
     contractAddress,
     createCycle,
     deposit,
+    depositWithPermit,
+    cancelCycle,
     executeSettlement,
     claimRefund,
     txHash: txHash as Hash | undefined,

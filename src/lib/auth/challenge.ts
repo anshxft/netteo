@@ -1,4 +1,17 @@
-import { verifyMessage, getAddress } from 'viem';
+import { verifyMessage, getAddress, createPublicClient, http, type PublicClient } from 'viem';
+import { mezoTestnet } from '../chain/config';
+
+let defaultClient: PublicClient | undefined;
+
+function getVerificationClient(): PublicClient {
+  if (!defaultClient) {
+    defaultClient = createPublicClient({
+      chain: mezoTestnet,
+      transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.test.mezo.org'),
+    });
+  }
+  return defaultClient;
+}
 
 export interface ObligationActionChallenge {
   action: 'accept' | 'dispute' | 'withdraw';
@@ -81,19 +94,33 @@ export function buildCreateGroupMessage(payload: CreateGroupChallenge): string {
 
 /**
  * Verifies that the signature corresponds to the expected signer for the given message.
+ * Supports both standard EOA secp256k1 signatures and EIP-1271 smart contract signatures
+ * (e.g. Mezo Safe DAO multi-sigs) via RPC verification.
  */
 export async function verifyChallengeSignature(
   message: string,
   signature: `0x${string}`,
-  expectedSigner: string
+  expectedSigner: string,
+  customClient?: PublicClient
 ): Promise<boolean> {
   try {
-    const isValid = await verifyMessage({
-      address: getAddress(expectedSigner),
+    const formattedAddress = getAddress(expectedSigner);
+
+    // 1. Fast local ECDSA verification (zero network latency for EOAs)
+    const isEoaValid = await verifyMessage({
+      address: formattedAddress,
       message,
       signature,
     });
-    return isValid;
+    if (isEoaValid) return true;
+
+    // 2. Fallback to on-chain EIP-1271 isValidSignature query for Smart Contract Accounts (Safe multi-sigs)
+    const client = customClient || getVerificationClient();
+    return await client.verifyMessage({
+      address: formattedAddress,
+      message,
+      signature,
+    });
   } catch {
     return false;
   }

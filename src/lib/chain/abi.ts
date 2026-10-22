@@ -65,6 +65,19 @@ export const settlementKernelAbi = [
   },
   {
     "type": "function",
+    "name": "cancelCycle",
+    "inputs": [
+      {
+        "name": "cycleId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "claimRefund",
     "inputs": [
       {
@@ -155,6 +168,44 @@ export const settlementKernelAbi = [
         "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "depositWithPermit",
+    "inputs": [
+      {
+        "name": "cycleId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "v",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "r",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "s",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [],
@@ -350,6 +401,31 @@ export const settlementKernelAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "CycleCancelled",
+    "inputs": [
+      {
+        "name": "cycleId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -555,6 +631,17 @@ export const settlementKernelAbi = [
   },
   {
     "type": "error",
+    "name": "CycleAlreadyFullyFunded",
+    "inputs": [
+      {
+        "name": "cycleId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "CycleNotFound",
     "inputs": [
       {
@@ -575,6 +662,22 @@ export const settlementKernelAbi = [
       },
       {
         "name": "currentState",
+        "type": "uint8",
+        "internalType": "enum SettlementKernel.CycleState"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CycleNotInRefundableState",
+    "inputs": [
+      {
+        "name": "cycleId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "state",
         "type": "uint8",
         "internalType": "enum SettlementKernel.CycleState"
       }
@@ -785,6 +888,22 @@ export const settlementKernelAbi = [
         "name": "state",
         "type": "uint8",
         "internalType": "enum SettlementKernel.CycleState"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnauthorizedCaller",
+    "inputs": [
+      {
+        "name": "caller",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "required",
+        "type": "address",
+        "internalType": "address"
       }
     ]
   },

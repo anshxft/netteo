@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -10,7 +11,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * @notice Multilateral obligation settlement kernel on Mezo.
  * Enforces atomic collect-then-distribute settlement of net payment obligations in MUSD.
  * Solvency Invariant: All net debtors must deposit 100% of required funds before distribution.
- * If funding deadline expires without 100% funding, depositors can claim individual refunds.
+ * If funding deadline expires without 100% funding or if cycle is cancelled, depositors can claim individual refunds.
  */
 contract SettlementKernel is ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -30,7 +31,8 @@ contract SettlementKernel is ReentrancyGuard {
         ReadyToSettle,
         Completed,
         Expired,
-        Refunded
+        Refunded,
+        Cancelled
     }
 
     struct CycleInput {
@@ -90,8 +92,11 @@ contract SettlementKernel is ReentrancyGuard {
     error FundingDeadlineExpired(bytes32 cycleId, uint256 deadline, uint256 currentTimestamp);
     error FundingDeadlineNotReached(bytes32 cycleId, uint256 deadline, uint256 currentTimestamp);
     error UnauthorizedDebtor(address caller);
+    error UnauthorizedCaller(address caller, address required);
     error ExcessiveDeposit(uint256 attempted, uint256 remainingDue);
     error CycleNotReadyToSettle(bytes32 cycleId, uint256 totalFunded, uint256 requiredTotal);
+    error CycleAlreadyFullyFunded(bytes32 cycleId);
+    error CycleNotInRefundableState(bytes32 cycleId, CycleState state);
     error TerminalStateReached(bytes32 cycleId, CycleState state);
     error NoRefundAvailable(bytes32 cycleId, address caller);
 
@@ -123,6 +128,12 @@ contract SettlementKernel is ReentrancyGuard {
     );
 
     event CycleExpired(bytes32 indexed cycleId, uint256 totalFunded, uint256 timestamp);
+
+    event CycleCancelled(
+        bytes32 indexed cycleId,
+        address indexed creator,
+        uint256 timestamp
+    );
 
     event RefundClaimed(
         bytes32 indexed cycleId,
@@ -221,11 +232,9 @@ contract SettlementKernel is ReentrancyGuard {
     }
 
     /**
-     * @notice Deposits MUSD toward a participant's net debtor obligation.
-     * @param cycleId Identifier of the active settlement cycle.
-     * @param amount Amount of MUSD to deposit in base units.
+     * @dev Internal helper executing debtor accounting and token transfer.
      */
-    function deposit(bytes32 cycleId, uint256 amount) external nonReentrant {
+    function _deposit(bytes32 cycleId, uint256 amount, address debtor) internal {
         CycleStorage storage cycle = _cycles[cycleId];
         if (cycle.state == CycleState.NonExistent) revert CycleNotFound(cycleId);
         if (cycle.state != CycleState.Funding) revert CycleNotInFundingState(cycleId, cycle.state);
@@ -236,15 +245,15 @@ contract SettlementKernel is ReentrancyGuard {
         }
         if (amount == 0) revert InvalidAmount();
 
-        uint256 required = _requiredDeposit[cycleId][msg.sender];
-        if (required == 0) revert UnauthorizedDebtor(msg.sender);
+        uint256 required = _requiredDeposit[cycleId][debtor];
+        if (required == 0) revert UnauthorizedDebtor(debtor);
 
-        uint256 alreadyFunded = _fundedDeposit[cycleId][msg.sender];
+        uint256 alreadyFunded = _fundedDeposit[cycleId][debtor];
         uint256 remainingDue = required - alreadyFunded;
         if (amount > remainingDue) revert ExcessiveDeposit(amount, remainingDue);
 
         // State update before external transfer (Checks-Effects-Interactions)
-        _fundedDeposit[cycleId][msg.sender] = alreadyFunded + amount;
+        _fundedDeposit[cycleId][debtor] = alreadyFunded + amount;
         cycle.totalFunded += amount;
 
         if (cycle.totalFunded == cycle.netDebtTotal) {
@@ -254,13 +263,60 @@ contract SettlementKernel is ReentrancyGuard {
 
         emit DepositReceived(
             cycleId,
-            msg.sender,
+            debtor,
             amount,
             alreadyFunded + amount,
             cycle.totalFunded
         );
 
-        musdToken.safeTransferFrom(msg.sender, address(this), amount);
+        musdToken.safeTransferFrom(debtor, address(this), amount);
+    }
+
+    /**
+     * @notice Deposits MUSD toward a participant's net debtor obligation.
+     * @param cycleId Identifier of the active settlement cycle.
+     * @param amount Amount of MUSD to deposit in base units.
+     */
+    function deposit(bytes32 cycleId, uint256 amount) external nonReentrant {
+        _deposit(cycleId, amount, msg.sender);
+    }
+
+    /**
+     * @notice Deposits MUSD using an EIP-2612 permit signature, enabling 1-click approvals.
+     * @param cycleId Identifier of the active settlement cycle.
+     * @param amount Amount of MUSD to deposit in base units.
+     * @param deadline Expiration timestamp of the permit signature.
+     * @param v ECDSA recovery byte.
+     * @param r ECDSA signature point r.
+     * @param s ECDSA signature point s.
+     */
+    function depositWithPermit(
+        bytes32 cycleId,
+        uint256 amount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external nonReentrant {
+        try IERC20Permit(address(musdToken)).permit(msg.sender, address(this), amount, deadline, v, r, s) {} catch {}
+        _deposit(cycleId, amount, msg.sender);
+    }
+
+    /**
+     * @notice Cooperatively cancels an active settlement cycle before 100% funding.
+     * Callable only by the cycle creator.
+     * Transitions cycle to Cancelled state, allowing depositors to claim immediate refunds.
+     * @param cycleId Identifier of the active settlement cycle.
+     */
+    function cancelCycle(bytes32 cycleId) external nonReentrant {
+        CycleStorage storage cycle = _cycles[cycleId];
+        if (cycle.state == CycleState.NonExistent) revert CycleNotFound(cycleId);
+        if (cycle.state != CycleState.Funding) revert CycleNotInFundingState(cycleId, cycle.state);
+        if (msg.sender != cycle.creator) revert UnauthorizedCaller(msg.sender, cycle.creator);
+        if (cycle.totalFunded == cycle.netDebtTotal) revert CycleAlreadyFullyFunded(cycleId);
+
+        cycle.state = CycleState.Cancelled;
+        emit CycleCancelled(cycleId, msg.sender, block.timestamp);
     }
 
     /**
@@ -295,8 +351,9 @@ contract SettlementKernel is ReentrancyGuard {
     }
 
     /**
-     * @notice Claims a refund for a previously funded deposit if the cycle expired without 100% funding.
-     * @param cycleId Identifier of the expired settlement cycle.
+     * @notice Claims a refund for a previously funded deposit if the cycle expired without 100% funding
+     * or was cancelled by the coordinator.
+     * @param cycleId Identifier of the expired or cancelled settlement cycle.
      */
     function claimRefund(bytes32 cycleId) external nonReentrant {
         CycleStorage storage cycle = _cycles[cycleId];
@@ -309,6 +366,8 @@ contract SettlementKernel is ReentrancyGuard {
             }
             cycle.state = CycleState.Expired;
             emit CycleExpired(cycleId, cycle.totalFunded, block.timestamp);
+        } else if (cycle.state != CycleState.Expired && cycle.state != CycleState.Cancelled && cycle.state != CycleState.Refunded) {
+            revert CycleNotInRefundableState(cycleId, cycle.state);
         }
 
         uint256 depositAmount = _fundedDeposit[cycleId][msg.sender];

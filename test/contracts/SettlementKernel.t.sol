@@ -236,4 +236,138 @@ contract SettlementKernelTest is Test {
         (,,,,, , , , SettlementKernel.CycleState state,) = kernel.getCycle(CANONICAL_CYCLE_ID);
         assertEq(uint8(state), uint8(SettlementKernel.CycleState.Refunded));
     }
+
+    function test_CancelCycleByCreator() public {
+        SettlementKernel.CycleInput memory input = _buildCanonicalInput();
+        vm.prank(coordinator);
+        kernel.createCycle(input);
+
+        vm.prank(coordinator);
+        kernel.cancelCycle(CANONICAL_CYCLE_ID);
+
+        (,,,,, , , , SettlementKernel.CycleState state,) = kernel.getCycle(CANONICAL_CYCLE_ID);
+        assertEq(uint8(state), uint8(SettlementKernel.CycleState.Cancelled));
+    }
+
+    function test_RevertIf_NonCreatorCancels() public {
+        SettlementKernel.CycleInput memory input = _buildCanonicalInput();
+        vm.prank(coordinator);
+        kernel.createCycle(input);
+
+        vm.prank(debtorA);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SettlementKernel.UnauthorizedCaller.selector,
+                debtorA,
+                coordinator
+            )
+        );
+        kernel.cancelCycle(CANONICAL_CYCLE_ID);
+    }
+
+    function test_RevertIf_CancelAfterFullyFunded() public {
+        SettlementKernel.CycleInput memory input = _buildCanonicalInput();
+        vm.prank(coordinator);
+        kernel.createCycle(input);
+
+        // Debtor A fully funds
+        vm.prank(debtorA);
+        kernel.deposit(CANONICAL_CYCLE_ID, 80 * BASE);
+
+        // State is now ReadyToSettle; creator cannot cancel
+        vm.prank(coordinator);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SettlementKernel.CycleNotInFundingState.selector,
+                CANONICAL_CYCLE_ID,
+                SettlementKernel.CycleState.ReadyToSettle
+            )
+        );
+        kernel.cancelCycle(CANONICAL_CYCLE_ID);
+    }
+
+    function test_ImmediateRefundAfterCancellation() public {
+        SettlementKernel.CycleInput memory input = _buildCanonicalInput();
+        vm.prank(coordinator);
+        kernel.createCycle(input);
+
+        // Debtor A deposits 50 MUSD
+        vm.prank(debtorA);
+        kernel.deposit(CANONICAL_CYCLE_ID, 50 * BASE);
+
+        uint256 debtorBalAfterDeposit = musd.balanceOf(debtorA);
+
+        // Coordinator cancels cycle immediately (no time warp)
+        vm.prank(coordinator);
+        kernel.cancelCycle(CANONICAL_CYCLE_ID);
+
+        // Debtor A claims refund immediately
+        vm.prank(debtorA);
+        kernel.claimRefund(CANONICAL_CYCLE_ID);
+
+        assertEq(musd.balanceOf(debtorA), debtorBalAfterDeposit + 50 * BASE);
+
+        (,,,,, , , , SettlementKernel.CycleState state,) = kernel.getCycle(CANONICAL_CYCLE_ID);
+        assertEq(uint8(state), uint8(SettlementKernel.CycleState.Refunded));
+    }
+
+    function test_DepositWithPermit_EIP2612() public {
+        uint256 signerPk = 0xB0B;
+        address permitDebtor = vm.addr(signerPk);
+        musd.mint(permitDebtor, 500 * BASE);
+
+        // Build cycle with permitDebtor as debtor
+        address[] memory debtors = new address[](1);
+        debtors[0] = permitDebtor;
+        uint256[] memory debitAmounts = new uint256[](1);
+        debitAmounts[0] = 50 * BASE;
+
+        address[] memory creditors = new address[](1);
+        creditors[0] = creditorB;
+        uint256[] memory creditAmounts = new uint256[](1);
+        creditAmounts[0] = 50 * BASE;
+
+        bytes32 permitCycleId = keccak256("permit-cycle-001");
+        SettlementKernel.CycleInput memory input = SettlementKernel.CycleInput({
+            cycleId: permitCycleId,
+            snapshotCommitment: CANONICAL_COMMITMENT,
+            algorithmVersion: "netteo-v1.0-deterministic",
+            grossObligationTotal: 100 * BASE,
+            debtors: debtors,
+            debitAmounts: debitAmounts,
+            creditors: creditors,
+            creditAmounts: creditAmounts,
+            fundingDuration: 72 hours
+        });
+
+        vm.prank(coordinator);
+        kernel.createCycle(input);
+
+        // Note: permitDebtor has NEVER called musd.approve(address(kernel), ...)
+        assertEq(musd.allowance(permitDebtor, address(kernel)), 0);
+
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes32 PERMIT_TYPEHASH = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+        bytes32 structHash = keccak256(
+            abi.encode(
+                PERMIT_TYPEHASH,
+                permitDebtor,
+                address(kernel),
+                50 * BASE,
+                musd.nonces(permitDebtor),
+                deadline
+            )
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", musd.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+
+        // Debtor submits 1-click depositWithPermit
+        vm.prank(permitDebtor);
+        kernel.depositWithPermit(permitCycleId, 50 * BASE, deadline, v, r, s);
+
+        // Verify deposit succeeded and cycle transitioned to ReadyToSettle
+        (,,,, uint256 totalFunded, , , , SettlementKernel.CycleState state,) = kernel.getCycle(permitCycleId);
+        assertEq(totalFunded, 50 * BASE);
+        assertEq(uint8(state), uint8(SettlementKernel.CycleState.ReadyToSettle));
+    }
 }
