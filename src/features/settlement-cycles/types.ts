@@ -31,6 +31,9 @@ export interface SettlementCycle {
     required: bigint;
     funded: bigint;
   }>;
+  // Multi-currency settlement token
+  tokenAddress?: string;
+  tokenSymbol?: string;
   // On-chain verified transaction hashes
   txCreationHash?: string;
   txDepositHash?: string;

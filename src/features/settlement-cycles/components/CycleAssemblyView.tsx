@@ -19,6 +19,7 @@ import { CycleIcon, SnapshotIcon } from '@/components/icons/netteo';
 import { ArrowLeft, Check, AlertCircle, RefreshCw, Send } from 'lucide-react';
 import { useSettlementKernel, CycleInput } from '@/lib/chain/useSettlementKernel';
 import { CONTRACT_ADDRESSES, isSupportedNetwork, MEZO_TESTNET_CHAIN_ID } from '@/lib/chain/config';
+import { SUPPORTED_SETTLEMENT_TOKENS, getTokenByAddress } from '@/lib/chain/tokens';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 
@@ -35,6 +36,7 @@ export function CycleAssemblyView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [pendingCycleId, setPendingCycleId] = useState<`0x${string}` | null>(null);
+  const [selectedTokenAddress, setSelectedTokenAddress] = useState<string>(CONTRACT_ADDRESSES.musd);
 
   const isLiveContractReady =
     isConnected &&
@@ -114,7 +116,7 @@ export function CycleAssemblyView() {
   const nettingResult = selectedObligations.length > 0
     ? calculateNetting(nettingInputs, 10, 30, {
         chainId: chainId || MEZO_TESTNET_CHAIN_ID,
-        tokenAddress: CONTRACT_ADDRESSES.musd,
+        tokenAddress: selectedTokenAddress,
       })
     : null;
 
@@ -168,7 +170,8 @@ export function CycleAssemblyView() {
         selectedObligations[0]?.groupId || '00000000-0000-0000-0000-000000000001',
         selectedIds,
         '0x1111111111111111111111111111111111111111',
-        'demo'
+        'demo',
+        selectedTokenAddress
       );
       router.push(`/cycles/${cycle.id}`);
     } catch (err: any) {
@@ -227,6 +230,37 @@ export function CycleAssemblyView() {
           <p className={obStyles.subtitle}>
             Select accepted bilateral obligations to freeze into an immutable snapshot and preview deterministic net positions.
           </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: 'var(--space-xs)' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Settlement Currency:
+            </span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {SUPPORTED_SETTLEMENT_TOKENS.map((token) => {
+                const isSelected = selectedTokenAddress.toLowerCase() === token.address.toLowerCase();
+                return (
+                  <button
+                    key={token.address}
+                    type="button"
+                    onClick={() => setSelectedTokenAddress(token.address)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '16px',
+                      fontSize: '12px',
+                      fontFamily: 'inherit',
+                      fontWeight: isSelected ? 600 : 400,
+                      cursor: 'pointer',
+                      border: isSelected ? '1px solid var(--color-wine)' : '1px solid var(--color-border)',
+                      background: isSelected ? 'rgba(127, 1, 31, 0.08)' : 'var(--color-surface)',
+                      color: isSelected ? 'var(--color-wine)' : 'var(--color-ink)',
+                      transition: 'all 120ms cubic-bezier(0.2, 0, 0, 1)',
+                    }}
+                  >
+                    {token.symbol}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-xs)' }}>

@@ -42,6 +42,7 @@ import {
 import { CONTRACT_ADDRESSES, isSupportedNetwork } from '@/lib/chain/config';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
 import { useSettlementEvents } from '@/lib/chain/useSettlementEvents';
+import { CdpAutoBorrowDrawer } from './CdpAutoBorrowDrawer';
 
 export interface CycleExecutionViewProps {
   cycleId: string;
@@ -143,6 +144,11 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   const [isOffline, setIsOffline] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTxAction, setActiveTxAction] = useState<string | null>(null);
+  const [isCdpDrawerOpen, setIsCdpDrawerOpen] = useState(false);
+  const [selectedDebtorForCdp, setSelectedDebtorForCdp] = useState<{
+    address: string;
+    required: bigint;
+  } | null>(null);
 
   const isLiveContractReady =
     isConnected &&
@@ -864,6 +870,50 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
 
                   {displayCycle.state === 'Funding' && !isDebtorDone && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+                      {/* Mezo CDP Auto-Borrow trigger for net debtors */}
+                      {(isCurrentUser || mode === 'demo') && (
+                        <div
+                          style={{
+                            padding: '8px 10px',
+                            backgroundColor: 'rgba(127, 1, 31, 0.04)',
+                            border: '1px dashed rgba(127, 1, 31, 0.25)',
+                            borderRadius: 'var(--radius-sm)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                            marginBottom: 'var(--space-2xs)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Icon icon={Zap} size="sm" color="var(--color-wine)" />
+                            <span style={{ fontSize: '11px', color: 'var(--color-ink)' }}>
+                              Short on MUSD? <strong>Borrow against Bitcoin (tBTC)</strong>
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDebtorForCdp({ address: debtorAddr, required: remaining });
+                              setIsCdpDrawerOpen(true);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: '1px solid var(--color-wine)',
+                              borderRadius: '4px',
+                              padding: '2px 8px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              color: 'var(--color-wine)',
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            Mezo CDP
+                          </button>
+                        </div>
+                      )}
+
                       {needsApproval ? (
                         <Button
                           variant="secondary"
@@ -964,6 +1014,28 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Mezo CDP Auto-Borrow Drawer */}
+      {selectedDebtorForCdp && (
+        <CdpAutoBorrowDrawer
+          isOpen={isCdpDrawerOpen}
+          onClose={() => {
+            setIsCdpDrawerOpen(false);
+            setSelectedDebtorForCdp(null);
+          }}
+          requiredMusdAmount={selectedDebtorForCdp.required}
+          currentMusdBalance={musd.balance}
+          cycleId={cycleId}
+          userAddress={selectedDebtorForCdp.address}
+          mode={mode}
+          onBorrowSuccess={(mintedAmount) => {
+            setActionSuccess(
+              `[Mezo CDP] Minted ${formatBaseUnitsToDisplay(mintedAmount)} backed by Bitcoin collateral. Ready to deposit!`
+            );
+            setTimeout(() => setActionSuccess(null), 5000);
+          }}
+        />
+      )}
     </div>
   );
 }
