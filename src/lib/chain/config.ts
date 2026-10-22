@@ -1,6 +1,6 @@
 import { defineChain } from 'viem';
 import { createConfig, http } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { injected, safe } from 'wagmi/connectors';
 
 export const MEZO_TESTNET_CHAIN_ID = 31611;
 
@@ -31,11 +31,11 @@ export const mezoTestnet = defineChain({
 });
 
 /**
- * Wagmi configuration
+ * Wagmi configuration supporting injected extensions and Mezo Safe App iframes
  */
 export const wagmiConfig = createConfig({
   chains: [mezoTestnet],
-  connectors: [injected()],
+  connectors: [injected(), safe()],
   transports: {
     [mezoTestnet.id]: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.test.mezo.org'),
   },

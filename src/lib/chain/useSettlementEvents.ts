@@ -21,6 +21,11 @@ export interface SettlementEventsCallbacks {
     timestamp: bigint;
   }) => void;
   onCycleExpired?: (data: { cycleId: `0x${string}`; totalFunded: bigint; timestamp: bigint }) => void;
+  onCycleCancelled?: (data: {
+    cycleId: `0x${string}`;
+    creator: Address;
+    timestamp: bigint;
+  }) => void;
   onRefundClaimed?: (data: {
     cycleId: `0x${string}`;
     participant: Address;
@@ -108,6 +113,12 @@ export function useSettlementEvents(
             cb.onCycleExpired({
               cycleId: args.cycleId,
               totalFunded: args.totalFunded,
+              timestamp: args.timestamp,
+            });
+          } else if (eventName === 'CycleCancelled' && cb.onCycleCancelled) {
+            cb.onCycleCancelled({
+              cycleId: args.cycleId,
+              creator: args.creator,
               timestamp: args.timestamp,
             });
           } else if (eventName === 'RefundClaimed' && cb.onRefundClaimed) {

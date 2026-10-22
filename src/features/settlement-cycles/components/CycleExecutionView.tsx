@@ -126,6 +126,10 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
       authoritative.refetch();
       refreshCycle();
     },
+    onCycleCancelled: () => {
+      authoritative.refetch();
+      refreshCycle();
+    },
     onRefundClaimed: () => {
       authoritative.refetch();
       refreshCycle();
@@ -430,6 +434,46 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     }
   };
 
+  // Handle Cancel Cycle (Cooperative Early Cancellation)
+  const handleCancelCycle = async () => {
+    if (!window.confirm('Are you sure you want to cancel this settlement cycle? All existing depositors will be able to claim immediate refunds.')) {
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    if (mode === 'live') {
+      if (!isLiveContractReady) {
+        setErrorMsg('Cancelling a cycle on Mezo Testnet requires a connected wallet.');
+        setIsSubmitting(false);
+        return;
+      }
+      try {
+        setActiveTxAction('cancel');
+        await kernel.cancelCycle(cycleId as `0x${string}`);
+      } catch (err: any) {
+        setErrorMsg(err.message || 'Cancel cycle failed.');
+        setActiveTxAction(null);
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // In Demo Mode: simulate instant cancellation
+    try {
+      if (cycle) {
+        cycle.state = 'Cancelled' as any;
+      }
+      refreshCycle();
+      setActionSuccess('[Demo Sandbox] Settlement cycle cancelled. Depositors can now claim immediate refunds.');
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Demo cancellation failed.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const isKernelPending = kernel.isPending;
   const isMusdPending = musd.isPending;
   const activeTxHash = kernel.txHash || musd.txHash;
@@ -470,17 +514,25 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                     ? 'var(--color-success-bg)'
                     : displayCycle.state === 'ReadyToSettle'
                     ? 'var(--color-sand-light)'
+                    : displayCycle.state === 'Cancelled'
+                    ? 'rgba(127, 1, 31, 0.08)'
                     : 'var(--color-surface)',
                 color:
                   displayCycle.state === 'Completed'
                     ? 'var(--color-success)'
                     : displayCycle.state === 'ReadyToSettle'
                     ? 'var(--color-wine)'
+                    : displayCycle.state === 'Cancelled'
+                    ? 'var(--color-wine)'
                     : 'var(--color-ink)',
                 border: '1px solid var(--color-border)',
               }}
             >
-              {displayCycle.state === 'ReadyToSettle' ? 'Ready to Settle (100% Funded)' : displayCycle.state}
+              {displayCycle.state === 'ReadyToSettle'
+                ? 'Ready to Settle (100% Funded)'
+                : displayCycle.state === 'Cancelled'
+                ? 'Cancelled (Refunds Active)'
+                : displayCycle.state}
             </span>
             <span
               style={{
@@ -522,6 +574,18 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                 : 'Execute Demo Settlement (Simulated)'}
             </Button>
           )}
+
+          {displayCycle.state === 'Funding' && !isFunded && (mode === 'demo' || (userAddress && displayCycle.creatorAddress && userAddress.toLowerCase() === displayCycle.creatorAddress.toLowerCase())) && (
+            <Button
+              variant="destructive"
+              disabled={isOffline || isSubmitting || isKernelPending}
+              isLoading={isSubmitting && activeTxAction === 'cancel'}
+              loadingText={mode === 'live' ? 'Cancelling on Mezo...' : 'Cancelling...'}
+              onClick={handleCancelCycle}
+            >
+              Cancel Settlement Cycle
+            </Button>
+          )}
         </div>
       </div>
 
@@ -545,6 +609,30 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
           <Icon icon={Clock} size="sm" color="var(--color-wine)" />
           <div>
             <strong>On-Chain Financial Truth Active:</strong> SettlementKernel on Mezo Testnet confirmed the latest funds/state. Supabase indexer projection is syncing in the background.
+          </div>
+        </div>
+      )}
+
+      {/* Cancelled Cycle Notice */}
+      {displayCycle.state === 'Cancelled' && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-sm)',
+            padding: 'var(--space-md) var(--space-lg)',
+            backgroundColor: 'rgba(127, 1, 31, 0.06)',
+            border: '1px solid rgba(127, 1, 31, 0.2)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 'var(--space-lg)',
+            fontSize: '13px',
+            color: 'var(--color-wine)',
+          }}
+          role="status"
+        >
+          <Icon icon={AlertTriangle} size="sm" color="var(--color-wine)" />
+          <div>
+            <strong>Cycle Cancelled:</strong> This cycle was cancelled by the coordinator prior to settlement. Any deposited funds are available for immediate refund below without waiting for the funding deadline.
           </div>
         </div>
       )}
@@ -806,10 +894,12 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                     </div>
                   )}
 
-                  {displayCycle.state === 'Expired' && deposit.funded > 0n && (
+                  {(displayCycle.state === 'Expired' || displayCycle.state === 'Cancelled') && deposit.funded > 0n && (
                     <Button
                       variant="destructive"
                       disabled={isOffline || isSubmitting || isKernelPending}
+                      isLoading={isSubmitting && activeTxAction === 'refund'}
+                      loadingText="Claiming Refund..."
                       onClick={() => handleRefund(debtorAddr)}
                       style={{ width: '100%', minHeight: '36px', fontSize: '13px' }}
                     >
