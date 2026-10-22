@@ -79,12 +79,14 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
     rows.push(`Status,${cycle.state}`);
     rows.push(`Snapshot Commitment Hash,${cycle.snapshotCommitment}`);
     rows.push(`Algorithm Version,${cycle.algorithmVersion}`);
+    rows.push(`Settlement Currency,${cycle.tokenSymbol || 'MUSD'}`);
+    rows.push(`Settlement Token Address,${cycle.tokenAddress || CONTRACT_ADDRESSES.musd}`);
     rows.push(`Settlement Contract Address,${CONTRACT_ADDRESSES.settlementKernel}`);
     rows.push(`Network,Mezo Testnet (Chain ID 31611)`);
     rows.push(`Gross Obligation Total (Base Units),${cycle.grossObligationTotal.toString()}`);
-    rows.push(`Gross Obligation Total (Formatted),${formatBaseUnitsToDisplay(cycle.grossObligationTotal)}`);
+    rows.push(`Gross Obligation Total (Formatted),${formatBaseUnitsToDisplay(cycle.grossObligationTotal, cycle.tokenSymbol || 'MUSD')}`);
     rows.push(`Net Funding Requirement (Base Units),${cycle.netDebtTotal.toString()}`);
-    rows.push(`Net Funding Requirement (Formatted),${formatBaseUnitsToDisplay(cycle.netDebtTotal)}`);
+    rows.push(`Net Funding Requirement (Formatted),${formatBaseUnitsToDisplay(cycle.netDebtTotal, cycle.tokenSymbol || 'MUSD')}`);
     rows.push(`Total Funded (Base Units),${cycle.totalFunded.toString()}`);
     rows.push(`Total Distributed (Base Units),${cycle.totalDistributed.toString()}`);
     rows.push(`Total Refunded (Base Units),${cycle.totalRefunded.toString()}`);
@@ -334,7 +336,7 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
               <tr key={idx}>
                 <td><span className={obStyles.addressCode}>{alloc.from}</span></td>
                 <td><span className={obStyles.addressCode}>{alloc.to}</span></td>
-                <td style={{ textAlign: 'right' }}><span className={obStyles.amountCell}>{formatBaseUnitsToDisplay(alloc.amount)}</span></td>
+                <td style={{ textAlign: 'right' }}><span className={obStyles.amountCell}>{formatBaseUnitsToDisplay(alloc.amount, cycle.tokenSymbol || 'MUSD')}</span></td>
                 <td>
                   <span style={{ fontSize: '12px', color: cycle.state === 'Completed' ? 'var(--color-success)' : 'var(--color-sand-hover)', fontWeight: 600 }}>
                     {cycle.state === 'Completed' ? 'Transferred (Atomic)' : 'Pending Funding'}

@@ -713,7 +713,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             Net Debtor Funding Progress
           </div>
           <div style={{ fontSize: '14px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isFunded ? 'var(--color-success)' : 'var(--color-wine)' }}>
-            {formatBaseUnitsToDisplay(displayCycle.totalFunded)} / {formatBaseUnitsToDisplay(displayCycle.netDebtTotal)} ({fundingPercent}%)
+            {formatBaseUnitsToDisplay(displayCycle.totalFunded, displayCycle.tokenSymbol || 'MUSD')} / {formatBaseUnitsToDisplay(displayCycle.netDebtTotal, displayCycle.tokenSymbol || 'MUSD')} ({fundingPercent}%)
           </div>
         </div>
 
@@ -865,13 +865,13 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                   </div>
 
                   <div style={{ fontSize: '13px', color: 'var(--color-muted)', marginBottom: 'var(--space-sm)', fontVariantNumeric: 'tabular-nums' }}>
-                    Required: {formatBaseUnitsToDisplay(deposit.required)} &bull; Deposited: {formatBaseUnitsToDisplay(deposit.funded)}
+                    Required: {formatBaseUnitsToDisplay(deposit.required, displayCycle.tokenSymbol || 'MUSD')} &bull; Deposited: {formatBaseUnitsToDisplay(deposit.funded, displayCycle.tokenSymbol || 'MUSD')}
                   </div>
 
                   {displayCycle.state === 'Funding' && !isDebtorDone && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-                      {/* Mezo CDP Auto-Borrow trigger for net debtors */}
-                      {(isCurrentUser || mode === 'demo') && (
+                      {/* Mezo CDP Auto-Borrow trigger for net debtors (applicable for MUSD settlement) */}
+                      {(isCurrentUser || mode === 'demo') && (!displayCycle.tokenSymbol || displayCycle.tokenSymbol === 'MUSD') && (
                         <div
                           style={{
                             padding: '8px 10px',
@@ -935,10 +935,10 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                           style={{ width: '100%', minHeight: '36px', fontSize: '13px' }}
                         >
                           {mode === 'demo'
-                            ? `Simulate Deposit (${formatBaseUnitsToDisplay(remaining)})`
+                            ? `Simulate Deposit (${formatBaseUnitsToDisplay(remaining, displayCycle.tokenSymbol || 'MUSD')})`
                             : isCurrentUser && isLiveContractReady
-                            ? `Deposit on Mezo (${formatBaseUnitsToDisplay(remaining)})`
-                            : `Deposit ${formatBaseUnitsToDisplay(remaining)}`}
+                            ? `Deposit on Mezo (${formatBaseUnitsToDisplay(remaining, displayCycle.tokenSymbol || 'MUSD')})`
+                            : `Deposit ${formatBaseUnitsToDisplay(remaining, displayCycle.tokenSymbol || 'MUSD')}`}
                         </Button>
                       )}
                     </div>
@@ -953,7 +953,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                       onClick={() => handleRefund(debtorAddr)}
                       style={{ width: '100%', minHeight: '36px', fontSize: '13px' }}
                     >
-                      Claim Refund ({formatBaseUnitsToDisplay(deposit.funded)})
+                      Claim Refund ({formatBaseUnitsToDisplay(deposit.funded, displayCycle.tokenSymbol || 'MUSD')})
                     </Button>
                   )}
                 </div>
@@ -1007,7 +1007,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                 </div>
 
                 <div style={{ fontSize: '13px', color: 'var(--color-success)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                  Receives: {formatBaseUnitsToDisplay(creditor.amount)}
+                  Receives: {formatBaseUnitsToDisplay(creditor.amount, displayCycle.tokenSymbol || 'MUSD')}
                 </div>
               </div>
             ))}
