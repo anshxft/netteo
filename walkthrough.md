@@ -66,7 +66,7 @@ The entire interactive verification session was recorded and archived:
 
 2. **Live Mezo Cycle #1 Execution & Audit Walkthrough:**
    ![Live Mezo Testnet Settlement Session](file:///C:/Users/Sythe/.gemini/antigravity-ide/brain/51723170-0451-4f15-9fd7-eac12bbd490a/live_mezo_cycle_test_1792603049823.webp)
-   - *Contents:* Live Mezo mode toggle, loading on-chain Cycle #1 (`0x86f68074...`), inspecting on-chain creation, deposit, and settlement transactions, downloading base-unit reconciled CSV, and toggling back to Demo Sandbox.
+   - *Contents:* Live Mezo mode toggle, loading on-chain Cycle #1 (`0x156915a7...`), inspecting on-chain creation, deposit, and settlement transactions, downloading base-unit reconciled CSV, and toggling back to Demo Sandbox.
 
 ---
 
@@ -74,12 +74,12 @@ The entire interactive verification session was recorded and archived:
 
 | Check | Criterion & Scope | Method & Evidence | Result |
 |:---:|---|---|:---:|
-| **1** | **Clean Browser Storage**<br>Fresh browser storage loads without crashing or relying on stale cookies/keys. | Loaded `/cycles` and `/cycles/0x86f68074...` with empty `localStorage`; verified synthetic fallback renders cleanly. | **PASS** |
+| **1** | **Clean Browser Storage**<br>Fresh browser storage loads without crashing or relying on stale cookies/keys. | Loaded `/cycles` and `/cycles/0x156915a7...` with empty `localStorage`; verified synthetic fallback renders cleanly. | **PASS** |
 | **2** | **Multi-Wallet Agreement**<br>Debtor acceptance requires cryptographic signature; unauthorized parties rejected. | 7 unit tests in `auth.test.ts` pass; EIP-712 challenge signature verified; replay attacks rejected. | **PASS** |
 | **3** | **Deterministic Netting Math**<br>Greedy net algorithm ensures $\sum \text{net} = 0$; commitment is order-independent. | 8 unit tests in `netting.test.ts` pass; circular debts cancel; 1-wei delta alters commitment. | **PASS** |
-| **4** | **Official Mezo MUSD Token**<br>Kernel binds immutably to testnet MUSD `0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5`. | Verified contract bytecode and deployment parameters on Chain 31611. | **PASS** |
+| **4** | **Official Mezo MUSD Token**<br>Kernel binds immutably to canonical testnet MUSD `0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503`. | Verified contract bytecode and deployment parameters on Chain 31611. | **PASS** |
 | **5** | **Truthful Transaction Lifecycle**<br>Transactions distinguish Submitted, Pending, Confirmed, and Reverted states. | Verified via `TransactionStatus.tsx` and authoritative contract refetching on confirmation. | **PASS** |
-| **6** | **Base-Unit Reconciliation**<br>Gross volume, net balances, and CSV export reconcile in exact $10^{18}$ base units. | Verified CSV export from Cycle #1; commitment hash `0x724cdee5...` matches snapshot. | **PASS** |
+| **6** | **Base-Unit Reconciliation**<br>Gross volume, net balances, and CSV export reconcile in exact $10^{18}$ base units. | Verified CSV export from Cycle #1; commitment hash `0xcdb6f6f7...` matches snapshot. | **PASS** |
 | **7** | **Adversarial & Fault Resilience**<br>Offline detection, network guard on wrong chain, and sanitized error messages. | `<NetworkGuard />` enforces Chain 31611; `<OfflineBanner />` locks mutations; 0 DB schema leaks. | **PASS** |
 | **8** | **Multi-Viewport Reflow**<br>Tested across 320px, 390px, 768px, 1024px, 1440px without horizontal blowout. | Verified via browser subagent; screenshots captured across all 5 viewports. | **PASS** |
 | **9** | **Accessibility & Reduced Motion**<br>Visible focus rings on interactive elements; reduced motion suppresses animations. | Tested keyboard Tab rings (`focus_ring_check_1792604119592.png`); instant graph collapse on reduced motion. | **PASS** |
@@ -144,7 +144,7 @@ All 7 Cryptographic Authorization Tests Passed Successfully!
 ### Demo Script & Timing Guidelines
 - **0:00 - 0:45 (The Reciprocal Debt Problem):** Open `/obligations` in Demo Sandbox. Explain how Web3 service providers (Alice, Bob, Carol) accumulate circular bilateral debts ($200.00 MUSD gross volume) that choke liquidity.
 - **0:45 - 1:30 (Signature Netting Collapse):** Navigate to `/cycles/new`. Select the 3 claims and trigger the netting calculation. Showcase the signature transition where 3 claims collapse into 1 payment ($80.00 MUSD net) saving 60% of capital requirements.
-- **1:30 - 2:30 (Live On-Chain Settlement on Mezo Testnet):** Switch to "Live Mezo" mode. Open Cycle #1 (`0x86f68074...`). Show the live on-chain status ("Completed") and click through the verified Mezo Explorer links for Creation, Deposit, and Distribution.
+- **1:30 - 2:30 (Live On-Chain Settlement on Mezo Testnet):** Switch to "Live Mezo" mode. Open Cycle #1 (`0x156915a7...`). Show the live on-chain status ("Completed") and click through the verified Mezo Explorer links for Creation, Deposit, and Distribution.
 - **2:30 - 3:00 (Cryptographic Audit & Export):** Open `/cycles/.../audit`. Highlight the immutable snapshot commitment hash and download the base-unit reconciled CSV statement.
 
 ---

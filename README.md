@@ -43,14 +43,14 @@ A live multi-party settlement cycle was executed directly on Mezo Testnet:
 ### Verified Mezo Testnet Transaction Hashes
 
 1. **Step 1: MUSD Allowance Approval**  
-   Hash: [`0xaa2ca34635a170456620174a4bff6b55f391e1f56fbd31a7093113a98a46452a`](https://explorer.test.mezo.org/tx/0xaa2ca34635a170456620174a4bff6b55f391e1f56fbd31a7093113a98a46452a)
+   Hash: [`0xb64b38c26b6014ef704d380805ccca2de64a1667fff439f07062f5e66f512291`](https://explorer.test.mezo.org/tx/0xb64b38c26b6014ef704d380805ccca2de64a1667fff439f07062f5e66f512291)
 2. **Step 2: Cycle Creation (`createCycle`)**  
-   Cycle ID: `0x86f68074ecf1bd09816578912b271440fe1c40cfd1887614961fed0d17e2f88a`  
-   Hash: [`0x5b7af5268145527e548a179c36ccb7b31a553b9686aea5a9c7bbdad5d3863802`](https://explorer.test.mezo.org/tx/0x5b7af5268145527e548a179c36ccb7b31a553b9686aea5a9c7bbdad5d3863802)
+   Cycle ID: `0x156915a716581f2b7358b4561e75c90ae14f7404ed9aca9a30c5c4872a82ef4f`  
+   Hash: [`0x313721ea293d6511735a44cfa30d4d60890f3879397d6bf6c4f6ca8e7eb97341`](https://explorer.test.mezo.org/tx/0x313721ea293d6511735a44cfa30d4d60890f3879397d6bf6c4f6ca8e7eb97341)
 3. **Step 3: Net Debtor Funding (`deposit`)**  
-   Hash: [`0xff9ea9bae2f4991caac5f0dcafbddcc0af8794f4b83a74e2fa4d31165ee5593e`](https://explorer.test.mezo.org/tx/0xff9ea9bae2f4991caac5f0dcafbddcc0af8794f4b83a74e2fa4d31165ee5593e)
+   Hash: [`0x6c99d70ef12fef7b87405cd09ea828068cbcf61f745b91055b1374fcd05c382f`](https://explorer.test.mezo.org/tx/0x6c99d70ef12fef7b87405cd09ea828068cbcf61f745b91055b1374fcd05c382f)
 4. **Step 4: Atomic Settlement Payout (`executeSettlement`)**  
-   Hash: [`0x93cf1524135d55c63f93a2c43fa7a98c4951d16c4ec58fc3bbd227ff89531bff`](https://explorer.test.mezo.org/tx/0x93cf1524135d55c63f93a2c43fa7a98c4951d16c4ec58fc3bbd227ff89531bff)
+   Hash: [`0x87b397ec8053f1d4c58dd23bdcc633d7f480cc137f18d496fb2fcec59f7dc491`](https://explorer.test.mezo.org/tx/0x87b397ec8053f1d4c58dd23bdcc633d7f480cc137f18d496fb2fcec59f7dc491)
 
 *Result:* Creditor B received 20 MUSD, Creditor C received 60 MUSD atomically. Cycle reached terminal `Completed` state.
 

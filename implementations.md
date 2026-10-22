@@ -130,3 +130,66 @@ Run these one at a time. Each prompt asks the coding agent to inspect callers an
 - [Certain] I did not independently verify the README's contract deployment or transaction hashes on the live explorer.
 - [Certain] I did not verify Vercel hosting, deployed environment variables, actual Supabase policies on a live project, wallet behavior with multiple accounts, or a fresh-browser testnet cycle.
 - [Certain] A hackathon prototype can be made robust and demonstrably complete against an acceptance suite; “100% working” cannot be established without executing those checks in the target hosting and testnet environments.
+
+## Score 4 → 8+ upgrade blueprint
+
+[Likely] Treat “8–10” as a target for evidence quality, not a promised judge score. A stronger pitch or more screens cannot compensate for a demo that uses a mock token, keeps the group state in one browser, or implies a transaction happened when it did not.
+
+### What an 8+ submission should prove
+
+| Judge dimension | Upgrade target | Evidence the demo should show |
+|---|---|---|
+| Mezo integration | [Likely] Move from “deployed on Mezo” to “Mezo is necessary to the user flow.” | Canonical testnet MUSD, kernel immutable-token match, successful approval/funding/settlement receipts, and explorer-verifiable state. Mezo Testnet is chain ID 31611; canonical MUSD is `0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503` with 18 decimals. [Official network guide](https://testnet.mezo.org/docs/users/getting-started/connect), [official contract reference](https://testnet.mezo.org/docs/users/resources/contracts-reference). |
+| Technical execution | [Likely] Make the product’s shared agreement and settlement state reproducible and trustworthy. | Two or more separate participants see the same persisted claims; frozen inputs produce the same net positions; contract reads and confirmed events match the UI/export; failures remain visible and retryable. |
+| Business case | [Likely] Narrow the user and show a measured workflow improvement rather than broad DeFi claims. | A realistic group-payout scenario, before/after transfer count and gross/net amounts, time-to-reconcile measure, and a clear note that reduced transfer volume is not guaranteed economic savings. |
+| Demo quality | [Likely] Give judges a clean, short, repeatable path with visible proof at each step. | Fresh-browser setup, testnet wallet connection, shared claims, agreement preview, real token approval, cycle creation, funding, settlement, and explorer links—without seeded history posing as live activity. |
+
+[Certain] The April 2026 Mezo Hackathon announcement says projects must integrate MUSD and MEZO and demonstrate a working testnet demo. The published recap also emphasizes working demo quality, code, testnet deployment, and protocol integration. Check the exact rules for this event/track before submission because a historical rubric is not a substitute for current judging criteria. [Hackathon announcement](https://mezo.org/blog/the-mezo-hackathon-is-back/), [hackathon recap](https://mezo.org/blog/announcing-mezo-hackathon-2-winners/).
+
+[Likely] Do not bolt MEZO onto Netteo through a meaningless token badge or speculative staking feature. First confirm whether this submission is judged against a rule requiring MEZO, then identify a real user action or protocol touchpoint that the official testnet supports. If there is no supported, explainable utility, disclose that limitation and ask organizers how they interpret the requirement. The older 2025 scoring weights can be used only as a planning proxy, not as the current scorecard. [Historical rubric](https://mezo.org/blog/the-mezo-hackathon-build-bitcoin-finance-in-4-weeks/).
+
+### Recommended product story
+
+[Likely] Position Netteo as “shared invoice and reimbursement netting for small Web3 service collectives,” initially targeting a 3–10-person DAO contributor pod or project team that repeatedly pays each other. The core promise is fewer settlement transfers and a shared audit trail; it is not lending, credit, yield, or guaranteed fee savings.
+
+[Guessing] A credible first demo scenario is three contributors with accepted claims A→B 100 MUSD, B→C 80 MUSD, and C→A 20 MUSD. The frozen net result is A pays 80, B receives 20, and C receives 60. Show the gross claim volume (200), net amount funded (80), number of original claims (3), and actual settlement transfers separately. This illustrates reduced settlement volume without claiming the group “saved 120 MUSD.”
+
+[Likely] Make the product workflow explicit: submit claim → counterparty accepts or disputes → all participants approve a frozen snapshot → preview net positions → fund required debits → settle → export a receipt. The judge should see who agreed to which snapshot, who funded, what the contract paid, and what remains outstanding.
+
+### Implementation sequence
+
+1. **[Certain] Gate 0 — lock the rules and demo truth.** Confirm current hackathon requirements, supported MUSD/MEZO addresses, the intended user, and the one demo scenario. Mark any non-live sample data as sample. Do not start feature expansion before resolving canonical token and contract deployment requirements.
+2. **[Certain] Gate 1 — make Mezo testnet real.** Configure chain-specific addresses from verified official references; verify the token address and decimals at runtime; deploy a new settlement kernel using canonical MUSD because the existing kernel’s token is immutable; record deployment and transaction hashes; verify the deployed bytecode/config and contract reads. Never put a deployer secret in the browser bundle.
+3. **[Likely] Gate 2 — make agreements and reads honest.** Persist shared group/claim state with server-side authorization and validation; freeze a versioned, sorted claim snapshot; use a cryptographic hash over canonical fields rather than the current weak rolling hash; distinguish off-chain claim evidence from on-chain settlement facts. Participant confirmations should bind the exact snapshot and net terms, with replay protection. Label indexed data as delayed until confirmed chain reads/events reconcile.
+4. **[Likely] Gate 3 — make settlement observable.** Correct the event projection to match the contract ABI; make indexing replay-safe and prevent cursor advancement past failed required projections; show pending/confirmed/failed states accurately; reconcile base-unit amounts and export against contract state and receipts. Keep a clearly marked demo/sample mode separate from live testnet cycles.
+5. **[Likely] Gate 4 — prove the business case and rehearse.** Run the scenario from a fresh browser with separate participant wallets; record actual transaction links and balances; validate the workflow with a few target users and report what they actually said. Capture one short demo video as a fallback, not as a substitute for the live testnet flow.
+
+### Ready-to-use implementation prompts
+
+#### Prompt A — Mezo integration audit and canonical MUSD migration
+
+> Work only in the existing Netteo architecture and keep the change set focused on Mezo testnet correctness. Inspect every configured chain/token address, ABI, wallet chain check, balance/allowance read, approval path, settlement-kernel deployment reference, and explorer URL. Compare the configured network and MUSD address against the current official Mezo testnet documentation. Verify decimals from the token contract instead of assuming them in calculations. The existing kernel has an immutable token: explain the need for a fresh deployment if its token is not canonical MUSD, and prepare the smallest migration/deployment checklist and environment-variable changes. Do not broadcast transactions, expose keys, invent a MEZO utility, or call mock tokens “MUSD.” Update UI labels so mock/demo mode is unmistakable. Deliver a file-by-file plan, risks, and evidence required to close the migration.
+
+#### Prompt B — shared claims, consent, and integrity boundary
+
+> Trace the full group and obligation lifecycle from UI to persistence, APIs, and database policies. Replace browser-local state as the source of truth for a multi-user live demo with shared persisted state and server-side authorization/validation, using existing dependencies and project conventions. Freeze an immutable, versioned claim snapshot before netting. Replace the 32-bit rolling commitment with a standard cryptographic hash of a canonical sorted encoding; specify exactly which fields are covered and test deterministic output. Bind participant approvals to the snapshot hash and exact net positions with replay protection. Keep the boundary explicit: accepted claim data is an off-chain agreement unless the contract verifies it; a deposit proves funding, not the original invoice. Preserve entered data on errors and return safe user-facing messages. Do not add new product features.
+
+#### Prompt C — contract and indexer settlement proof
+
+> Compare the deployed Solidity events and ABI to every indexer decoder and UI projection. Fix argument mapping, make event processing idempotent, and ensure a required projection failure cannot silently advance the durable cursor. For every live cycle, derive financial truth from confirmed receipts and authoritative contract reads; treat database/indexer data as a read model and expose its freshness. Add focused tests for event argument mapping, replay, cursor failure, rounding/base-unit accounting, deposit limits, settlement/refund states, and reconciliation. Keep local simulation available only in an unmistakably labeled demo fixture. Include an end-to-end trace with transaction hashes and expected state transitions, but do not deploy or broadcast.
+
+#### Prompt D — business validation and judge narrative
+
+> Refine Netteo around one user: a small Web3 contributor group that periodically owes reimbursements or service payments to one another. Document the current manual workflow, the exact moment Netteo helps, and the constraints that remain. Use one realistic 3-person claim set and show gross claims, net debits, actual transfer count, and reconciliation time as separate metrics. Do not claim guaranteed savings or describe the product as credit, lending, or yield. Identify a simple interview script for 3–5 target users, record only observed feedback, and revise the pitch to distinguish validated facts from assumptions. Keep the product scope to claims, agreement, netting, settlement, and audit export.
+
+#### Prompt E — judge-ready demo acceptance run
+
+> Prepare a reproducible, fresh-browser Mezo testnet demo using canonical MUSD and independent participant wallets. Start with no seeded activity. Demonstrate shared claim entry, acceptance/dispute, frozen snapshot and approvals, deterministic net preview, wallet approval, cycle creation, funding, settlement, final balances, event/indexer reconciliation, and audit export. Capture the chain ID, verified token and kernel addresses, transaction hashes, explorer links, and before/after balances. Exercise wrong network, rejected signature, insufficient balance/allowance, RPC failure, delayed indexer, refresh/new browser, and small-screen layouts; report pass/fail with evidence and leave unresolved items visible. Do not call the demo complete when any financial state is simulated or unreconciled.
+
+### Score ambition and stop line
+
+[Guessing] If the current version is genuinely around 4/10 under the intended rubric, completing Gates 0–4 could credibly move the prototype toward an 8/10 demo because the central claims—Mezo usage, shared agreement, netting, and settlement—would be evidenced rather than narrated. A 9–10 is not a reasonable promise until judges can independently reproduce the flow and the business need has real user evidence.
+
+[Likely] Keep out of scope until the core path is proven: lending/credit, yield, cross-chain bridges, governance, generalized DAO treasury dashboards, and token incentives. They add security and demo risk without improving proof of the core netting job.
+
+[Certain] No code was changed as part of this upgrade brief; the report now contains the focused roadmap and prompts requested. The earlier implementation prompts remain available above for the broader codebase findings.

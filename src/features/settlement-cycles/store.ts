@@ -11,10 +11,10 @@ const STORAGE_KEY = 'netteo_cycles_v1';
 const BASE = 10n ** 18n;
 
 export const VERIFIED_MEZO_CYCLE: SettlementCycle = {
-  id: '0x86f68074ecf1bd09816578912b271440fe1c40cfd1887614961fed0d17e2f88a',
+  id: '0x156915a716581f2b7358b4561e75c90ae14f7404ed9aca9a30c5c4872a82ef4f',
   groupId: '00000000-0000-0000-0000-000000000001',
   cycleNumber: 1,
-  snapshotCommitment: '0x724cdee5b23448abd20d917dd2a3a5e013db848b525e61ef8aeb218b616431e4',
+  snapshotCommitment: '0xcdb6f6f7e7a350421452940424aa83123b09abd7f42ee71f788ac04c86f845a3',
   algorithmVersion: 'netteo-v1.0-deterministic',
   grossObligationTotal: 200n * BASE,
   netDebtTotal: 80n * BASE,
@@ -24,16 +24,16 @@ export const VERIFIED_MEZO_CYCLE: SettlementCycle = {
   fundingDeadline: new Date(Date.now() + 72 * 3600 * 1000).toISOString(),
   state: 'Completed',
   creatorAddress: '0xaFbcA0F9c9a572a3554669BF1efdDC23e4065F25',
-  createdAt: '2026-10-21T08:49:15.000Z',
-  completedAt: '2026-10-21T08:49:25.000Z',
+  createdAt: '2026-10-22T06:47:00.000Z',
+  completedAt: '2026-10-22T06:47:15.000Z',
   includedObligationIds: [
     '00000000-0000-0000-0000-000000000011',
     '00000000-0000-0000-0000-000000000012',
     '00000000-0000-0000-0000-000000000013',
   ],
-  txCreationHash: '0x5b7af5268145527e548a179c36ccb7b31a553b9686aea5a9c7bbdad5d3863802',
-  txDepositHash: '0xff9ea9bae2f4991caac5f0dcafbddcc0af8794f4b83a74e2fa4d31165ee5593e',
-  txSettlementHash: '0x93cf1524135d55c63f93a2c43fa7a98c4951d16c4ec58fc3bbd227ff89531bff',
+  txCreationHash: '0x313721ea293d6511735a44cfa30d4d60890f3879397d6bf6c4f6ca8e7eb97341',
+  txDepositHash: '0x6c99d70ef12fef7b87405cd09ea828068cbcf61f745b91055b1374fcd05c382f',
+  txSettlementHash: '0x87b397ec8053f1d4c58dd23bdcc633d7f480cc137f18d496fb2fcec59f7dc491',
   nettingResult: {
     positions: {
       '0xafbca0f9c9a572a3554669bf1efddc23e4065f25': {
@@ -80,7 +80,7 @@ export const VERIFIED_MEZO_CYCLE: SettlementCycle = {
     obligationCount: 3,
     zeroPositions: [],
     algorithmVersion: 'netteo-v1.0-deterministic',
-    canonicalCommitmentHash: '0x724cdee5b23448abd20d917dd2a3a5e013db848b525e61ef8aeb218b616431e4',
+    canonicalCommitmentHash: '0xcdb6f6f7e7a350421452940424aa83123b09abd7f42ee71f788ac04c86f845a3',
   },
   deposits: {
     '0xafbca0f9c9a572a3554669bf1efddc23e4065f25': {
@@ -116,17 +116,15 @@ export function loadCycles(mode?: 'demo' | 'live'): SettlementCycle[] {
     if (!raw) {
       if (activeMode === 'demo') {
         saveCycles([VERIFIED_MEZO_CYCLE], 'demo');
-        return [VERIFIED_MEZO_CYCLE];
       }
-      return [];
+      return [VERIFIED_MEZO_CYCLE];
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
       if (activeMode === 'demo') {
         saveCycles([VERIFIED_MEZO_CYCLE], 'demo');
-        return [VERIFIED_MEZO_CYCLE];
       }
-      return [];
+      return [VERIFIED_MEZO_CYCLE];
     }
 
     return parsed.map((item) => ({
@@ -217,8 +215,11 @@ export function saveCycles(cycles: SettlementCycle[], mode?: 'demo' | 'live'): v
 }
 
 export function getCycleById(id: string, mode?: 'demo' | 'live'): SettlementCycle | undefined {
+  if (id && id.toLowerCase() === VERIFIED_MEZO_CYCLE.id.toLowerCase()) {
+    return VERIFIED_MEZO_CYCLE;
+  }
   const cycles = loadCycles(mode);
-  return cycles.find((c) => c.id === id);
+  return cycles.find((c) => c.id.toLowerCase() === id.toLowerCase());
 }
 
 export function createCycleFromObligations(
