@@ -159,7 +159,7 @@ c:/netteo/
 |---|---|---|
 | **Unit Tests (`netting.test.ts`)** | **PASSED** (Exit code `0`) | Ran `npm test`. All 6 test suites passed cleanly: PRD canonical 3-participant example, 4-participant circular debt, self-obligation rejection, zero-value rejection, duplicate ID rejection, max participant cap enforcement. |
 | **Solidity Tests (`forge test`)** | **PASSED** (Exit code `0`) | Ran `forge test`. All 6 contract tests passed cleanly: `test_CanonicalThreeParticipantSettlement` (gas: 531833), `test_RefundLifecycleOnExpiry` (gas: 467914), `test_RevertIf_DebtorIsCreditor`, `test_RevertIf_DepositExceedsRequired`, `test_RevertIf_ImbalancedNetPositions`, `test_RevertIf_ParticipantCapExceeded`. |
-| **Live Mezo Testnet Broadcast** | **PASSED** (Exit code `0`) | Live on-chain execution complete. Cycle `0x86f68074ecf1bd09816578912b271440fe1c40cfd1887614961fed0d17e2f88a` completed and verified. |
+| **Live Mezo Testnet Broadcast** | **PASSED** (Exit code `0`) | Live on-chain execution complete. Cycle `0x156915a716581f2b7358b4561e75c90ae14f7404ed9aca9a30c5c4872a82ef4f` completed and verified on canonical kernel. |
 | **Type Check (`npm run typecheck`)** | **PASSED** (Exit code `0`) | Ran `tsc --noEmit`. Zero TypeScript errors across all `.ts` and `.tsx` source and test files. |
 | **Production Build (`npm run build`)** | **PASSED** (Exit code `0`) | Turbopack compiled successfully in 4.7s; all 9 routes prerendered / dynamic with Supabase SSR and Mezo chain configurations. |
 

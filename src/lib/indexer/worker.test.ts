@@ -4,7 +4,7 @@ import { applyEventProjection } from './worker';
 async function runIndexerTests() {
   console.log('Running Indexer Worker Test Suite...');
 
-  const cycleId = '0x86f68074ecf1bd09816578912b271440fe1c40cfd1887614961fed0d17e2f88a';
+  const cycleId = '0x156915a716581f2b7358b4561e75c90ae14f7404ed9aca9a30c5c4872a82ef4f';
   const debtorAddr = '0xafbca0f9c9a572a3554669bf1efddc23e4065f25';
   const creditorAddr = '0x000000000000000000000000000000000000c001';
 
