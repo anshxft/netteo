@@ -41,6 +41,7 @@ import {
 } from '@/lib/chain/useSettlementKernel';
 import { CONTRACT_ADDRESSES, isSupportedNetwork } from '@/lib/chain/config';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
+import { useSettlementEvents } from '@/lib/chain/useSettlementEvents';
 
 export interface CycleExecutionViewProps {
   cycleId: string;
@@ -110,6 +111,26 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   const musd = useMusdToken({ spenderAddress: CONTRACT_ADDRESSES.settlementKernel });
   const kernel = useSettlementKernel();
   const authoritative = useAuthoritativeCycle(cycleId);
+
+  // Reactive CometBFT WebSocket event stream for instant single-block UI updates
+  useSettlementEvents(cycleId, {
+    onDepositReceived: () => {
+      authoritative.refetch();
+      refreshCycle();
+    },
+    onCycleReadyToSettle: () => {
+      authoritative.refetch();
+      refreshCycle();
+    },
+    onCycleSettled: () => {
+      authoritative.refetch();
+      refreshCycle();
+    },
+    onRefundClaimed: () => {
+      authoritative.refetch();
+      refreshCycle();
+    },
+  });
 
   const [cycle, setCycle] = useState<SettlementCycle | null>(null);
   const [isLoading, setIsLoading] = useState(true);

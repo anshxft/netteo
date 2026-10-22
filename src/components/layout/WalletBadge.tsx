@@ -3,6 +3,9 @@
 import React from 'react';
 import styles from './AppNav.module.css';
 import { Button } from '../common/Button';
+import { useMezoGasBalance } from '@/lib/chain/useMezoGasBalance';
+import { Icon } from '@/components/icons/Icon';
+import { Fuel, ExternalLink } from 'lucide-react';
 
 export interface WalletBadgeProps {
   address?: string | null;
@@ -13,8 +16,8 @@ export interface WalletBadgeProps {
 
 /**
  * Wallet status and connection badge.
- * Displays connected account checksum format or Connect Wallet CTA.
- * Truthful interface: Shows exact connection and network status without hallucinating state.
+ * Displays connected account checksum format, native BTC gas balance, and network state.
+ * Truthful interface: Shows exact connection and gas status on Mezo Testnet (Chain ID 31611).
  */
 export function WalletBadge({
   address,
@@ -23,6 +26,7 @@ export function WalletBadge({
   onDisconnect,
 }: WalletBadgeProps) {
   const isCorrectNetwork = !chainId || chainId === 31611;
+  const { formatted: btcBalance, isZeroGas, isLowGas, faucetUrl } = useMezoGasBalance();
 
   if (!address) {
     return (
@@ -55,6 +59,8 @@ export function WalletBadge({
           Wrong Network
         </span>
       )}
+
+      {/* Connected Account Badge */}
       <div className={styles.walletBadge} title={`Connected: ${address}`}>
         <span
           style={{
@@ -66,6 +72,42 @@ export function WalletBadge({
         />
         <span>{shortAddress}</span>
       </div>
+
+      {/* Native BTC Gas Balance Pill */}
+      {isCorrectNetwork && (
+        <a
+          href={faucetUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={isZeroGas ? 'Zero BTC gas balance! Click to request testnet BTC from Mezo Faucet.' : `Native gas balance: ${btcBalance}. Click to visit Mezo Faucet.`}
+          style={{
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '12px',
+            fontVariantNumeric: 'tabular-nums',
+            fontWeight: 500,
+            padding: '4px 8px',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: isZeroGas
+              ? 'var(--color-warning-bg)'
+              : 'var(--color-sand)',
+            border: isZeroGas
+              ? '1px solid var(--color-warning-border)'
+              : '1px solid var(--color-border)',
+            color: isZeroGas
+              ? 'var(--color-warning)'
+              : 'var(--color-ink)',
+            transition: 'opacity var(--motion-fast)',
+          }}
+        >
+          <Icon icon={Fuel} size="sm" color={isZeroGas ? 'var(--color-warning)' : 'var(--color-wine)'} />
+          <span>{btcBalance}</span>
+          {isZeroGas && <span style={{ fontSize: '11px', textDecoration: 'underline' }}>Faucet</span>}
+        </a>
+      )}
+
       {onDisconnect && (
         <Button
           variant="tertiary"
