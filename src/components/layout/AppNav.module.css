@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Netteo App Header & Navigation Styles
-   Adheres to design-addendum.md §14, Navbar Gallery app-shell pattern
+   Mezo / Netteo Navigation & Header Styles
+   Adheres to design-addendum.md §14, Navbar Gallery pattern, and WCAG AA
    ========================================================================== */
 
 .header {
@@ -13,10 +13,10 @@
 }
 
 .headerInner {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 0 var(--space-xl);
-  height: 64px;
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -29,6 +29,7 @@
   gap: var(--space-md);
   text-decoration: none;
   color: var(--color-ink);
+  flex-shrink: 0;
 }
 
 .brandTitle {
@@ -37,13 +38,16 @@
   letter-spacing: -0.02em;
   color: var(--color-ink);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .brandTag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 8px;
+  padding: 3px 8px;
   background-color: var(--color-sand);
   border-radius: var(--radius-sm);
   font-size: 11px;
@@ -59,6 +63,7 @@
   background-color: var(--color-wine);
 }
 
+/* --- Desktop Navigation --- */
 .nav {
   display: flex;
   align-items: center;
@@ -66,77 +71,170 @@
   height: 100%;
 }
 
-.navItem {
+.navItemContainer {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.navButton {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
-  padding: 0 var(--space-md);
+  gap: var(--space-2xs);
+  padding: 0 var(--space-sm);
   height: 100%;
+  background: transparent;
+  border: none;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 500;
   color: var(--color-muted);
-  text-decoration: none;
+  cursor: pointer;
   transition: color var(--motion-fast) var(--ease-standard);
   border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
 
-.navItem:hover {
+.navButton:hover,
+.navButton[aria-expanded="true"] {
   color: var(--color-ink);
 }
 
-.navItemActive {
+.navButtonActive {
   color: var(--color-ink);
   font-weight: 600;
-  border-bottom: 2px solid var(--color-wine); /* Slim wine line per §14 */
+  border-bottom: 2px solid var(--color-wine);
 }
 
-.navItem:focus-visible {
-  outline: 2px solid var(--color-wine);
-  outline-offset: -2px;
+.chevron {
+  transition: transform var(--motion-fast) var(--ease-standard);
 }
 
-.walletGroup {
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* --- Dropdown Menu --- */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 280px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 25px -5px rgba(33, 26, 27, 0.08), 0 8px 10px -6px rgba(33, 26, 27, 0.04);
+  padding: var(--space-xs);
+  z-index: 110;
+  animation: fadeUp var(--motion-fast) var(--ease-standard);
+}
+
+.dropdownItem {
+  display: block;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.dropdownItem:hover,
+.dropdownItem:focus-visible {
+  background-color: var(--color-sand-light);
+  outline: none;
+}
+
+.itemTitle {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin-bottom: 2px;
+}
+
+.itemDesc {
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-muted);
+}
+
+/* --- Action Area & Open App Button --- */
+.actionGroup {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
+  flex-shrink: 0;
 }
 
-.walletBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
-  background-color: var(--color-sand-light);
+.mobileMenuToggle {
+  display: none;
+  background: transparent;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font-size: 13px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
+  padding: var(--space-xs);
   color: var(--color-ink);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
 }
 
-/* Mobile responsive collapsing */
-@media (max-width: 768px) {
-  .headerInner {
-    padding: 0 var(--space-md);
-    height: auto;
-    flex-wrap: wrap;
-    padding-top: var(--space-sm);
-    padding-bottom: var(--space-sm);
-  }
+/* --- Mobile Drawer --- */
+.mobileDrawer {
+  display: none;
+}
 
+@media (max-width: 1024px) {
   .nav {
-    order: 3;
-    width: 100%;
-    overflow-x: auto;
-    padding-top: var(--space-xs);
-    gap: var(--space-xs);
+    display: none;
   }
 
-  .navItem {
-    padding: var(--space-xs) var(--space-sm);
-    height: 38px;
-    font-size: 13px;
+  .mobileMenuToggle {
+    display: inline-flex;
+  }
+
+  .mobileDrawer {
+    display: block;
+    position: fixed;
+    top: 68px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-lg);
+    overflow-y: auto;
+    z-index: 99;
+  }
+
+  .mobileCategory {
+    margin-bottom: var(--space-lg);
+  }
+
+  .mobileCategoryTitle {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-wine);
+    margin-bottom: var(--space-xs);
+    padding-left: var(--space-xs);
+  }
+
+  .mobileItem {
+    display: block;
+    padding: var(--space-sm);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-2xs);
+    text-decoration: none;
+    background-color: var(--color-page);
+    border: 1px solid var(--color-border-subtle);
+  }
+
+  .mobileItem:active {
+    background-color: var(--color-sand);
   }
 }

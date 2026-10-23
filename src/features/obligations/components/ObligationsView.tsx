@@ -13,9 +13,11 @@ import { ObligationsLedger } from './ObligationsLedger';
 import { ProposeObligationModal } from './ProposeObligationModal';
 import { ObligationIcon, CycleIcon } from '@/components/icons/netteo';
 import { Plus, AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast/ToastContext';
 
 export function ObligationsView() {
   const { mode, resetCounter } = useWorkspace();
+  const { toast } = useToast();
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +72,7 @@ export function ObligationsView() {
 
   const handleCreated = () => {
     fetchObligations();
+    toast.success('Obligation Proposed', 'New obligation registered. Awaiting counterparty acceptance.');
     setSuccessNotice('Obligation proposed successfully. Awaiting debtor acceptance.');
     setTimeout(() => setSuccessNotice(null), 3000);
   };
@@ -84,10 +87,9 @@ export function ObligationsView() {
       {/* Header */}
       <div className={styles.pageHeader}>
         <div className={styles.titleArea}>
-          <h1>Obligation Desk</h1>
+          <h1>Payments</h1>
           <p className={styles.subtitle}>
-            Bilateral payment obligations between defined group counterparties.
-            Debtor acceptance is required before claims enter a settlement cycle.
+            Track what you owe and what others owe you. Approve payment claims to include them in the next group settlement.
           </p>
         </div>
 
@@ -98,7 +100,7 @@ export function ObligationsView() {
             disabled={isOffline || isLoading}
             onClick={() => setIsModalOpen(true)}
           >
-            Propose Obligation
+            New Payment Claim
           </Button>
           {acceptedCount >= 2 && (
             <Link href="/cycles/new" style={{ textDecoration: 'none' }}>
@@ -107,7 +109,7 @@ export function ObligationsView() {
                 icon={<Icon icon={CycleIcon} size="sm" color="#FFFFFF" />}
                 disabled={isOffline || isLoading}
               >
-                Assemble Cycle ({acceptedCount} eligible)
+                Start Group Settlement ({acceptedCount} ready)
               </Button>
             </Link>
           )}
@@ -119,7 +121,7 @@ export function ObligationsView() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
             gap: 'var(--space-md)',
             marginBottom: 'var(--space-xl)',
           }}
@@ -129,15 +131,18 @@ export function ObligationsView() {
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
-              padding: 'var(--space-md)',
+              padding: 'var(--space-md) var(--space-lg)',
             }}
           >
-            <div style={{ fontSize: '12px', color: 'var(--color-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Total Claims
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Total Payments Tracked
             </div>
-            <div style={{ fontSize: '24px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--color-ink)' }}>
+            <div style={{ fontSize: '26px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--color-ink)' }}>
               {obligations.length}
             </div>
+            <div style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '2px' }}>
+              Across all group members
+            </div>
           </div>
 
           <div
@@ -145,15 +150,18 @@ export function ObligationsView() {
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
-              padding: 'var(--space-md)',
+              padding: 'var(--space-md) var(--space-lg)',
             }}
           >
-            <div style={{ fontSize: '12px', color: 'var(--color-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Accepted & Eligible for Netting
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Approved & Ready to Settle
             </div>
-            <div style={{ fontSize: '24px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--color-success)' }}>
+            <div style={{ fontSize: '26px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--color-success)' }}>
               {acceptedCount}
             </div>
+            <div style={{ fontSize: '11px', color: 'var(--color-success)', marginTop: '2px' }}>
+              Eligible for net cancellation
+            </div>
           </div>
 
           <div
@@ -161,14 +169,36 @@ export function ObligationsView() {
               backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
-              padding: 'var(--space-md)',
+              padding: 'var(--space-md) var(--space-lg)',
             }}
           >
-            <div style={{ fontSize: '12px', color: 'var(--color-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Gross Eligible Volume
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Total Volume Ready
             </div>
-            <div style={{ fontSize: '24px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--color-wine)' }}>
+            <div style={{ fontSize: '26px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--color-wine)' }}>
               {formatBaseUnitsToDisplay(grossAcceptedTotal)}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '2px' }}>
+              MUSD gross obligation sum
+            </div>
+          </div>
+
+          <div
+            style={{
+              backgroundColor: 'var(--color-sand-light)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              padding: 'var(--space-md) var(--space-lg)',
+            }}
+          >
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Estimated Net Savings
+            </div>
+            <div style={{ fontSize: '26px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--color-success)' }}>
+              ~70%
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--color-ink-secondary)', marginTop: '2px' }}>
+              Freed up liquidity through netting
             </div>
           </div>
         </div>

@@ -11,6 +11,7 @@ import { buildObligationActionMessage } from '@/lib/auth/challenge';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { Check, X, Ban, Copy } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast/ToastContext';
 
 export interface ObligationsLedgerProps {
   obligations: Obligation[];
@@ -18,13 +19,13 @@ export interface ObligationsLedgerProps {
   isOffline?: boolean;
 }
 
-const STATUS_FILTERS: (ObligationStatus | 'All')[] = [
-  'All',
-  'Accepted',
-  'Proposed',
-  'Disputed',
-  'Frozen',
-  'Withdrawn',
+const STATUS_FILTER_CONFIG: { id: ObligationStatus | 'All'; label: string }[] = [
+  { id: 'All', label: 'All Payments' },
+  { id: 'Accepted', label: 'Ready to Settle' },
+  { id: 'Proposed', label: 'Needs Approval' },
+  { id: 'Frozen', label: 'In Settlement' },
+  { id: 'Disputed', label: 'Disputed' },
+  { id: 'Withdrawn', label: 'Withdrawn' },
 ];
 
 export function ObligationsLedger({
@@ -33,6 +34,7 @@ export function ObligationsLedger({
   isOffline = false,
 }: ObligationsLedgerProps) {
   const { mode } = useWorkspace();
+  const { toast } = useToast();
   const { address: userAddress, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const [activeFilter, setActiveFilter] = useState<ObligationStatus | 'All'>('All');
@@ -108,6 +110,16 @@ export function ObligationsLedger({
         }
 
         updateObligationStatus(id, newStatus, 'live');
+        const statusMsgs: Record<string, { title: string; desc: string }> = {
+          Accepted: { title: 'Payment Approved', desc: 'This payment is now ready for group settlement.' },
+          Disputed: { title: 'Payment Disputed', desc: 'Flagged for review and excluded from netting.' },
+          Withdrawn: { title: 'Payment Canceled', desc: 'Claim has been withdrawn.' },
+        };
+        const notify = statusMsgs[newStatus];
+        if (notify) {
+          if (newStatus === 'Accepted') toast.success(notify.title, notify.desc);
+          else toast.info(notify.title, notify.desc);
+        }
         onUpdate();
       } catch (err: any) {
         setActionError(err.message || 'Signature authorization was rejected or failed.');
@@ -120,9 +132,38 @@ export function ObligationsLedger({
     // Demo Sandbox mode (mock simulation)
     try {
       updateObligationStatus(id, newStatus, 'demo');
+      const statusMsgs: Record<string, { title: string; desc: string }> = {
+        Accepted: { title: 'Payment Approved', desc: 'This payment is now ready for group settlement.' },
+        Disputed: { title: 'Payment Disputed', desc: 'Flagged for review and excluded from netting.' },
+        Withdrawn: { title: 'Payment Canceled', desc: 'Claim has been withdrawn.' },
+      };
+      const notify = statusMsgs[newStatus];
+      if (notify) {
+        if (newStatus === 'Accepted') toast.success(notify.title, notify.desc);
+        else toast.info(notify.title, notify.desc);
+      }
       onUpdate();
     } catch (err: any) {
-      setActionError(err.message || 'Failed to update obligation status.');
+      setActionError(err.message || 'Failed to update payment status.');
+    }
+  };
+
+  const formatStatus = (status: ObligationStatus) => {
+    switch (status) {
+      case 'Accepted':
+        return 'Ready to Settle';
+      case 'Proposed':
+        return 'Needs Approval';
+      case 'Frozen':
+        return 'In Settlement';
+      case 'Disputed':
+        return 'Disputed';
+      case 'Withdrawn':
+        return 'Canceled';
+      case 'Settled':
+        return 'Settled';
+      default:
+        return status;
     }
   };
 
@@ -154,24 +195,24 @@ export function ObligationsLedger({
     <div>
       {/* Filter Row */}
       <div className={styles.filterRow}>
-        <div className={styles.tabList} role="tablist" aria-label="Obligation status filters">
-          {STATUS_FILTERS.map((tab) => {
-            const count = tab === 'All'
+        <div className={styles.tabList} role="tablist" aria-label="Payment status filters">
+          {STATUS_FILTER_CONFIG.map((filter) => {
+            const count = filter.id === 'All'
               ? obligations.length
-              : obligations.filter((o) => o.status === tab).length;
+              : obligations.filter((o) => o.status === filter.id).length;
 
-            const isActive = activeFilter === tab;
+            const isActive = activeFilter === filter.id;
 
             return (
               <button
-                key={tab}
+                key={filter.id}
                 type="button"
                 role="tab"
                 aria-selected={isActive}
                 className={`${styles.tabButton} ${isActive ? styles.tabButtonActive : ''}`}
-                onClick={() => setActiveFilter(tab)}
+                onClick={() => setActiveFilter(filter.id)}
               >
-                <span>{tab}</span>
+                <span>{filter.label}</span>
                 <span className={styles.tabCount}>{count}</span>
               </button>
             );
@@ -196,22 +237,22 @@ export function ObligationsLedger({
       {filtered.length === 0 ? (
         <div className={styles.emptyState} style={{ padding: 'var(--space-2xl)' }}>
           <p className={styles.emptyStateDesc} style={{ margin: 0 }}>
-            No obligations found matching the <strong>{activeFilter}</strong> filter.
+            No payments found in <strong>{STATUS_FILTER_CONFIG.find(c => c.id === activeFilter)?.label || activeFilter}</strong>.
           </p>
         </div>
       ) : (
         <div className={styles.ledgerContainer}>
           <div className={styles.tableWrapper}>
-            <table className={styles.ledgerTable} aria-label="Financial obligation claims ledger">
+            <table className={styles.ledgerTable} aria-label="Payments ledger">
               <thead>
                 <tr>
-                  <th scope="col">ID / Date</th>
-                  <th scope="col">Debtor (Payer)</th>
-                  <th scope="col">Creditor (Payee)</th>
-                  <th scope="col">Reference Label</th>
+                  <th scope="col">Payment / Date</th>
+                  <th scope="col">Who Pays (Debtor)</th>
+                  <th scope="col">Who Receives (Creditor)</th>
+                  <th scope="col">Description</th>
                   <th scope="col" style={{ textAlign: 'right' }}>Amount</th>
                   <th scope="col">Status</th>
-                  <th scope="col" style={{ textAlign: 'right' }}>Actions</th>
+                  <th scope="col" style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -265,7 +306,7 @@ export function ObligationsLedger({
                     </td>
                     <td>
                       <span className={`${styles.statusBadge} ${getStatusBadgeClass(ob.status)}`}>
-                        {ob.status}
+                        {formatStatus(ob.status)}
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
@@ -276,17 +317,17 @@ export function ObligationsLedger({
                             disabled={isOffline || isAuthorizing}
                             onClick={() => handleStatusChange(ob.id, 'Accepted')}
                             style={{ minHeight: '30px', padding: '0 8px', fontSize: '12px' }}
-                            title="Accept obligation debt"
+                            title="Approve this payment claim"
                           >
                             <Icon icon={Check} size="sm" color="#FFFFFF" />
-                            {isAuthorizing ? 'Signing...' : 'Accept'}
+                            {isAuthorizing ? 'Signing...' : 'Approve'}
                           </Button>
                           <Button
                             variant="destructive"
                             disabled={isOffline || isAuthorizing}
                             onClick={() => handleStatusChange(ob.id, 'Disputed')}
                             style={{ minHeight: '30px', padding: '0 6px', fontSize: '12px' }}
-                            title="Dispute claim"
+                            title="Dispute payment claim"
                           >
                             <Icon icon={X} size="sm" color="var(--color-danger)" />
                             Dispute
@@ -296,20 +337,25 @@ export function ObligationsLedger({
                             disabled={isOffline || isAuthorizing}
                             onClick={() => handleStatusChange(ob.id, 'Withdrawn')}
                             style={{ minHeight: '30px', padding: '0 4px', fontSize: '11px', color: 'var(--color-muted)' }}
-                            title="Withdraw claim"
+                            title="Cancel payment claim"
                           >
-                            Withdraw
+                            Cancel
                           </Button>
                         </div>
                       )}
                       {ob.status === 'Accepted' && (
-                        <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 500 }}>
-                          Eligible for Netting
+                        <span style={{ fontSize: '12px', color: 'var(--color-wine)', fontWeight: 600 }}>
+                          Ready to Settle
                         </span>
                       )}
                       {ob.status === 'Frozen' && (
-                        <span style={{ fontSize: '12px', color: 'var(--color-info)', fontWeight: 500 }}>
-                          In Active Cycle
+                        <span style={{ fontSize: '12px', color: 'var(--color-navy)', fontWeight: 600 }}>
+                          Settling in Progress
+                        </span>
+                      )}
+                      {ob.status === 'Settled' && (
+                        <span style={{ fontSize: '12px', color: 'var(--color-forest)', fontWeight: 600 }}>
+                          Settled & Paid
                         </span>
                       )}
                     </td>

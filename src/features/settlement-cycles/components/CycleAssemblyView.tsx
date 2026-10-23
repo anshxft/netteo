@@ -22,10 +22,12 @@ import { CONTRACT_ADDRESSES, isSupportedNetwork, MEZO_TESTNET_CHAIN_ID } from '@
 import { SUPPORTED_SETTLEMENT_TOKENS, getTokenByAddress } from '@/lib/chain/tokens';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
+import { useToast } from '@/components/ui/Toast/ToastContext';
 
 export function CycleAssemblyView() {
   const router = useRouter();
   const { mode, resetCounter } = useWorkspace();
+  const { toast } = useToast();
   const { isConnected, chainId, address: userAddress } = useAccount();
   const { createCycle, isPending: isTxPending, isConfirming, isConfirmed, txHash, error: txError, resetWrite } = useSettlementKernel();
 
@@ -156,8 +158,10 @@ export function CycleAssemblyView() {
           creditAmounts: nettingResult.creditors.map((c) => c.amount),
         };
 
+        toast.info('Submitting Transaction', 'Broadcasting cycle snapshot to Mezo Testnet...');
         await createCycle(cycleInput);
       } catch (err: any) {
+        toast.error('Cycle Freeze Failed', err.message || 'On-chain cycle creation failed.');
         setError(err.message || 'On-chain cycle creation failed.');
         setIsSubmitting(false);
       }
@@ -173,8 +177,10 @@ export function CycleAssemblyView() {
         'demo',
         selectedTokenAddress
       );
+      toast.success('Settlement Cycle Frozen', 'Deterministic net positions calculated and snapshot locked.');
       router.push(`/cycles/${cycle.id}`);
     } catch (err: any) {
+      toast.error('Assembly Failed', err.message || 'Failed to assemble and freeze demo settlement cycle.');
       setError(err.message || 'Failed to assemble and freeze demo settlement cycle.');
       setIsSubmitting(false);
     }
@@ -192,13 +198,13 @@ export function CycleAssemblyView() {
     return (
       <div className={obStyles.emptyState}>
         <Icon icon={CycleIcon} size="lg" color="var(--color-wine)" />
-        <h2 className={obStyles.emptyStateTitle}>No Eligible Obligations to Settle</h2>
+        <h2 className={obStyles.emptyStateTitle}>No Approved Payments Ready</h2>
         <p className={obStyles.emptyStateDesc}>
-          To assemble a settlement cycle, at least two obligations must be accepted by their respective debtors.
+          To start a group settlement, at least two payments must be approved by their respective payers.
         </p>
         <Link href="/obligations" style={{ textDecoration: 'none' }}>
           <Button variant="primary">
-            Go to Obligation Desk
+            Go to Payments
           </Button>
         </Link>
       </div>
@@ -223,12 +229,12 @@ export function CycleAssemblyView() {
               }}
             >
               <Icon icon={ArrowLeft} size="sm" />
-              <span>Back to Obligation Desk</span>
+              <span>Back to Payments</span>
             </Link>
           </div>
-          <h1>Assemble Settlement Cycle</h1>
+          <h1>Start Group Settlement</h1>
           <p className={obStyles.subtitle}>
-            Select accepted bilateral obligations to freeze into an immutable snapshot and preview deterministic net positions.
+            Select approved payments to calculate net balances. Payments are locked into an atomic settlement where reciprocal debts cancel out.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginTop: 'var(--space-xs)' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -269,18 +275,18 @@ export function CycleAssemblyView() {
             icon={<Icon icon={isLiveContractReady ? Send : SnapshotIcon} size="sm" color="#FFFFFF" />}
             disabled={selectedIds.length === 0 || isOffline || isSubmitting || isTxPending}
             isLoading={isSubmitting || isTxPending}
-            loadingText={isConfirming ? 'Confirming on Mezo...' : 'Freezing Cycle...'}
+            loadingText={isConfirming ? 'Confirming on Mezo...' : 'Locking Settlement...'}
             onClick={handleFreezeCycle}
           >
             {mode === 'live'
               ? isLiveContractReady
-                ? `Freeze & Create on Mezo (${selectedIds.length} included)`
-                : `Connect Mezo to Freeze (${selectedIds.length} included)`
-              : `Freeze & Create Demo Cycle (${selectedIds.length} included)`}
+                ? `Lock & Settle on Mezo (${selectedIds.length} payments)`
+                : `Connect Wallet to Settle (${selectedIds.length} payments)`
+              : `Lock & Settle Demo (${selectedIds.length} payments)`}
           </Button>
           {mode === 'demo' ? (
             <span style={{ fontSize: '11px', color: 'var(--color-wine)', fontWeight: 500 }}>
-              &bull; Demo Sandbox Mode (Mock Settlement Simulation)
+              &bull; Demo Sandbox Mode (Instant Settlement Simulation)
             </span>
           ) : isLiveContractReady ? (
             <span style={{ fontSize: '11px', color: 'var(--color-success)', fontWeight: 500 }}>
@@ -311,10 +317,10 @@ export function CycleAssemblyView() {
             errorMessage={txError}
             title={
               isConfirmed
-                ? 'Settlement Cycle Created on Mezo Testnet!'
+                ? 'Settlement Created on Mezo Testnet!'
                 : txHash
-                ? 'Broadcasting Cycle to Mezo Testnet...'
-                : 'Awaiting Signature to Freeze Cycle...'
+                ? 'Broadcasting Settlement to Mezo Testnet...'
+                : 'Awaiting Signature to Lock Settlement...'
             }
             onDismiss={() => {
               resetWrite();
@@ -359,17 +365,17 @@ export function CycleAssemblyView() {
         >
           <div>
             <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Canonical Snapshot Commitment Hash (Keccak256)
+              Settlement Proof Hash (Keccak256)
             </div>
             <code style={{ fontSize: '12px', color: 'var(--color-ink)', fontVariantNumeric: 'tabular-nums' }}>
               {nettingResult.canonicalCommitmentHash}
             </code>
             <div style={{ fontSize: '11px', color: 'var(--color-muted)', marginTop: '2px' }}>
-              Off-chain snapshot cryptographically bound to Mezo chain ID, token, sorted obligations, and net positions.
+              Cryptographic proof tying together all participants, payments, and net balances.
             </div>
           </div>
           <span style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 500 }}>
-            &bull; Invariant &Sigma; net = 0 Verified
+            &bull; Mathematical Balance Verified (&Sigma; net = 0)
           </span>
         </div>
       )}
@@ -378,7 +384,7 @@ export function CycleAssemblyView() {
       <div className={obStyles.ledgerContainer}>
         <div style={{ padding: 'var(--space-md) var(--space-lg)', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-ink)', margin: 0 }}>
-            Eligible Accepted Obligations
+            Approved Payments to Include
           </h3>
           <Button variant="tertiary" onClick={handleSelectAll} style={{ minHeight: '30px', fontSize: '12px' }}>
             {selectedIds.length === obligations.length ? 'Deselect All' : 'Select All'}
@@ -386,14 +392,14 @@ export function CycleAssemblyView() {
         </div>
 
         <div className={obStyles.tableWrapper}>
-          <table className={obStyles.ledgerTable} aria-label="Eligible obligations selection table">
+          <table className={obStyles.ledgerTable} aria-label="Eligible payments selection table">
             <thead>
               <tr>
-                <th scope="col" style={{ width: '40px' }}>Select</th>
-                <th scope="col">ID</th>
-                <th scope="col">Debtor (Payer)</th>
-                <th scope="col">Creditor (Payee)</th>
-                <th scope="col">Reference Label</th>
+                <th scope="col" style={{ width: '40px' }}>Include</th>
+                <th scope="col">Payment ID</th>
+                <th scope="col">Who Pays (Debtor)</th>
+                <th scope="col">Who Receives (Creditor)</th>
+                <th scope="col">Description</th>
                 <th scope="col" style={{ textAlign: 'right' }}>Amount</th>
               </tr>
             </thead>

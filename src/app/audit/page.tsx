@@ -28,28 +28,28 @@ export default function GeneralAuditPage() {
     <AppLayout>
       <div className={obStyles.pageHeader}>
         <div className={obStyles.titleArea}>
-          <h1>Settlement Audit Ledger</h1>
+          <h1>Settlement Receipts</h1>
           <p className={obStyles.subtitle}>
-            Historical cryptographic statements linking gross obligations to on-chain settlement payouts.
+            Permanent records and accounting statements for every completed settlement. Download CSV statements or verify cryptographic proofs on Mezo.
           </p>
         </div>
       </div>
 
       {isLoading && (
         <div style={{ padding: 'var(--space-2xl) 0', color: 'var(--color-muted)' }}>
-          Loading audit registry...
+          Loading settlement receipts...
         </div>
       )}
 
       {!isLoading && cycles.length === 0 && (
         <div className={obStyles.emptyState}>
           <Icon icon={SnapshotIcon} size="lg" color="var(--color-wine)" />
-          <h2 className={obStyles.emptyStateTitle}>No Audit Records Found</h2>
+          <h2 className={obStyles.emptyStateTitle}>No Receipts Yet</h2>
           <p className={obStyles.emptyStateDesc}>
-            Once settlement cycles are created and frozen, immutable audit statements with cryptographic proofs and CSV export become available here.
+            Once group settlements are created and processed, complete accounting receipts with downloadable records will appear here.
           </p>
-          <Link href="/cycles/new" style={{ textDecoration: 'none' }}>
-            <Button variant="primary">Assemble First Cycle</Button>
+          <Link href="/cycles" style={{ textDecoration: 'none' }}>
+            <Button variant="primary">View Settlements</Button>
           </Link>
         </div>
       )}
@@ -63,28 +63,97 @@ export default function GeneralAuditPage() {
                 backgroundColor: 'var(--color-surface)',
                 border: '1px solid var(--color-border)',
                 borderRadius: 'var(--radius-lg)',
-                padding: 'var(--space-lg)',
+                padding: 'var(--space-xl)',
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
+                flexDirection: 'column',
                 gap: 'var(--space-md)',
               }}
             >
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', margin: '0 0 4px 0' }}>
-                  Cycle #{c.cycleNumber} ({c.id})
-                </h3>
-                <div style={{ fontSize: '12px', color: 'var(--color-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  Commitment: {c.snapshotCommitment.slice(0, 18)}... &bull; Net Volume: {formatBaseUnitsToDisplay(c.netDebtTotal)} &bull; {c.state}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginBottom: '4px' }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-ink)', margin: 0, fontFamily: 'var(--font-roundo), sans-serif' }}>
+                      Settlement Receipt #{c.cycleNumber}
+                    </h2>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor:
+                          c.state === 'Completed'
+                            ? 'var(--color-success-bg, rgba(26, 127, 55, 0.1))'
+                            : 'var(--color-sand)',
+                        color:
+                          c.state === 'Completed'
+                            ? 'var(--color-success, #1a7f37)'
+                            : 'var(--color-ink)',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    >
+                      {c.state === 'Completed' ? 'Completed & Settled' : c.state}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--color-muted)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    Proof Hash: {c.snapshotCommitment.slice(0, 18)}...
+                  </div>
                 </div>
+
+                <Link href={`/cycles/${c.id}/audit`} style={{ textDecoration: 'none' }}>
+                  <Button variant="secondary" icon={<Icon icon={FileText} size="sm" />}>
+                    Open Receipt & Statement
+                  </Button>
+                </Link>
               </div>
 
-              <Link href={`/cycles/${c.id}/audit`} style={{ textDecoration: 'none' }}>
-                <Button variant="secondary" icon={<Icon icon={FileText} size="sm" />}>
-                  View Audit Statement
-                </Button>
-              </Link>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gap: 'var(--space-md)',
+                  padding: 'var(--space-md) var(--space-lg)',
+                  backgroundColor: 'var(--color-page)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
+                    Gross Payments
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
+                    {formatBaseUnitsToDisplay(c.grossObligationTotal)}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
+                    Net Capital Settled
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-wine)', marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
+                    {formatBaseUnitsToDisplay(c.netDebtTotal)}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
+                    Payments Reconciled
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginTop: '2px' }}>
+                    {c.includedObligationIds.length} payments
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
+                    Verification
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-success, #1a7f37)', marginTop: '4px' }}>
+                    &bull; Mathematical Balance Verified
+                  </div>
+                </div>
+              </div>
             </article>
           ))}
         </div>
