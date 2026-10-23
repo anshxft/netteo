@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
+import { usePathname } from 'next/navigation';
 import { AppHeader } from './AppHeader';
 import { NetworkGuard } from '../wallet/NetworkGuard';
 import { WalletConnectModal } from '../wallet/WalletConnectModal';
 import { AlertTriangle, WifiOff } from 'lucide-react';
 import { Icon } from '../icons/Icon';
 import { DemoExplainerBanner } from '@/features/workspace/DemoExplainerBanner';
+import { AppFooter } from './AppFooter';
+import { ToastContainer } from '@/components/ui/Toast/ToastContainer';
 
 export interface AppLayoutProps {
   children: React.ReactNode;
@@ -24,6 +27,8 @@ export function AppLayout({
   onConnectWallet,
   onDisconnectWallet,
 }: AppLayoutProps) {
+  const pathname = usePathname();
+  const isLandingPage = pathname === '/';
   const { address: wagmiAddress, chainId: wagmiChainId, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
@@ -92,12 +97,13 @@ export function AppLayout({
       <AppHeader
         walletAddress={activeAddress}
         chainId={activeChainId}
+        isLandingPage={isLandingPage}
         onConnectWallet={handleConnect}
         onDisconnectWallet={handleDisconnect}
       />
 
-      {/* Demo Explainer Banner: Shows simple English netting breakdown in Demo Mode */}
-      <DemoExplainerBanner />
+      {/* Demo Explainer Banner: Shows simple English netting breakdown in Demo Mode (Suppressed on Landing Page) */}
+      {!isLandingPage && <DemoExplainerBanner />}
 
       {/* Connect Wallet Modal */}
       <WalletConnectModal
@@ -111,14 +117,20 @@ export function AppLayout({
         style={{
           flex: 1,
           width: '100%',
-          maxWidth: '1200px',
+          maxWidth: isLandingPage ? '100%' : '1200px',
           margin: '0 auto',
-          padding: 'var(--space-2xl) var(--space-xl)',
+          padding: isLandingPage ? '0' : 'var(--space-2xl) var(--space-xl)',
           boxSizing: 'border-box',
         }}
       >
         {children}
       </main>
+
+      {/* Bespoke Architectural Footer */}
+      <AppFooter />
+
+      {/* Global Toast Notifications Container */}
+      <ToastContainer />
     </div>
   );
 }

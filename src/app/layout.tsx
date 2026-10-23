@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import '../styles/globals.css';
 import { Web3Provider } from '@/lib/chain/Web3Provider';
+import { ToastProvider } from '@/components/ui/Toast/ToastContext';
 
 const roundo = localFont({
   src: [
@@ -48,7 +49,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={roundo.variable}>
       <body>
-        <Web3Provider>{children}</Web3Provider>
+        <Web3Provider>
+          <ToastProvider>{children}</ToastProvider>
+        </Web3Provider>
       </body>
     </html>
   );

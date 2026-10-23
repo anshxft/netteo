@@ -145,6 +145,8 @@ c:/netteo/
 - [x] **Smart Contract Live Deployment (Mezo Testnet):** Live `SettlementKernel.sol` deployed at `0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5` bound to canonical Mezo Testnet MUSD `0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503` (Transaction: `0x0a1291923d40d4915810a4ce80059464a3cd5ba9b1b8b071bf5c9882a0407dbb`, block `16281871`). Legacy contract `0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA` (MockMUSD) marked deprecated.
 - [x] **End-to-End Live Settlement Acceptance Test:** Broadcast 4-step canonical settlement cycle on Mezo Testnet (Approve, Create, Deposit, Execute) with 100% verified state transitions and token transfers to Creditor B (20 MUSD) and Creditor C (60 MUSD).
 - [x] **Project Documentation (`README.md`):** Complete production README with contracts table, verified Mezo Explorer transaction hashes, sequence diagrams, and disclosures.
+- [x] **High-Taste Landing Page Redesign (`/`):** Full neo-brutalist financial ledger redesign inspired by Clario Monad and Glider.fi following `Leonxlnx/taste-skill`. Features blueprint grid, monospace metadata tags, split hero with interactive Clearinghouse Terminal Simulator (Developer Pod, Cross-DAO Guilds, OTC Liquidity Desks), 5 Manifesto Answer cards, Bilateral vs Netteo Comparative Ledger, 4-Phase Protocol Invariants, Verified Contract Registry with copy buttons, and Interactive FAQ accordion.
+- [x] **Landing Page & Demo Sandbox Isolation:** Strict scoping applied to `AppLayout.tsx` and `AppHeader.tsx` to suppress the demo sandbox toggle and demo explainer banner from the public landing page while preserving full sandbox utility on authenticated routes.
 
 ### In Progress / Pending
 - [ ] **Vercel Web Deployment & Demo Recording:** Deploy Next.js frontend to Vercel and record demonstration video.
@@ -153,7 +155,7 @@ c:/netteo/
 
 ## 7. Latest Verified Build, Test, Lint & Type-Check Status
 
-*Last run timestamp: 21 October 2026 14:20 UTC+5:30*
+*Last run timestamp: 22 October 2026 20:45 UTC+5:30*
 
 | Check | Status | Exact Output / Root Cause |
 |---|---|---|
@@ -161,18 +163,33 @@ c:/netteo/
 | **Solidity Tests (`forge test`)** | **PASSED** (Exit code `0`) | Ran `forge test`. All 6 contract tests passed cleanly: `test_CanonicalThreeParticipantSettlement` (gas: 531833), `test_RefundLifecycleOnExpiry` (gas: 467914), `test_RevertIf_DebtorIsCreditor`, `test_RevertIf_DepositExceedsRequired`, `test_RevertIf_ImbalancedNetPositions`, `test_RevertIf_ParticipantCapExceeded`. |
 | **Live Mezo Testnet Broadcast** | **PASSED** (Exit code `0`) | Live on-chain execution complete. Cycle `0x156915a716581f2b7358b4561e75c90ae14f7404ed9aca9a30c5c4872a82ef4f` completed and verified on canonical kernel. |
 | **Type Check (`npm run typecheck`)** | **PASSED** (Exit code `0`) | Ran `tsc --noEmit`. Zero TypeScript errors across all `.ts` and `.tsx` source and test files. |
-| **Production Build (`npm run build`)** | **PASSED** (Exit code `0`) | Turbopack compiled successfully in 4.7s; all 9 routes prerendered / dynamic with Supabase SSR and Mezo chain configurations. |
+| **Production Build (`npm run build`)** | **PASSED** (Exit code `0`) | Next.js 16.4.2 Turbopack compiled successfully in 6.7s; TypeScript passed in 12.4s; all 10 routes prerendered / dynamic with 0 errors. |
+| **Browser Subagent Test** | **PASSED** | Automated browser verification on `http://localhost:3000/`. Tested simulator tabs, gross/net mode switch, FAQ accordion, contract copy button, and landing isolation. Video: `netteo_landing_review_1792682132411.webp`. |
 
 ---
 
-## 8. Known Issues, Current Blockers & Recommended Next Steps
+## 8. Theme Redesign & Production Frontend Accomplishments (23 October 2026)
+
+- **Authentic Warm Minimal Fintech Theme:** Completely replaced Clario Monad blueprint imitation styles with Netteo's genuine Roundo typography, Wine (`#7F011F`), and Sand (`#F5EBD0`) palette across `src/app/page.tsx` and `src/app/page.module.css`.
+- **Signature Netting Simulator:** Interactive clearinghouse terminal demonstrating multilateral debt collapse across 3 real-world personas (Developer Pod, Cross-DAO Guilds, OTC Desks) with live capital conservation percentages (up to 91.4% saved) and Gross/Net toggles.
+- **Tactile Interactive Buttons:** Updated `Button.tsx` and `Button.module.css` with Emil Kowalski & Watermelon/Skiper active press scale (`0.97`, 120ms transition), double-click debounce locks, and width-locking loading states.
+- **Global Toast Notification System:** Created `ToastContext`, `ToastContainer`, and `Toast` components with accessible `aria-live="polite"` feedback for clipboard copying, obligation proposals, and live Mezo settlement events.
+- **Architectural Custom Footer:** Implemented `AppFooter.tsx` with live pulsing Mezo Testnet status (`Chain ID 31611`), verified contract registry, desk navigation, and solvency invariants.
+- **Custom Error Pages:** Implemented `not-found.tsx` (404) and `error.tsx` (500) with sanitized error messaging per `Secure_Vibe_Coding.pdf` (zero leaked stack traces or DB schema).
+- **Plain English Page Hierarchy & Internal Desk Redesign:** Redesigned `/obligations` (Payments), `/cycles` (Settlements), and `/audit` (Settlement Receipts) into intuitive, plain-English interfaces with Roundo typography, 4-card KPI summary strips, clear status filters, savings metrics, and one-click receipt exports.
+- **21st.dev MCP Integration:** Configured in `mcp_config.json` with user-supplied API key.
+- **Verification:** `npm run typecheck`, `npm test` (all 25 tests), and `npm run build` (10/10 routes) passed with code 0. Verified live in browser subagent across all pages.
+
+---
+
+## 9. Known Issues, Current Blockers & Recommended Next Steps
 
 ### Known Issues & Config Blockers
-*None.* Smart contracts and Supabase database are live and verified.
+*None.* Smart contracts and Supabase database are live and verified. 21st.dev MCP configured and operational.
 
-### Recommended Next Steps (Final Submission)
+### Recommended Next Steps
 1. Deploy web application to Vercel with environment variables.
-2. Record walkthrough video highlighting reciprocal obligations, signature netting animation, and on-chain atomic settlement.
+2. Record final walkthrough video highlighting reciprocal obligations, signature netting animation, and on-chain atomic settlement.
 
 ---
 

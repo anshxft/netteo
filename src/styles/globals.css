@@ -66,3 +66,80 @@ a {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted);
 }
+
+/* ==========================================================================
+   Light Motion System (Codex Part 8, design-addendum §8)
+   Transforms & Opacity Only • Fully Reduced-Motion Safe
+   ========================================================================== */
+
+@keyframes headlineFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lineDrawHorizontal {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes lineDrawVertical {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.anim-stagger-1 {
+  animation: headlineFade var(--motion-slow) var(--ease-standard) forwards;
+  animation-delay: 0ms;
+}
+
+.anim-stagger-2 {
+  animation: headlineFade var(--motion-slow) var(--ease-standard) forwards;
+  animation-delay: 80ms;
+}
+
+.anim-stagger-3 {
+  animation: headlineFade var(--motion-slow) var(--ease-standard) forwards;
+  animation-delay: 160ms;
+}
+
+.anim-fade-up {
+  animation: fadeUp var(--motion-slow) var(--ease-standard) forwards;
+}
+
+/* Accessibility: Full Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+}

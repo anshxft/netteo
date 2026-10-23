@@ -1,6 +1,30 @@
 {
   "version": 1,
   "skills": {
+    "design-system-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/ui-design/skills/design-system-patterns/SKILL.md",
+      "computedHash": "b6ba14bf8809ee027a3c4c9e88bdc71626eb7f68604b65dce000519d8e4ad458"
+    },
+    "design-taste-frontend": {
+      "source": "Leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "65049e1890f5fedf8f8e1144848f07bcda788e51c22bac78afbd073aeb486725"
+    },
+    "find-animation-opportunities": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-animation-opportunities/SKILL.md",
+      "computedHash": "c6673fadf179233cc0a52c978ea9acc9b82a210665c749307a571a86ed4c092e"
+    },
+    "responsive-design": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/ui-design/skills/responsive-design/SKILL.md",
+      "computedHash": "155eff4b1bc8d867ae6bea9900c485ab1081de0b4873c1900adb66bf62466aed"
+    },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
@@ -12,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
       "computedHash": "128fac78002d916c8ca908245d398e634f540d8bcf20915b2b2359aeb18eba59"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "d8e7d3afe37dcc8a97b99ffb5afdb4d0919ae0092ea8b68f44eb201f035e33ac"
     }
   }
 }

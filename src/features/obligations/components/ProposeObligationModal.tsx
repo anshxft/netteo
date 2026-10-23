@@ -12,6 +12,7 @@ import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { useAccount, useSignMessage } from 'wagmi';
 import { buildProposeObligationMessage } from '@/lib/auth/challenge';
 import { X } from 'lucide-react';
+import { useToast } from '@/components/ui/Toast/ToastContext';
 
 export interface ProposeObligationModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export interface ProposeObligationModalProps {
 
 export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeObligationModalProps) {
   const { mode } = useWorkspace();
+  const { toast } = useToast();
   const { address: userAddress, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
@@ -134,10 +136,11 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
       setCreditorAddress('');
       setAmountMusd('');
       setReferenceLabel('');
+      toast.success('Payment claim recorded', 'Your payment has been logged to the shared ledger and awaits approval.');
       onCreated();
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to propose obligation.');
+      setErrorMsg(err.message || 'Failed to record payment.');
     } finally {
       setIsSubmitting(false);
     }
@@ -154,7 +157,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
       >
         <div className={modalStyles.modalHeader}>
           <h2 id="modal-propose-title" className={modalStyles.modalTitle}>
-            Propose Obligation
+            Record New Payment
           </h2>
           <Button
             variant="tertiary"
@@ -182,7 +185,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
         <form onSubmit={handleSubmit}>
           <div className={modalStyles.fieldGroup}>
             <label htmlFor="target-group" className={modalStyles.fieldLabel}>
-              Working Group *
+              Group *
             </label>
             <select
               id="target-group"
@@ -202,13 +205,13 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
 
           <div className={modalStyles.fieldGroup}>
             <label htmlFor="debtor-address" className={modalStyles.fieldLabel}>
-              Debtor Address (Payer) *
+              Who Pays (Debtor Address) *
             </label>
             <input
               id="debtor-address"
               type="text"
               className={modalStyles.input}
-              placeholder="0x... (address obligated to pay)"
+              placeholder="0x... (address paying this amount)"
               value={debtorAddress}
               onChange={(e) => setDebtorAddress(e.target.value)}
               required
@@ -220,7 +223,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
 
           <div className={modalStyles.fieldGroup}>
             <label htmlFor="creditor-address" className={modalStyles.fieldLabel}>
-              Creditor Address (Payee) *
+              Who Receives (Creditor Address) *
             </label>
             <input
               id="creditor-address"
@@ -238,7 +241,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
 
           <div className={modalStyles.fieldGroup}>
             <label htmlFor="musd-amount" className={modalStyles.fieldLabel}>
-              Amount in MUSD *
+              Amount (MUSD) *
             </label>
             <input
               id="musd-amount"
@@ -255,13 +258,13 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
 
           <div className={modalStyles.fieldGroup}>
             <label htmlFor="ref-label" className={modalStyles.fieldLabel}>
-              Reference Label / Invoice ID *
+              Description / Invoice Reference *
             </label>
             <input
               id="ref-label"
               type="text"
               className={modalStyles.input}
-              placeholder="e.g. Frontend development sprint deliverables"
+              placeholder="e.g. Design sprint deliverables or Invoice #104"
               value={referenceLabel}
               onChange={(e) => setReferenceLabel(e.target.value)}
               required
@@ -280,7 +283,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
               isLoading={isSubmitting}
               loadingText="Submitting..."
             >
-              Propose Claim
+              Record Payment
             </Button>
           </div>
         </form>

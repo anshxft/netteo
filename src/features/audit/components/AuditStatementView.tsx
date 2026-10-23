@@ -143,12 +143,12 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
     return (
       <div className={obStyles.emptyState}>
         <Icon icon={SnapshotIcon} size="lg" color="var(--color-wine)" />
-        <h2 className={obStyles.emptyStateTitle}>No Cycle Audit Selected</h2>
+        <h2 className={obStyles.emptyStateTitle}>No Settlement Selected</h2>
         <p className={obStyles.emptyStateDesc}>
-          Select a settlement cycle from the cycle registry to view its auditable cryptographic statement.
+          Select a settlement from the list to view its complete receipt and statement.
         </p>
         <Link href="/cycles" style={{ textDecoration: 'none' }}>
-          <Button variant="primary">Browse Settlement Cycles</Button>
+          <Button variant="primary">Browse Settlements</Button>
         </Link>
       </div>
     );
@@ -170,15 +170,15 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
           }}
         >
           <Icon icon={ArrowLeft} size="sm" />
-          <span>Back to Cycle #{cycle.cycleNumber}</span>
+          <span>Back to Settlement #{cycle.cycleNumber}</span>
         </Link>
       </div>
 
       <div className={obStyles.pageHeader}>
         <div className={obStyles.titleArea}>
-          <h1>Settlement Audit Statement</h1>
+          <h1>Settlement Receipt & Statement</h1>
           <p className={obStyles.subtitle}>
-            Cryptographically committed audit ledger linking gross obligations to net settlement payout records on Mezo.
+            Official accounting statement linking all original payments to the final net payouts executed on Mezo.
           </p>
         </div>
 
@@ -187,7 +187,7 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
           icon={<Icon icon={Download} size="sm" />}
           onClick={handleExportCSV}
         >
-          Export CSV Statement
+          Export CSV Receipt
         </Button>
       </div>
 
@@ -204,11 +204,11 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)', marginBottom: 'var(--space-xs)' }}>
           <Icon icon={ShieldCheck} size="md" color="var(--color-wine)" />
           <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', margin: 0 }}>
-            Snapshot Commitment & On-Chain Trust Boundary
+            Settlement Proof & On-Chain Trust Guarantee
           </h2>
         </div>
         <p style={{ fontSize: '12px', color: 'var(--color-muted)', margin: '0 0 var(--space-md) 0', lineHeight: 1.5 }}>
-          <strong>Trust Boundary:</strong> The <code>SettlementKernel</code> smart contract enforces atomic zero-sum solvency on-chain (requiring 100% net debtor deposits before creditor distribution). The snapshot commitment below is immutably stored on-chain as a cryptographic anchor (keccak256 binding chain ID, token, sorted obligations, and net positions) allowing independent auditors to verify that the executed cycle matches the agreed off-chain obligations.
+          <strong>Trust Guarantee:</strong> The <code>SettlementKernel</code> smart contract enforces atomic zero-sum solvency on Mezo. The cryptographic proof below links the sorted payments and calculated net balances, ensuring zero tampering.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-md)' }}>
@@ -288,16 +288,16 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
 
       {/* Section 1: Included Gross Obligations */}
       <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: 'var(--space-sm)' }}>
-        1. Frozen Gross Obligation Snapshot ({includedObligations.length} claims)
+        1. Reconciled Payments ({includedObligations.length} payments)
       </h3>
       <div className={obStyles.ledgerContainer} style={{ marginBottom: 'var(--space-2xl)' }}>
-        <table className={obStyles.ledgerTable} aria-label="Frozen obligations table">
+        <table className={obStyles.ledgerTable} aria-label="Reconciled payments table">
           <thead>
             <tr>
-              <th scope="col">Obligation ID</th>
-              <th scope="col">Debtor</th>
-              <th scope="col">Creditor</th>
-              <th scope="col">Reference</th>
+              <th scope="col">Payment ID</th>
+              <th scope="col">Who Pays (Debtor)</th>
+              <th scope="col">Who Receives (Creditor)</th>
+              <th scope="col">Description</th>
               <th scope="col" style={{ textAlign: 'right' }}>Amount</th>
               <th scope="col">Status</th>
             </tr>
@@ -305,12 +305,12 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
           <tbody>
             {includedObligations.map((ob) => (
               <tr key={ob.id}>
-                <td><span className={obStyles.addressCode}>{ob.id}</span></td>
+                <td><span className={obStyles.addressCode}>{ob.id.slice(0, 10)}</span></td>
                 <td><span className={obStyles.addressCode}>{ob.debtorAddress.slice(0, 6)}...{ob.debtorAddress.slice(-4)}</span></td>
                 <td><span className={obStyles.addressCode}>{ob.creditorAddress.slice(0, 6)}...{ob.creditorAddress.slice(-4)}</span></td>
                 <td><div className={obStyles.labelCell}>{ob.referenceLabel}</div></td>
                 <td style={{ textAlign: 'right' }}><span className={obStyles.amountCell}>{ob.amountDisplay}</span></td>
-                <td><span style={{ fontSize: '12px', color: 'var(--color-muted)', fontWeight: 500 }}>{ob.status}</span></td>
+                <td><span style={{ fontSize: '12px', color: 'var(--color-muted)', fontWeight: 500 }}>Settled</span></td>
               </tr>
             ))}
           </tbody>
@@ -319,27 +319,27 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
 
       {/* Section 2: Reconciled Net Payout Transfers */}
       <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: 'var(--space-sm)' }}>
-        2. Atomic Net Transfers Executed ({cycle.nettingResult.allocations.length} transfers)
+        2. Net Settlement Transfers ({cycle.nettingResult.allocations.length} transfers)
       </h3>
       <div className={obStyles.ledgerContainer}>
         <table className={obStyles.ledgerTable} aria-label="Net transfers executed table">
           <thead>
             <tr>
-              <th scope="col">From (Net Debtor)</th>
-              <th scope="col">To (Net Creditor)</th>
-              <th scope="col" style={{ textAlign: 'right' }}>Settlement Amount</th>
-              <th scope="col">Settlement Status</th>
+              <th scope="col">Who Pays Net (Debtor)</th>
+              <th scope="col">Who Receives Net (Creditor)</th>
+              <th scope="col" style={{ textAlign: 'right' }}>Net Settlement Amount</th>
+              <th scope="col">Payout Status</th>
             </tr>
           </thead>
           <tbody>
             {cycle.nettingResult.allocations.map((alloc, idx) => (
               <tr key={idx}>
-                <td><span className={obStyles.addressCode}>{alloc.from}</span></td>
-                <td><span className={obStyles.addressCode}>{alloc.to}</span></td>
+                <td><span className={obStyles.addressCode}>{alloc.from.slice(0, 6)}...{alloc.from.slice(-4)}</span></td>
+                <td><span className={obStyles.addressCode}>{alloc.to.slice(0, 6)}...{alloc.to.slice(-4)}</span></td>
                 <td style={{ textAlign: 'right' }}><span className={obStyles.amountCell}>{formatBaseUnitsToDisplay(alloc.amount, cycle.tokenSymbol || 'MUSD')}</span></td>
                 <td>
-                  <span style={{ fontSize: '12px', color: cycle.state === 'Completed' ? 'var(--color-success)' : 'var(--color-sand-hover)', fontWeight: 600 }}>
-                    {cycle.state === 'Completed' ? 'Transferred (Atomic)' : 'Pending Funding'}
+                  <span style={{ fontSize: '12px', color: cycle.state === 'Completed' ? 'var(--color-success)' : 'var(--color-wine)', fontWeight: 600 }}>
+                    {cycle.state === 'Completed' ? 'Paid Out (Atomic)' : 'Waiting for Net Deposit'}
                   </span>
                 </td>
               </tr>

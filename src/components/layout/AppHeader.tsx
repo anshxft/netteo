@@ -6,10 +6,14 @@ import styles from './AppNav.module.css';
 import { AppNav } from './AppNav';
 import { WalletBadge } from './WalletBadge';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
+import { Button } from '@/components/common/Button';
+import { Icon } from '@/components/icons/Icon';
+import { ArrowRight } from 'lucide-react';
 
 export interface AppHeaderProps {
   walletAddress?: string | null;
   chainId?: number | null;
+  isLandingPage?: boolean;
   onConnectWallet?: () => void;
   onDisconnectWallet?: () => void;
 }
@@ -21,6 +25,7 @@ export interface AppHeaderProps {
 export function AppHeader({
   walletAddress,
   chainId = 31611,
+  isLandingPage = false,
   onConnectWallet,
   onDisconnectWallet,
 }: AppHeaderProps) {
@@ -40,35 +45,50 @@ export function AppHeader({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-          <button
-            type="button"
-            onClick={toggleMode}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              fontSize: '12px',
-              fontWeight: 600,
-              borderRadius: '9999px',
-              border: mode === 'demo' ? '1px solid rgba(127, 1, 31, 0.3)' : '1px solid var(--color-border)',
-              backgroundColor: mode === 'demo' ? 'rgba(127, 1, 31, 0.08)' : 'var(--color-surface)',
-              color: mode === 'demo' ? 'var(--color-wine)' : 'var(--color-ink)',
-              cursor: 'pointer',
-              transition: 'all var(--motion-fast)',
-            }}
-            title={mode === 'demo' ? 'Currently in Demo Sandbox with mock tokens. Click to switch to Live Mezo Testnet.' : 'Currently in Live Mezo mode. Click to switch to Demo Sandbox.'}
-          >
-            <span
+          <Link href="/obligations" style={{ textDecoration: 'none' }}>
+            <Button
+              variant="primary"
+              style={{ minHeight: '38px', padding: '0 var(--space-md)', fontSize: '13px' }}
+              icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}
+              iconPosition="right"
+              enableLift
+              enableArrowSlide
+            >
+              Open Desk
+            </Button>
+          </Link>
+
+          {!isLandingPage && (
+            <button
+              type="button"
+              onClick={toggleMode}
               style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: mode === 'demo' ? 'var(--color-success)' : 'var(--color-wine)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                fontSize: '12px',
+                fontWeight: 600,
+                borderRadius: '9999px',
+                border: mode === 'demo' ? '1px solid rgba(127, 1, 31, 0.3)' : '1px solid var(--color-border)',
+                backgroundColor: mode === 'demo' ? 'rgba(127, 1, 31, 0.08)' : 'var(--color-surface)',
+                color: mode === 'demo' ? 'var(--color-wine)' : 'var(--color-ink)',
+                cursor: 'pointer',
+                transition: 'all var(--motion-fast)',
               }}
-            />
-            <span>{mode === 'demo' ? 'Demo Sandbox' : 'Live Mezo'}</span>
-          </button>
+              title={mode === 'demo' ? 'Currently in Demo Sandbox with mock tokens. Click to switch to Live Mezo Testnet.' : 'Currently in Live Mezo mode. Click to switch to Demo Sandbox.'}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: mode === 'demo' ? 'var(--color-success)' : 'var(--color-wine)',
+                }}
+              />
+              <span>{mode === 'demo' ? 'Demo Sandbox' : 'Live Mezo'}</span>
+            </button>
+          )}
 
           <WalletBadge
             address={walletAddress}

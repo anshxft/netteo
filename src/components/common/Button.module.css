@@ -10,7 +10,7 @@
   gap: var(--space-xs);
   font-family: inherit;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1;
   text-decoration: none;
   cursor: pointer;
@@ -21,6 +21,7 @@
     background-color var(--motion-fast) var(--ease-standard),
     border-color var(--motion-fast) var(--ease-standard),
     color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
     transform var(--motion-fast) var(--ease-standard);
   user-select: none;
   white-space: nowrap;
@@ -28,22 +29,34 @@
   box-sizing: border-box;
 }
 
+.button:active:not(:disabled) {
+  transform: scale(0.97) translateY(1px);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+}
+
 /* --- Variants --- */
 
-/* Primary: Wine fill, sand/white text, 1px press translate, no glow */
+/* Primary: Wine fill, sand/white text, tactile press, no glow */
 .primary {
   background-color: var(--color-wine);
   color: #FFFFFF;
   border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(127, 1, 31, 0.15);
 }
 
 .primary:hover:not(:disabled) {
   background-color: var(--color-wine-hover);
+  box-shadow: 0 2px 6px rgba(127, 1, 31, 0.25);
 }
 
 .primary:active:not(:disabled) {
   background-color: var(--color-wine-active);
-  transform: translateY(1px);
+  transform: scale(0.97) translateY(1px);
+  box-shadow: none;
 }
 
 /* Secondary: Surface fill, ink text, strong border */
@@ -94,6 +107,61 @@
 
 .destructive:active:not(:disabled) {
   transform: translateY(1px);
+}
+
+/* Custom Variant 1: Sand Solid (Warm Fintech Accent per design.md §3) */
+.sandSolid {
+  background-color: var(--color-sand);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  font-weight: 600;
+}
+
+.sandSolid:hover:not(:disabled) {
+  background-color: var(--color-sand-hover);
+  border-color: var(--color-border-strong);
+}
+
+.sandSolid:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Custom Variant 2: Wine Outline (Subtle Brand Border per design.md §7) */
+.wineOutline {
+  background-color: transparent;
+  color: var(--color-wine);
+  border: 1.5px solid var(--color-wine);
+  font-weight: 600;
+}
+
+.wineOutline:hover:not(:disabled) {
+  background-color: var(--color-wine-subtle);
+}
+
+.wineOutline:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Micro-interaction: Light Hover Lift */
+.liftOnHover:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 26, 27, 0.08);
+}
+
+.liftOnHover:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Micro-interaction: Arrow Slide on hover */
+.arrowSlide:hover:not(:disabled) .arrowSlideIcon {
+  transform: translateX(3px);
+}
+
+.arrowSlideIcon {
+  display: inline-flex;
+  align-items: center;
+  transition: transform var(--motion-fast) var(--ease-standard);
 }
 
 /* --- Focus-visible (2px ring with 2px offset, 3:1 contrast) --- */

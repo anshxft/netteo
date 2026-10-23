@@ -1,0 +1,218 @@
+/* ==========================================================================
+   Netteo Architectural Footer
+   Follows design-addendum.md §18, UI.md §11, and Warm Minimal Fintech aesthetic
+   ========================================================================== */
+
+.footerWrapper {
+  width: 100%;
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-4xl) var(--space-lg) var(--space-2xl);
+  font-family: inherit;
+  color: var(--color-ink);
+  margin-top: auto;
+}
+
+.footerContainer {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1.3fr 1fr;
+  gap: var(--space-3xl);
+  margin-bottom: var(--space-3xl);
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.brandLogo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-wine);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.brandName {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: -0.02em;
+}
+
+.brandDesc {
+  font-size: var(--text-sm);
+  color: var(--color-ink-secondary);
+  line-height: 1.5;
+  max-width: 280px;
+}
+
+.networkStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 4px 10px;
+  background-color: var(--color-sand-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-ink);
+  width: fit-content;
+}
+
+.pulseDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--color-success);
+  box-shadow: 0 0 0 2px rgba(27, 127, 75, 0.2);
+}
+
+.colHeader {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+  margin-bottom: 2px;
+}
+
+.linkList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.footerLink {
+  font-size: var(--text-sm);
+  color: var(--color-ink-secondary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--motion-fast) var(--ease-standard);
+  width: fit-content;
+}
+
+.footerLink:hover {
+  color: var(--color-wine);
+}
+
+.footerLink:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.contractCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-sand-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+.contractCard:hover {
+  border-color: var(--color-border-strong);
+}
+
+.contractLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink-secondary);
+}
+
+.contractAddressRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.contractAddress {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-ink);
+}
+
+.copyButton {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  align-items: center;
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.copyButton:hover {
+  color: var(--color-wine);
+}
+
+.solvencyNote {
+  font-size: 13px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.bottomBar {
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-muted);
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.bottomLinks {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+@media (max-width: 900px) {
+  .footerGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2xl);
+  }
+}
+
+@media (max-width: 600px) {
+  .footerGrid {
+    grid-template-columns: 1fr;
+    gap: var(--space-xl);
+  }
+  .bottomBar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

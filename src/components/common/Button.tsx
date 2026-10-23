@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import styles from './Button.module.css';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'destructive';
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'destructive' | 'sandSolid' | 'wineOutline';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -11,6 +11,8 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   loadingText?: string;
   icon?: React.ReactNode;
   iconPosition?: 'left' | 'right';
+  enableLift?: boolean;
+  enableArrowSlide?: boolean;
   /**
    * Minimum lock time in ms to block duplicate rapid clicks (default: 600ms)
    */
@@ -33,6 +35,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
     loadingText,
     icon,
     iconPosition = 'left',
+    enableLift = false,
+    enableArrowSlide = false,
     disabled,
     onClick,
     doubleClickLockMs = 600,
@@ -82,7 +86,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
           await maybePromise;
         }
       } finally {
-        // Unlock if timer already passed
         if (!lockTimerRef.current) {
           isClickLockedRef.current = false;
         }
@@ -99,6 +102,17 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
     ...(lockedWidth ? { width: `${lockedWidth}px` } : {}),
   };
 
+  const buttonClasses = [
+    styles.button,
+    variantClass,
+    isBusy ? styles.loading : '',
+    enableLift ? styles.liftOnHover : '',
+    enableArrowSlide ? styles.arrowSlide : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <button
       ref={(node) => {
@@ -110,7 +124,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
         }
       }}
       type={props.type || 'button'}
-      className={`${styles.button} ${variantClass} ${isBusy ? styles.loading : ''} ${className}`.trim()}
+      className={buttonClasses}
       disabled={isDisabled}
       aria-busy={isBusy ? 'true' : undefined}
       aria-disabled={isDisabled ? 'true' : undefined}
@@ -127,7 +141,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
         <>
           {icon && iconPosition === 'left' && <span style={{ display: 'inline-flex' }}>{icon}</span>}
           <span>{children}</span>
-          {icon && iconPosition === 'right' && <span style={{ display: 'inline-flex' }}>{icon}</span>}
+          {icon && iconPosition === 'right' && (
+            <span className={enableArrowSlide ? styles.arrowSlideIcon : undefined} style={{ display: 'inline-flex' }}>
+              {icon}
+            </span>
+          )}
         </>
       )}
     </button>

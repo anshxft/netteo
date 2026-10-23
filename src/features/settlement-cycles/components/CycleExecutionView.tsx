@@ -43,6 +43,7 @@ import { CONTRACT_ADDRESSES, isSupportedNetwork } from '@/lib/chain/config';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
 import { useSettlementEvents } from '@/lib/chain/useSettlementEvents';
 import { CdpAutoBorrowDrawer } from './CdpAutoBorrowDrawer';
+import { useToast } from '@/components/ui/Toast/ToastContext';
 
 export interface CycleExecutionViewProps {
   cycleId: string;
@@ -108,6 +109,7 @@ function buildSyntheticCycle(
 
 export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   const { mode, resetCounter } = useWorkspace();
+  const { toast } = useToast();
   const { address: userAddress, isConnected, chainId } = useAccount();
   const musd = useMusdToken({ spenderAddress: CONTRACT_ADDRESSES.settlementKernel });
   const kernel = useSettlementKernel();
@@ -116,22 +118,27 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   // Reactive CometBFT WebSocket event stream for instant single-block UI updates
   useSettlementEvents(cycleId, {
     onDepositReceived: () => {
+      toast.info('Deposit Confirmed', 'A counterparty net deposit was recorded on Mezo.');
       authoritative.refetch();
       refreshCycle();
     },
     onCycleReadyToSettle: () => {
+      toast.success('Cycle 100% Funded', 'All net deposits received. Atomic distribution ready.');
       authoritative.refetch();
       refreshCycle();
     },
     onCycleSettled: () => {
+      toast.success('Settlement Finalized', 'All net creditor payouts executed atomically.');
       authoritative.refetch();
       refreshCycle();
     },
     onCycleCancelled: () => {
+      toast.warning('Cycle Cancelled', 'Funding deadline expired or cancelled by participants.');
       authoritative.refetch();
       refreshCycle();
     },
     onRefundClaimed: () => {
+      toast.info('Refund Claimed', 'Deposited MUSD returned to wallet.');
       authoritative.refetch();
       refreshCycle();
     },
