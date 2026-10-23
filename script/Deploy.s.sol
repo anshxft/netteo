@@ -32,7 +32,8 @@ contract Deploy is Script {
             MockMUSD mock = new MockMUSD();
             vm.stopBroadcast();
             musdAddress = address(mock);
-            console.log("Deployed MockMUSD token for local testing at:", musdAddress);
+            console.log("[DEPRECATED] Deployed MockMUSD token for local offline testing only at:", musdAddress);
+            console.log("NOTE: Canonical Mezo Testnet MUSD is 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503.");
         }
 
         vm.startBroadcast(deployerPrivateKey);

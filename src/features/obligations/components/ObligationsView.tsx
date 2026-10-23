@@ -12,7 +12,7 @@ import { Icon } from '@/components/icons/Icon';
 import { ObligationsLedger } from './ObligationsLedger';
 import { ProposeObligationModal } from './ProposeObligationModal';
 import { ObligationIcon, CycleIcon } from '@/components/icons/netteo';
-import { Plus, AlertCircle, RefreshCw, ArrowRight } from 'lucide-react';
+import { Plus, AlertCircle, RefreshCw, ArrowRight, WifiOff } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast/ToastContext';
 
 export function ObligationsView() {
@@ -59,13 +59,20 @@ export function ObligationsView() {
 
     if (typeof window !== 'undefined') {
       setIsOffline(!navigator.onLine);
-      const onOnline = () => setIsOffline(false);
+      const onOnline = () => {
+        setIsOffline(false);
+        fetchObligations();
+      };
       const onOffline = () => setIsOffline(true);
+      const onSynced = () => fetchObligations();
+
       window.addEventListener('online', onOnline);
       window.addEventListener('offline', onOffline);
+      window.addEventListener('netteo_proposals_synced', onSynced);
       return () => {
         window.removeEventListener('online', onOnline);
         window.removeEventListener('offline', onOffline);
+        window.removeEventListener('netteo_proposals_synced', onSynced);
       };
     }
   }, [mode, resetCounter]);
@@ -97,7 +104,7 @@ export function ObligationsView() {
           <Button
             variant="secondary"
             icon={<Icon icon={Plus} size="sm" />}
-            disabled={isOffline || isLoading}
+            disabled={isLoading}
             onClick={() => setIsModalOpen(true)}
           >
             New Payment Claim
@@ -115,6 +122,27 @@ export function ObligationsView() {
           )}
         </div>
       </div>
+
+      {/* --- STATE 5: Offline State Notice Banner --- */}
+      {isOffline && (
+        <div
+          className={styles.errorBanner}
+          style={{
+            backgroundColor: 'var(--color-sand)',
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-ink)',
+            marginBottom: 'var(--space-lg)',
+          }}
+          role="status"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+            <Icon icon={WifiOff} size="sm" color="var(--color-muted)" />
+            <span>
+              <strong>Working offline.</strong> Payments recorded now are stored locally and will automatically sync to the shared ledger when reconnected.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Summary KPI Strip */}
       {!isLoading && obligations.length > 0 && (
@@ -265,12 +293,11 @@ export function ObligationsView() {
           </div>
           <h2 className={styles.emptyStateTitle}>No Obligations Found</h2>
           <p className={styles.emptyStateDesc}>
-            Propose a bilateral payment claim between members of a working group. Once accepted by the debtor, it can be netted in a settlement cycle.
+            Propose a bilateral payment claim between members of a group. Once accepted by the debtor, it can be netted in a settlement.
           </p>
           <Button
             variant="primary"
             icon={<Icon icon={Plus} size="sm" color="#FFFFFF" />}
-            disabled={isOffline}
             onClick={() => setIsModalOpen(true)}
           >
             Propose Obligation

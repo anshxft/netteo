@@ -71,13 +71,14 @@ export function useMusdToken(options?: UseMusdTokenOptions) {
     },
   });
 
-  // Read: Decimals
+  // Read: Decimals (cached infinitely to avoid redundant RPC round-trips on immutable token decimals)
   const { data: decimals } = useReadContract({
     address: tokenAddress,
     abi: erc20Abi,
     functionName: 'decimals',
     query: {
       enabled: isCorrectNetwork && tokenAddress !== '0x0000000000000000000000000000000000000000',
+      staleTime: Infinity,
     },
   });
 

@@ -144,11 +144,32 @@ export async function syncObligationToSupabase(
 
     if (error) {
       console.warn('[Supabase] Obligation insert warning:', error.message);
+      saveUnsyncedProposal({
+        id: validId || obligation.id,
+        groupId: validGroupId,
+        debtorAddress: obligation.debtorAddress,
+        creditorAddress: obligation.creditorAddress,
+        amountUnits: obligation.amount.toString(),
+        referenceLabel: obligation.referenceLabel,
+        signerAddress: obligation.proposerAddress,
+        queuedAt: new Date().toISOString(),
+      });
       return false;
     }
+    removeUnsyncedProposal(obligation.id);
     return true;
   } catch (err) {
     console.warn('[Supabase] Failed to save obligation to database:', err);
+    saveUnsyncedProposal({
+      id: obligation.id,
+      groupId,
+      debtorAddress: obligation.debtorAddress,
+      creditorAddress: obligation.creditorAddress,
+      amountUnits: obligation.amount.toString(),
+      referenceLabel: obligation.referenceLabel,
+      signerAddress: obligation.proposerAddress,
+      queuedAt: new Date().toISOString(),
+    });
     return false;
   }
 }
@@ -278,4 +299,124 @@ export async function syncCyclesFromSupabase(): Promise<SettlementCycle[] | null
     return null;
   }
 }
+
+// --- Offline Queue & Background Sync ---
+
+export interface UnsyncedProposal {
+  id: string;
+  groupId: string;
+  debtorAddress: string;
+  creditorAddress: string;
+  amountUnits: string;
+  referenceLabel: string;
+  signerAddress?: string;
+  signature?: string;
+  nonce?: string;
+  timestamp?: number;
+  queuedAt: string;
+}
+
+export const UNSYNCED_PROPOSALS_STORAGE_KEY = 'netteo_unsynced_proposals';
+
+export function getUnsyncedProposals(): UnsyncedProposal[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(UNSYNCED_PROPOSALS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveUnsyncedProposal(proposal: UnsyncedProposal): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = getUnsyncedProposals();
+    const updated = [...existing.filter((p) => p.id !== proposal.id), proposal];
+    localStorage.setItem(UNSYNCED_PROPOSALS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('[SyncService] Failed to queue unsynced proposal:', err);
+  }
+}
+
+export function removeUnsyncedProposal(id: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = getUnsyncedProposals();
+    const filtered = existing.filter((p) => p.id !== id);
+    localStorage.setItem(UNSYNCED_PROPOSALS_STORAGE_KEY, JSON.stringify(filtered));
+  } catch (err) {
+    console.warn('[SyncService] Failed to dequeue unsynced proposal:', err);
+  }
+}
+
+export async function flushUnsyncedProposals(): Promise<number> {
+  const queue = getUnsyncedProposals();
+  if (queue.length === 0) return 0;
+
+  let flushed = 0;
+  for (const item of queue) {
+    try {
+      if (item.signature && item.signerAddress) {
+        const res = await fetch('/api/obligations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'propose',
+            groupId: item.groupId,
+            debtorAddress: item.debtorAddress,
+            creditorAddress: item.creditorAddress,
+            amountUnits: item.amountUnits,
+            referenceLabel: item.referenceLabel,
+            signerAddress: item.signerAddress,
+            signature: item.signature,
+            nonce: item.nonce,
+            timestamp: item.timestamp,
+          }),
+        });
+
+        if (res.ok) {
+          removeUnsyncedProposal(item.id);
+          flushed++;
+          continue;
+        }
+      }
+
+      // Fallback direct Supabase insert if signed API was bypassed or unavailable
+      if (supabase) {
+        const { error } = await supabase.from('obligations').upsert({
+          id: ensureUuid(item.id, undefined),
+          group_id: ensureUuid(item.groupId),
+          proposer_address: (item.signerAddress || item.creditorAddress).toLowerCase(),
+          debtor_address: item.debtorAddress.toLowerCase(),
+          creditor_address: item.creditorAddress.toLowerCase(),
+          amount_units: item.amountUnits,
+          reference_label: item.referenceLabel,
+          status: 'proposed',
+        });
+
+        if (!error) {
+          removeUnsyncedProposal(item.id);
+          flushed++;
+        }
+      }
+    } catch (err) {
+      console.warn(`[SyncService] Retry sync failed for proposal ${item.id}:`, err);
+    }
+  }
+
+  return flushed;
+}
+
+// Auto-register background flush when coming back online
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    flushUnsyncedProposals().then((count) => {
+      if (count > 0) {
+        window.dispatchEvent(new CustomEvent('netteo_proposals_synced', { detail: { count } }));
+      }
+    });
+  });
+}
+
 
