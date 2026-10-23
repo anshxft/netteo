@@ -6,7 +6,7 @@ import modalStyles from '@/features/groups/components/GroupsView.module.css';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { proposeObligation, parseMusdToBaseUnits } from '../store';
-import { syncObligationToSupabase } from '@/lib/db/syncService';
+import { saveUnsyncedProposal } from '@/lib/db/syncService';
 import { loadGroups } from '@/features/groups/store';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { useAccount, useSignMessage } from 'wagmi';
@@ -60,6 +60,8 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
     setIsSubmitting(true);
 
     try {
+      let isQueuedOffline = false;
+
       if (mode === 'live') {
         if (!isConnected || !userAddress) {
           throw new Error('Please connect your wallet to propose an obligation on Mezo.');
@@ -82,26 +84,52 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
 
         const signature = await signMessageAsync({ message: challengeMsg });
 
-        const res = await fetch('/api/obligations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'propose',
-            groupId,
-            debtorAddress: debtorAddress.trim(),
-            creditorAddress: creditorAddress.trim(),
-            amountUnits,
-            referenceLabel: referenceLabel.trim(),
-            signerAddress: userAddress,
-            signature,
-            nonce,
-            timestamp,
-          }),
-        });
+        try {
+          const res = await fetch('/api/obligations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'propose',
+              groupId,
+              debtorAddress: debtorAddress.trim(),
+              creditorAddress: creditorAddress.trim(),
+              amountUnits,
+              referenceLabel: referenceLabel.trim(),
+              signerAddress: userAddress,
+              signature,
+              nonce,
+              timestamp,
+            }),
+          });
 
-        const result = await res.json();
-        if (!res.ok) {
-          throw new Error(result.error || 'Failed to persist obligation to shared ledger.');
+          if (!res.ok) {
+            const result = await res.json().catch(() => ({}));
+            throw new Error(result.error || 'Failed to persist obligation to shared ledger.');
+          }
+        } catch (netErr: any) {
+          // If offline or network drop occurs, queue proposal for auto-sync
+          if (
+            (typeof navigator !== 'undefined' && !navigator.onLine) ||
+            netErr.message?.includes('fetch') ||
+            netErr.name === 'TypeError'
+          ) {
+            isQueuedOffline = true;
+            saveUnsyncedProposal({
+              id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `offline-${Date.now()}`,
+              groupId,
+              debtorAddress: debtorAddress.trim(),
+              creditorAddress: creditorAddress.trim(),
+              amountUnits,
+              referenceLabel: referenceLabel.trim(),
+              signerAddress: userAddress,
+              signature,
+              nonce,
+              timestamp,
+              queuedAt: new Date().toISOString(),
+            });
+          } else {
+            throw netErr;
+          }
         }
 
         // Also record in local live store
@@ -136,7 +164,18 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
       setCreditorAddress('');
       setAmountMusd('');
       setReferenceLabel('');
-      toast.success('Payment claim recorded', 'Your payment has been logged to the shared ledger and awaits approval.');
+
+      if (isQueuedOffline) {
+        toast.info(
+          'Payment saved locally',
+          'You are currently offline. Your claim was recorded locally and queued to sync automatically when reconnected.'
+        );
+      } else {
+        toast.success(
+          'Payment claim recorded',
+          'Your payment has been logged to the shared ledger and awaits approval.'
+        );
+      }
       onCreated();
       onClose();
     } catch (err: any) {
