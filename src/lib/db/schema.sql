@@ -211,3 +211,26 @@ CREATE POLICY "Public update cycles" ON cycles
 CREATE POLICY "Public insert cycle_obligations" ON cycle_obligations 
   FOR INSERT TO anon, authenticated WITH CHECK (true);
 
+-- ----------------------------------------------------------------------------
+-- 6. Consumed Nonces (Serverless Replay Protection across Lambdas)
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS consumed_nonces (
+  nonce VARCHAR(128) PRIMARY KEY,
+  challenge_timestamp BIGINT NOT NULL,
+  consumed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_consumed_nonces_timestamp ON consumed_nonces(challenge_timestamp);
+
+ALTER TABLE consumed_nonces ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role manages consumed_nonces" ON consumed_nonces
+  FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+CREATE POLICY "Public insert consumed_nonces" ON consumed_nonces 
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY "Public select consumed_nonces" ON consumed_nonces 
+  FOR SELECT TO anon, authenticated USING (true);
+

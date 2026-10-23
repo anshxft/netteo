@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Replay & Timestamp Protection
-    const nonceCheck = validateAndConsumeNonce(nonce, timestamp);
+    const nonceCheck = await validateAndConsumeNonce(nonce, timestamp);
     if (!nonceCheck.valid) {
       return NextResponse.json({ error: nonceCheck.reason }, { status: 401 });
     }

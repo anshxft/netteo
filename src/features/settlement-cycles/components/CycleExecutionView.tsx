@@ -508,7 +508,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
           }}
         >
           <Icon icon={ArrowLeft} size="sm" />
-          <span>Back to Settlement Cycles</span>
+          <span>Back to Settlements</span>
         </Link>
       </div>
 
@@ -562,14 +562,14 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             </span>
           </div>
           <p className={obStyles.subtitle}>
-            Cycle ID: <code style={{ fontSize: '13px' }}>{displayCycle.id}</code>
+            Settlement ID: <code style={{ fontSize: '13px' }}>{displayCycle.id}</code>
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
           <Link href={`/cycles/${cycleId}/audit`} style={{ textDecoration: 'none' }}>
             <Button variant="secondary" icon={<Icon icon={FileText} size="sm" />}>
-              View Audit Statement
+              View Settlement Receipt
             </Button>
           </Link>
 
@@ -596,7 +596,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
               loadingText={mode === 'live' ? 'Cancelling on Mezo...' : 'Cancelling...'}
               onClick={handleCancelCycle}
             >
-              Cancel Settlement Cycle
+              Cancel Settlement
             </Button>
           )}
         </div>
