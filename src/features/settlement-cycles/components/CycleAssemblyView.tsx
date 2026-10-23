@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
@@ -9,7 +9,7 @@ import styles from './NettingGraph.module.css';
 import obStyles from '@/features/obligations/components/ObligationsView.module.css';
 import { loadObligations, formatBaseUnitsToDisplay } from '@/features/obligations/store';
 import { Obligation } from '@/features/obligations/types';
-import { calculateNetting, ObligationInput } from '../netting';
+import { calculateNetting, ObligationInput, NettingResult } from '../netting';
 import { createCycleFromObligations, saveCycles, loadCycles } from '../store';
 import { syncCycleToSupabase } from '@/lib/db/syncService';
 import { NettingGraph } from './NettingGraph';
@@ -106,7 +106,19 @@ export function CycleAssemblyView() {
 
   const selectedObligations = obligations.filter((o) => selectedIds.includes(o.id));
 
-  // Compute live netting
+  // Compute unique participants across selected obligations
+  const distinctParticipants = useMemo(() => {
+    const set = new Set<string>();
+    for (const ob of selectedObligations) {
+      if (ob.debtorAddress) set.add(ob.debtorAddress.toLowerCase());
+      if (ob.creditorAddress) set.add(ob.creditorAddress.toLowerCase());
+    }
+    return set;
+  }, [selectedObligations]);
+
+  const isParticipantLimitExceeded = distinctParticipants.size > 10;
+
+  // Compute live netting safely
   const nettingInputs: ObligationInput[] = selectedObligations.map((o) => ({
     id: o.id,
     debtor: o.debtorAddress,
@@ -115,15 +127,27 @@ export function CycleAssemblyView() {
     referenceLabel: o.referenceLabel,
   }));
 
-  const nettingResult = selectedObligations.length > 0
-    ? calculateNetting(nettingInputs, 10, 30, {
+  let nettingResult: NettingResult | null = null;
+  let calculationError: string | null = null;
+
+  if (selectedObligations.length > 0 && !isParticipantLimitExceeded) {
+    try {
+      nettingResult = calculateNetting(nettingInputs, 10, 30, {
         chainId: chainId || MEZO_TESTNET_CHAIN_ID,
         tokenAddress: selectedTokenAddress,
-      })
-    : null;
+      });
+    } catch (err: any) {
+      calculationError = err.message || 'Error calculating netting positions';
+    }
+  }
 
   const handleFreezeCycle = async () => {
-    if (selectedIds.length === 0 || !nettingResult) return;
+    if (selectedIds.length === 0 || isParticipantLimitExceeded || !nettingResult) {
+      if (isParticipantLimitExceeded) {
+        toast.error('Participant Limit Exceeded', `Maximum 10 participants allowed per settlement on Mezo (selected: ${distinctParticipants.size}).`);
+      }
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
 
@@ -273,7 +297,7 @@ export function CycleAssemblyView() {
           <Button
             variant="primary"
             icon={<Icon icon={isLiveContractReady ? Send : SnapshotIcon} size="sm" color="#FFFFFF" />}
-            disabled={selectedIds.length === 0 || isOffline || isSubmitting || isTxPending}
+            disabled={selectedIds.length === 0 || isOffline || isSubmitting || isTxPending || isParticipantLimitExceeded}
             isLoading={isSubmitting || isTxPending}
             loadingText={isConfirming ? 'Confirming on Mezo...' : 'Locking Settlement...'}
             onClick={handleFreezeCycle}
@@ -284,7 +308,11 @@ export function CycleAssemblyView() {
                 : `Connect Wallet to Settle (${selectedIds.length} payments)`
               : `Lock & Settle Demo (${selectedIds.length} payments)`}
           </Button>
-          {mode === 'demo' ? (
+          {isParticipantLimitExceeded ? (
+            <span style={{ fontSize: '11px', color: 'var(--color-danger)', fontWeight: 600 }}>
+              &bull; Participant limit exceeded ({distinctParticipants.size}/10 maximum)
+            </span>
+          ) : mode === 'demo' ? (
             <span style={{ fontSize: '11px', color: 'var(--color-wine)', fontWeight: 500 }}>
               &bull; Demo Sandbox Mode (Instant Settlement Simulation)
             </span>
@@ -335,6 +363,41 @@ export function CycleAssemblyView() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
             <Icon icon={AlertCircle} size="sm" color="var(--color-danger)" />
             <span>{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Participant Cap Exceeded Banner */}
+      {isParticipantLimitExceeded && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: 'rgba(127, 1, 31, 0.06)',
+            border: '1px solid var(--color-wine)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-md) var(--space-lg)',
+            marginBottom: 'var(--space-lg)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-sm)',
+            color: 'var(--color-wine)',
+            fontSize: '13px',
+            lineHeight: 1.5,
+          }}
+        >
+          <Icon icon={AlertCircle} size="sm" color="var(--color-wine)" />
+          <div>
+            <strong>Participant limit exceeded:</strong> Current selection involves <strong>{distinctParticipants.size}</strong> distinct counterparties.
+            The Mezo Settlement Kernel enforces a protocol ceiling of 10 participants per settlement. Please deselect some payments to proceed.
+          </div>
+        </div>
+      )}
+
+      {calculationError && !isParticipantLimitExceeded && (
+        <div className={obStyles.errorBanner} role="alert" style={{ marginBottom: 'var(--space-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+            <Icon icon={AlertCircle} size="sm" color="var(--color-danger)" />
+            <span>{calculationError}</span>
           </div>
         </div>
       )}

@@ -53,7 +53,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
 
       if (mode === 'live') {
         if (!isConnected || !userAddress) {
-          throw new Error('Please connect your wallet to create a working group on Mezo.');
+          throw new Error('Please connect your wallet to create a group on Mezo.');
         }
 
         const participantList = [...initialAddresses];
@@ -92,7 +92,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
 
         const result = await res.json();
         if (!res.ok) {
-          throw new Error(result.error || 'Failed to create shared working group.');
+          throw new Error(result.error || 'Failed to create group.');
         }
 
         createGroup(
@@ -122,7 +122,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
       onClose();
     } catch (err: any) {
       // Input preservation: name, description, and participantsRaw are NOT wiped
-      setErrorMsg(err.message || 'Failed to create working group.');
+      setErrorMsg(err.message || 'Failed to create group.');
     } finally {
       setIsSubmitting(false);
     }
@@ -139,7 +139,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
       >
         <div className={styles.modalHeader}>
           <h2 id="modal-title" className={styles.modalTitle}>
-            Create Working Group
+            Create Group
           </h2>
           <Button
             variant="tertiary"

@@ -94,7 +94,7 @@ export function ParticipantTable({
       )}
 
       <div className={styles.tableContainer}>
-        <table className={styles.table} aria-label="Working Group Participants">
+        <table className={styles.table} aria-label="Group Participants">
           <thead>
             <tr>
               <th scope="col" style={{ width: '48px' }}>#</th>
