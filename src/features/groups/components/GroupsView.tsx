@@ -43,7 +43,7 @@ export function GroupsView() {
         const data = loadGroups(mode);
         setGroups(data);
       } catch {
-        setError('Failed to load working groups. Please refresh or try again.');
+        setError('Failed to load groups. Please refresh or try again.');
       }
     } finally {
       setIsLoading(false);
@@ -68,7 +68,7 @@ export function GroupsView() {
 
   const handleGroupCreated = () => {
     fetchGroups();
-    setSuccessNotice('Working group created successfully.');
+    setSuccessNotice('Group created successfully.');
     setTimeout(() => setSuccessNotice(null), 3000);
   };
 
@@ -77,9 +77,9 @@ export function GroupsView() {
       {/* Page Header */}
       <div className={styles.pageHeader}>
         <div className={styles.titleArea}>
-          <h1>Working Groups</h1>
+          <h1>Groups</h1>
           <p className={styles.subtitle}>
-            Service collectives, DAO working groups, and contributor pods that share mutual payment obligations on Mezo.
+            Partner collectives, project teams, and DAO pods that share mutual payments and settle net balances on Mezo.
           </p>
         </div>
         <Button
@@ -141,9 +141,9 @@ export function GroupsView() {
           >
             <Icon icon={Users} size="lg" color="var(--color-wine)" />
           </div>
-          <h2 className={styles.emptyStateTitle}>No Working Groups Found</h2>
+          <h2 className={styles.emptyStateTitle}>No Groups Found</h2>
           <p className={styles.emptyStateDesc}>
-            Create a defined collective of counterparty addresses to record bilateral obligations and run settlement cycles.
+            Create a group of partner wallet addresses to record payments and run multilateral settlements.
           </p>
           <Button
             variant="primary"
@@ -151,7 +151,7 @@ export function GroupsView() {
             disabled={isOffline}
             onClick={() => setIsModalOpen(true)}
           >
-            Create Working Group
+            Create Group
           </Button>
         </div>
       )}
