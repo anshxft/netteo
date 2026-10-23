@@ -39,7 +39,7 @@ async function runAuthTests() {
     const isValid = await verifyChallengeSignature(challenge, sig, debtor.address);
     assert.equal(isValid, true, 'Debtor signature should verify successfully');
 
-    const nonceCheck = validateAndConsumeNonce(nonce, timestamp);
+    const nonceCheck = await validateAndConsumeNonce(nonce, timestamp);
     assert.equal(nonceCheck.valid, true, 'First nonce presentation should succeed');
     console.log('✔ Passed: Authorized debtor accepts obligation with valid signature and nonce');
   }
@@ -70,10 +70,10 @@ async function runAuthTests() {
     const nonce = 'fixed-replay-nonce-' + Date.now();
     const timestamp = Date.now();
 
-    const firstCheck = validateAndConsumeNonce(nonce, timestamp);
+    const firstCheck = await validateAndConsumeNonce(nonce, timestamp);
     assert.equal(firstCheck.valid, true, 'Initial consumption should be valid');
 
-    const secondCheck = validateAndConsumeNonce(nonce, timestamp);
+    const secondCheck = await validateAndConsumeNonce(nonce, timestamp);
     assert.equal(secondCheck.valid, false, 'Replaying the same nonce must be rejected');
     assert.match(secondCheck.reason || '', /Replay attack detected/i);
     console.log('✔ Passed: Replay attack with duplicate nonce strictly rejected');
@@ -84,7 +84,7 @@ async function runAuthTests() {
     const expiredTimestamp = Date.now() - (6 * 60 * 1000); // 6 minutes ago
     const nonce = 'expired-nonce-' + Date.now();
 
-    const check = validateAndConsumeNonce(nonce, expiredTimestamp);
+    const check = await validateAndConsumeNonce(nonce, expiredTimestamp);
     assert.equal(check.valid, false, 'Expired challenge must be rejected');
     assert.match(check.reason || '', /expired/i);
     console.log('✔ Passed: Expired challenge (> 5 minutes) strictly rejected');
@@ -173,7 +173,31 @@ async function runAuthTests() {
     console.log('✔ Passed: Group creation authorization message verified successfully');
   }
 
-  console.log('\nAll 7 Cryptographic Authorization Tests Passed Successfully!');
+  // Test 8: Serverless cross-lambda replay attack prevention via DB collision
+  {
+    const nonce = 'db-cross-lambda-nonce-' + Date.now();
+    const timestamp = Date.now();
+
+    // Mock client simulating a separate serverless lambda encountering a database collision (Postgres code 23505)
+    const mockDb = {
+      from: (table: string) => ({
+        insert: async (data: any) => {
+          assert.equal(table, 'consumed_nonces');
+          return { error: { code: '23505', message: 'duplicate key value violates unique constraint' } };
+        },
+      }),
+    };
+
+    // Reset local memory to simulate a brand-new cold-started serverless container
+    resetConsumedNonces();
+
+    const crossLambdaCheck = await validateAndConsumeNonce(nonce, timestamp, mockDb as any);
+    assert.equal(crossLambdaCheck.valid, false, 'Database collision across lambdas must reject replay');
+    assert.match(crossLambdaCheck.reason || '', /Replay attack detected/i);
+    console.log('✔ Passed: Cross-lambda serverless replay detected via DB collision & strictly rejected');
+  }
+
+  console.log('\nAll 8 Cryptographic Authorization Tests Passed Successfully!');
 }
 
 runAuthTests().catch((err) => {

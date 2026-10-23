@@ -1,5 +1,7 @@
 import { verifyMessage, getAddress, createPublicClient, http, type PublicClient } from 'viem';
 import { mezoTestnet } from '../chain/config';
+import { getServiceRoleClient, supabase } from '../db/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 let defaultClient: PublicClient | undefined;
 
@@ -129,8 +131,14 @@ export async function verifyChallengeSignature(
 /**
  * Checks that the challenge timestamp is within the acceptable time window
  * and that the nonce has not been consumed previously (replay protection).
+ * Persists consumed nonces to Supabase (`consumed_nonces` table) to maintain
+ * cross-instance replay prevention across serverless cold starts.
  */
-export function validateAndConsumeNonce(nonce: string, timestamp: number): { valid: boolean; reason?: string } {
+export async function validateAndConsumeNonce(
+  nonce: string,
+  timestamp: number,
+  customDbClient?: SupabaseClient | null
+): Promise<{ valid: boolean; reason?: string }> {
   if (!nonce || nonce.trim().length === 0) {
     return { valid: false, reason: 'Missing challenge nonce.' };
   }
@@ -140,20 +148,49 @@ export function validateAndConsumeNonce(nonce: string, timestamp: number): { val
     return { valid: false, reason: 'Challenge timestamp has expired or is invalid.' };
   }
 
+  // 1. Fast local in-memory check (prevents replay within the same node instance)
   if (consumedNonces.has(nonce)) {
     return { valid: false, reason: 'Replay attack detected: challenge nonce has already been consumed.' };
   }
 
-  // Consume nonce
+  // Consume in local memory cache
   consumedNonces.set(nonce, timestamp);
 
-  // Periodic cleanup of expired nonces
+  // Periodic cleanup of expired nonces in local cache
   if (consumedNonces.size > 1000) {
     const expiryCutoff = now - MAX_CHALLENGE_AGE_MS;
     for (const [n, ts] of consumedNonces.entries()) {
       if (ts < expiryCutoff) {
         consumedNonces.delete(n);
       }
+    }
+  }
+
+  // 2. Database persistence for cross-lambda serverless replay protection
+  const dbClient = customDbClient !== undefined ? customDbClient : (getServiceRoleClient() || supabase);
+  if (dbClient) {
+    try {
+      const { error } = await dbClient.from('consumed_nonces').insert({
+        nonce,
+        challenge_timestamp: timestamp,
+        consumed_at: new Date().toISOString(),
+      });
+
+      if (error) {
+        // Postgres unique violation (23505) or duplicate key error indicates nonce collision
+        if (
+          error.code === '23505' ||
+          error.message?.includes('duplicate key') ||
+          error.message?.includes('unique constraint') ||
+          error.message?.includes('already exists')
+        ) {
+          return { valid: false, reason: 'Replay attack detected: challenge nonce has already been consumed.' };
+        }
+        // Non-blocking notice for unmigrated local DBs (Secure_Vibe_Coding.pdf Rule 04: log server-side only)
+        console.warn('Database nonce persistence notice:', error.message);
+      }
+    } catch (err) {
+      console.warn('Database nonce persistence fell back to in-memory store:', err);
     }
   }
 
@@ -166,3 +203,4 @@ export function validateAndConsumeNonce(nonce: string, timestamp: number): { val
 export function resetConsumedNonces(): void {
   consumedNonces.clear();
 }
+
