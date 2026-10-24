@@ -118,6 +118,10 @@
   animation: contentSlideDown 180ms ease-out;
 }
 
+.accordionContent[hidden] {
+  display: none;
+}
+
 @keyframes contentSlideDown {
   from {
     opacity: 0;

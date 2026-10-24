@@ -68,8 +68,9 @@ export function TestimonialsCarousel() {
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (!trackRef.current) return;
-    const cardWidth = trackRef.current.clientWidth * 0.45;
-    const offset = direction === 'left' ? -cardWidth : cardWidth;
+    const card = trackRef.current.querySelector(`.${styles.testimonialCard}`) as HTMLElement | null;
+    const scrollStep = card ? card.offsetWidth + 24 : trackRef.current.clientWidth * 0.85;
+    const offset = direction === 'left' ? -scrollStep : scrollStep;
     trackRef.current.scrollBy({ left: offset, behavior: 'smooth' });
   };
 
