@@ -65,14 +65,23 @@ export function ObligationsView() {
       };
       const onOffline = () => setIsOffline(true);
       const onSynced = () => fetchObligations();
+      const onOpenRecordPayment = () => setIsModalOpen(true);
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('action') === 'new-payment') {
+        setIsModalOpen(true);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
 
       window.addEventListener('online', onOnline);
       window.addEventListener('offline', onOffline);
       window.addEventListener('netteo_proposals_synced', onSynced);
+      window.addEventListener('netteo_open_record_payment', onOpenRecordPayment);
       return () => {
         window.removeEventListener('online', onOnline);
         window.removeEventListener('offline', onOffline);
         window.removeEventListener('netteo_proposals_synced', onSynced);
+        window.removeEventListener('netteo_open_record_payment', onOpenRecordPayment);
       };
     }
   }, [mode, resetCounter]);

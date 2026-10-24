@@ -11,17 +11,15 @@ import {
   ArrowRight,
   Menu,
   X,
-  FileText,
-  RefreshCw,
   Users,
-  ShieldCheck,
 } from 'lucide-react';
-import { ObligationIcon, NettingIcon, CycleIcon, SnapshotIcon } from '../icons/netteo';
+import { ObligationIcon, CycleIcon, SnapshotIcon } from '../icons/netteo';
 
 interface SubItem {
   title: string;
   desc: string;
   href: string;
+  action?: 'new-payment' | 'create-group' | 'export-csv';
 }
 
 interface NavCategory {
@@ -45,7 +43,8 @@ const NAV_CATEGORIES: NavCategory[] = [
       {
         title: 'New Payment Claim',
         desc: 'Record a new payment owed by a group partner.',
-        href: '/obligations',
+        href: '/obligations?action=new-payment',
+        action: 'new-payment',
       },
     ],
   },
@@ -77,9 +76,10 @@ const NAV_CATEGORIES: NavCategory[] = [
         href: '/groups',
       },
       {
-        title: 'Add Partner',
-        desc: 'Invite contributor wallets into your payment group.',
-        href: '/groups',
+        title: 'Create Group',
+        desc: 'Set up a new collective or partner group.',
+        href: '/groups?action=create-group',
+        action: 'create-group',
       },
     ],
   },
@@ -96,7 +96,8 @@ const NAV_CATEGORIES: NavCategory[] = [
       {
         title: 'Export History (CSV)',
         desc: 'Download clean settlement history for your accounting.',
-        href: '/audit',
+        href: '/audit?action=export-csv',
+        action: 'export-csv',
       },
     ],
   },
@@ -105,13 +106,24 @@ const NAV_CATEGORIES: NavCategory[] = [
 export function AppNav() {
   const pathname = usePathname();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [pinnedDropdown, setPinnedDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearTimer = () => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        clearTimer();
+        setPinnedDropdown(null);
         setOpenDropdown(null);
       }
     }
@@ -123,6 +135,8 @@ export function AppNav() {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        clearTimer();
+        setPinnedDropdown(null);
         setOpenDropdown(null);
         setMobileMenuOpen(false);
       }
@@ -131,8 +145,54 @@ export function AppNav() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const toggleDropdown = (id: string) => {
-    setOpenDropdown((prev) => (prev === id ? null : id));
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => clearTimer();
+  }, []);
+
+  const handleMouseEnter = (id: string) => {
+    clearTimer();
+    if (!pinnedDropdown) {
+      setOpenDropdown(id);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    clearTimer();
+    if (pinnedDropdown) return;
+
+    leaveTimeoutRef.current = setTimeout(() => {
+      setOpenDropdown(null);
+    }, 250);
+  };
+
+  const toggleDropdown = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    clearTimer();
+    if (pinnedDropdown === id) {
+      setPinnedDropdown(null);
+      setOpenDropdown(null);
+    } else {
+      setPinnedDropdown(id);
+      setOpenDropdown(id);
+    }
+  };
+
+  const handleItemClick = (item: SubItem) => {
+    clearTimer();
+    setPinnedDropdown(null);
+    setOpenDropdown(null);
+    setMobileMenuOpen(false);
+
+    if (typeof window !== 'undefined' && item.action) {
+      if (item.action === 'new-payment') {
+        window.dispatchEvent(new CustomEvent('netteo_open_record_payment'));
+      } else if (item.action === 'create-group') {
+        window.dispatchEvent(new CustomEvent('netteo_open_create_group'));
+      } else if (item.action === 'export-csv') {
+        window.dispatchEvent(new CustomEvent('netteo_trigger_export_csv'));
+      }
+    }
   };
 
   return (
@@ -140,7 +200,7 @@ export function AppNav() {
       {/* Desktop Navigation */}
       <nav className={styles.nav} aria-label="Primary Netteo Navigation">
         {NAV_CATEGORIES.map((cat) => {
-          const isOpen = openDropdown === cat.id;
+          const isOpen = openDropdown === cat.id || pinnedDropdown === cat.id;
           const isCategoryActive =
             pathname.startsWith(`/${cat.id}`) ||
             (cat.id === 'obligations' && pathname === '/obligations');
@@ -149,13 +209,13 @@ export function AppNav() {
             <div
               key={cat.id}
               className={styles.navItemContainer}
-              onMouseEnter={() => setOpenDropdown(cat.id)}
-              onMouseLeave={() => setOpenDropdown(null)}
+              onMouseEnter={() => handleMouseEnter(cat.id)}
+              onMouseLeave={handleMouseLeave}
             >
               <button
                 type="button"
                 className={`${styles.navButton} ${isOpen || isCategoryActive ? styles.navButtonActive : ''}`}
-                onClick={() => toggleDropdown(cat.id)}
+                onClick={(e) => toggleDropdown(cat.id, e)}
                 aria-expanded={isOpen}
                 aria-haspopup="true"
               >
@@ -166,14 +226,20 @@ export function AppNav() {
               </button>
 
               {isOpen && (
-                <div className={styles.dropdown} role="menu" aria-label={`${cat.label} menu`}>
+                <div
+                  className={styles.dropdown}
+                  role="menu"
+                  aria-label={`${cat.label} menu`}
+                  onMouseEnter={() => handleMouseEnter(cat.id)}
+                  onMouseLeave={handleMouseLeave}
+                >
                   {cat.items.map((item) => (
                     <Link
                       key={item.title}
                       href={item.href}
                       className={styles.dropdownItem}
                       role="menuitem"
-                      onClick={() => setOpenDropdown(null)}
+                      onClick={() => handleItemClick(item)}
                     >
                       <span className={styles.itemTitle}>{item.title}</span>
                       <span className={styles.itemDesc}>{item.desc}</span>
@@ -210,7 +276,7 @@ export function AppNav() {
                 enableLift
                 enableArrowSlide
               >
-                Open Obligation Desk
+                Open Desk
               </Button>
             </Link>
           </div>
@@ -223,7 +289,7 @@ export function AppNav() {
                   key={item.title}
                   href={item.href}
                   className={styles.mobileItem}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={() => handleItemClick(item)}
                 >
                   <span className={styles.itemTitle}>{item.title}</span>
                   <span className={styles.itemDesc}>{item.desc}</span>
