@@ -266,7 +266,15 @@ export function FeatureBento() {
 
           {/* Savings Progress Bar */}
           {clearingMode === 'net' && (
-            <div className={styles.progressTrack} aria-label="Liquidity Efficiency Gauge">
+            <div
+              className={styles.progressTrack}
+              role="progressbar"
+              aria-label="Liquidity Efficiency Gauge"
+              aria-valuenow={scenario.savedPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuetext={`${scenario.savedPercent}% capital conserved`}
+            >
               <div className={styles.progressFill} style={{ width: `${scenario.savedPercent}%` }} />
             </div>
           )}
