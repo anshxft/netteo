@@ -1,0 +1,349 @@
+/* ==========================================================================
+   Feature Bento Grid Styles (Large Card + Smaller Companion Cards)
+   ========================================================================== */
+
+.bentoSection {
+  width: 100%;
+  max-width: 1200px;
+  margin: var(--space-4xl) auto 0;
+  padding: 0 var(--space-md);
+  box-sizing: border-box;
+}
+
+.headerContainer {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto var(--space-3xl);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 5px 12px;
+  background-color: var(--color-sand);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-wine);
+  margin-bottom: var(--space-md);
+}
+
+.title {
+  font-size: clamp(30px, 4.2vw, 44px);
+  line-height: 1.16;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-sm);
+}
+
+.highlightPill {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--color-wine);
+  color: #FFFFFF;
+  padding: 2px 16px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 4px 12px rgba(127, 1, 31, 0.2);
+  margin-left: 6px;
+}
+
+.subtitle {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-ink-secondary);
+  margin: 0;
+}
+
+/* Bento Grid Layout: Large Interactive Simulator Card + Small Cards */
+.bentoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* Large Featured Card */
+.largeCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 32px;
+  padding: var(--space-2xl);
+  box-shadow: 0 12px 36px -6px rgba(33, 26, 27, 0.05);
+}
+
+.simHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.simTitleGroup {
+  text-align: left;
+}
+
+.simTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 4px;
+}
+
+.simDesc {
+  font-size: 14px;
+  color: var(--color-muted);
+  margin: 0;
+}
+
+/* Persona Scenario Tabs */
+.scenarioTabs {
+  display: inline-flex;
+  background-color: var(--color-sand-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 3px;
+}
+
+.scenarioTab {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+}
+
+.scenarioTabActive {
+  background-color: var(--color-wine);
+  color: #FFFFFF;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(127, 1, 31, 0.25);
+}
+
+/* Mode Switcher Bar */
+.modeBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background-color: var(--color-page);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.modeButtons {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.modeBtn {
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-ink-secondary);
+  transition: all var(--motion-fast) var(--ease-standard);
+}
+
+.modeBtnGrossActive {
+  background-color: var(--color-ink);
+  color: #FFFFFF;
+  border-color: var(--color-ink);
+}
+
+.modeBtnNetActive {
+  background-color: var(--color-wine);
+  color: #FFFFFF;
+  border-color: var(--color-wine);
+  box-shadow: 0 2px 8px rgba(127, 1, 31, 0.25);
+}
+
+/* Metric Grid */
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.metricCard {
+  background-color: var(--color-sand-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md) var(--space-lg);
+  text-align: left;
+}
+
+.metricLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+}
+
+.metricValue {
+  display: block;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 2px;
+}
+
+.metricSavedValue {
+  color: var(--color-success);
+}
+
+.metricHint {
+  display: block;
+  font-size: 12px;
+  color: var(--color-ink-secondary);
+}
+
+/* Progress bar */
+.progressTrack {
+  width: 100%;
+  height: 8px;
+  background-color: var(--color-sand);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-xl);
+}
+
+.progressFill {
+  height: 100%;
+  background-color: var(--color-success);
+  border-radius: var(--radius-full);
+  transition: width 400ms var(--ease-standard);
+}
+
+/* Counterparty Table */
+.tableWrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  text-align: left;
+}
+
+.table th {
+  padding: 10px 14px;
+  background-color: var(--color-sand-light);
+  font-weight: 600;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-ink);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.debtorText {
+  color: var(--color-wine);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.creditorText {
+  color: var(--color-success);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Smaller Bento Cards (3 columns beside / under) */
+.smallCardsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xl);
+}
+
+.smallCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  padding: var(--space-xl);
+  text-align: left;
+  box-shadow: 0 8px 24px -4px rgba(33, 26, 27, 0.04);
+  transition: transform var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+
+.smallCard:hover {
+  transform: translateY(-3px);
+  border-color: var(--color-border-strong);
+}
+
+.cardIconPill {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-sand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-wine);
+  margin-bottom: var(--space-md);
+}
+
+.cardHeading {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-xs);
+}
+
+.cardText {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-ink-secondary);
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .smallCardsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .largeCard {
+    padding: var(--space-lg);
+    border-radius: 20px;
+  }
+}
