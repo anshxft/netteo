@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { isAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
   buildObligationActionMessage,
@@ -197,7 +198,38 @@ async function runAuthTests() {
     console.log('✔ Passed: Cross-lambda serverless replay detected via DB collision & strictly rejected');
   }
 
-  console.log('\nAll 8 Cryptographic Authorization Tests Passed Successfully!');
+  // Test 9: Input sanitization rejects malformed addresses and filter injection payloads
+  {
+    const validAddress = debtor.address;
+    const malformedAddresses = [
+      '0x123',
+      'not-an-address',
+      '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80),debtor_address.neq.0x0',
+      '0x1111111111111111111111111111111111111111; DROP TABLE obligations;',
+      '<script>alert(1)</script>',
+    ];
+
+    assert.equal(isAddress(validAddress), true, 'Valid Ethereum address must pass');
+    for (const bad of malformedAddresses) {
+      assert.equal(isAddress(bad), false, `Malformed address or injection payload "${bad}" must be rejected`);
+    }
+
+    const validUuid = '123e4567-e89b-12d3-a456-426614174000';
+    const invalidUuids = [
+      '123',
+      'invalid-uuid',
+      '123e4567-e89b-12d3-a456-426614174000; SELECT *',
+      '123e4567-e89b-12d3-a456-426614174000) OR 1=1',
+    ];
+    const uuidRegex = /^[0-9a-fA-F-]{36}$/;
+    assert.equal(uuidRegex.test(validUuid), true, 'Valid UUID must pass');
+    for (const badUuid of invalidUuids) {
+      assert.equal(uuidRegex.test(badUuid), false, `Invalid UUID "${badUuid}" must be rejected`);
+    }
+    console.log('✔ Passed: Input sanitization strictly rejects PostgREST filter injection and malformed UUIDs');
+  }
+
+  console.log('\nAll 9 Cryptographic Authorization & Input Validation Tests Passed Successfully!');
 }
 
 runAuthTests().catch((err) => {

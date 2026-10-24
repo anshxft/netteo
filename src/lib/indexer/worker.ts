@@ -64,63 +64,67 @@ export async function applyEventProjection(
           args: [cycleId as `0x${string}`],
         })) as [Address[], Address[]];
 
-        // 1. Initialize debtors with authoritative required amounts
+        // 1. Initialize debtors with authoritative required amounts concurrently
         if (Array.isArray(debtors)) {
-          for (const debtor of debtors) {
-            const debtorAddr = debtor.toLowerCase();
-            const debtorStatus = (await client.readContract({
-              address: contractAddress as Address,
-              abi: settlementKernelAbi,
-              functionName: 'getDebtorStatus',
-              args: [cycleId as `0x${string}`, debtor],
-            })) as [bigint, bigint, boolean];
+          await Promise.all(
+            debtors.map(async (debtor) => {
+              const debtorAddr = debtor.toLowerCase();
+              const debtorStatus = (await client.readContract({
+                address: contractAddress as Address,
+                abi: settlementKernelAbi,
+                functionName: 'getDebtorStatus',
+                args: [cycleId as `0x${string}`, debtor],
+              })) as [bigint, bigint, boolean];
 
-            const requiredAmount = debtorStatus?.[0] !== undefined ? debtorStatus[0].toString() : '0';
-            const fundedAmount = debtorStatus?.[1] !== undefined ? debtorStatus[1].toString() : '0';
-            const isFullyFunded = !!debtorStatus?.[2];
+              const requiredAmount = debtorStatus?.[0] !== undefined ? debtorStatus[0].toString() : '0';
+              const fundedAmount = debtorStatus?.[1] !== undefined ? debtorStatus[1].toString() : '0';
+              const isFullyFunded = !!debtorStatus?.[2];
 
-            const { error: debErr } = await db.from('participant_position_projection').upsert(
-              {
-                cycle_id: cycleId,
-                participant_address: debtorAddr,
-                position_type: 'debtor',
-                required_amount: requiredAmount,
-                funded_amount: fundedAmount,
-                is_fully_funded: isFullyFunded,
-                last_updated_block: blockNum,
-              },
-              { onConflict: 'cycle_id,participant_address' }
-            );
-            if (debErr) throw new Error(`CycleCreated debtor participant projection failed: ${debErr.message}`);
-          }
+              const { error: debErr } = await db.from('participant_position_projection').upsert(
+                {
+                  cycle_id: cycleId,
+                  participant_address: debtorAddr,
+                  position_type: 'debtor',
+                  required_amount: requiredAmount,
+                  funded_amount: fundedAmount,
+                  is_fully_funded: isFullyFunded,
+                  last_updated_block: blockNum,
+                },
+                { onConflict: 'cycle_id,participant_address' }
+              );
+              if (debErr) throw new Error(`CycleCreated debtor participant projection failed: ${debErr.message}`);
+            })
+          );
         }
 
-        // 2. Initialize creditors with calculated payout amounts
+        // 2. Initialize creditors with calculated payout amounts concurrently
         if (Array.isArray(creditors)) {
-          for (const creditor of creditors) {
-            const creditorAddr = creditor.toLowerCase();
-            const payout = (await client.readContract({
-              address: contractAddress as Address,
-              abi: settlementKernelAbi,
-              functionName: 'getCreditorPayout',
-              args: [cycleId as `0x${string}`, creditor],
-            })) as bigint;
+          await Promise.all(
+            creditors.map(async (creditor) => {
+              const creditorAddr = creditor.toLowerCase();
+              const payout = (await client.readContract({
+                address: contractAddress as Address,
+                abi: settlementKernelAbi,
+                functionName: 'getCreditorPayout',
+                args: [cycleId as `0x${string}`, creditor],
+              })) as bigint;
 
-            const { error: credErr } = await db.from('participant_position_projection').upsert(
-              {
-                cycle_id: cycleId,
-                participant_address: creditorAddr,
-                position_type: 'creditor',
-                required_amount: payout ? payout.toString() : '0',
-                distributed_amount: '0',
-                refunded_amount: '0',
-                is_fully_funded: false,
-                last_updated_block: blockNum,
-              },
-              { onConflict: 'cycle_id,participant_address' }
-            );
-            if (credErr) throw new Error(`CycleCreated creditor participant projection failed: ${credErr.message}`);
-          }
+              const { error: credErr } = await db.from('participant_position_projection').upsert(
+                {
+                  cycle_id: cycleId,
+                  participant_address: creditorAddr,
+                  position_type: 'creditor',
+                  required_amount: payout ? payout.toString() : '0',
+                  distributed_amount: '0',
+                  refunded_amount: '0',
+                  is_fully_funded: false,
+                  last_updated_block: blockNum,
+                },
+                { onConflict: 'cycle_id,participant_address' }
+              );
+              if (credErr) throw new Error(`CycleCreated creditor participant projection failed: ${credErr.message}`);
+            })
+          );
         }
       } catch (readErr: any) {
         // Log cleanly without leaking internal internals

@@ -28,9 +28,11 @@ export async function syncGroupsFromSupabase(): Promise<Group[] | null> {
 
     if (groupsError || !groupsData || groupsData.length === 0) return null;
 
+    const groupIds = groupsData.map((g) => g.id);
     const { data: membersData } = await supabase
       .from('group_members')
-      .select('group_id, wallet_address');
+      .select('group_id, wallet_address')
+      .in('group_id', groupIds);
 
     const membersByGroup: Record<string, string[]> = {};
     if (membersData) {
