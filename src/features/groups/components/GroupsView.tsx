@@ -57,11 +57,21 @@ export function GroupsView() {
       setIsOffline(!navigator.onLine);
       const onOnline = () => setIsOffline(false);
       const onOffline = () => setIsOffline(true);
+      const onOpenCreateGroup = () => setIsModalOpen(true);
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('action') === 'create-group') {
+        setIsModalOpen(true);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
       window.addEventListener('online', onOnline);
       window.addEventListener('offline', onOffline);
+      window.addEventListener('netteo_open_create_group', onOpenCreateGroup);
       return () => {
         window.removeEventListener('online', onOnline);
         window.removeEventListener('offline', onOffline);
+        window.removeEventListener('netteo_open_create_group', onOpenCreateGroup);
       };
     }
   }, [mode, resetCounter]);

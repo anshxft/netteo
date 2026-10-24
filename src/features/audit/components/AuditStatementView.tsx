@@ -69,6 +69,20 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
     };
   }, [cycleId, mode]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onTriggerExport = () => handleExportCSV();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'export-csv') {
+      handleExportCSV();
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    window.addEventListener('netteo_trigger_export_csv', onTriggerExport);
+    return () => window.removeEventListener('netteo_trigger_export_csv', onTriggerExport);
+  }, [cycle, includedObligations]);
+
   const handleExportCSV = () => {
     if (!cycle) return;
 
