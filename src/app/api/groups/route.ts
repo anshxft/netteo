@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAddress } from 'viem';
 import { getServiceRoleClient, supabase as publicSupabase } from '@/lib/db/supabase';
 import {
   buildCreateGroupMessage,
@@ -23,19 +24,46 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const participant = searchParams.get('participant');
 
+  if (participant && !isAddress(participant)) {
+    return NextResponse.json({ error: 'Invalid participant address format' }, { status: 400 });
+  }
+
   try {
-    const { data: groupsData, error: groupsError } = await db
+    let groupsQuery = db
       .from('groups')
       .select('id, name, description, creator_address, created_at')
       .order('created_at', { ascending: true });
+
+    if (participant) {
+      const lower = participant.toLowerCase();
+      const { data: memberships } = await db
+        .from('group_members')
+        .select('group_id')
+        .eq('wallet_address', lower);
+
+      const userGroupIds = (memberships || []).map((m: any) => m.group_id);
+      if (userGroupIds.length > 0) {
+        groupsQuery = groupsQuery.or(`creator_address.eq.${lower},id.in.(${userGroupIds.join(',')})`);
+      } else {
+        groupsQuery = groupsQuery.eq('creator_address', lower);
+      }
+    }
+
+    const { data: groupsData, error: groupsError } = await groupsQuery;
 
     if (groupsError) {
       return NextResponse.json({ error: 'Failed to retrieve working groups' }, { status: 500 });
     }
 
+    if (!groupsData || groupsData.length === 0) {
+      return NextResponse.json({ groups: [] });
+    }
+
+    const groupIds = groupsData.map((g: any) => g.id);
     const { data: membersData, error: membersError } = await db
       .from('group_members')
-      .select('group_id, wallet_address, role');
+      .select('group_id, wallet_address, role')
+      .in('group_id', groupIds);
 
     if (membersError) {
       return NextResponse.json({ error: 'Failed to retrieve group memberships' }, { status: 500 });
@@ -49,7 +77,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    let groups = (groupsData || []).map((g) => ({
+    let groups = groupsData.map((g: any) => ({
       id: g.id,
       name: g.name,
       description: g.description || '',
@@ -62,7 +90,7 @@ export async function GET(req: NextRequest) {
 
     if (participant) {
       const lower = participant.toLowerCase();
-      groups = groups.filter((g) => g.participants.some((p: string) => p.toLowerCase() === lower));
+      groups = groups.filter((g: any) => g.participants.some((p: string) => p.toLowerCase() === lower));
     }
 
     return NextResponse.json({ groups });

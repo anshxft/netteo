@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAddress } from 'viem';
 import { getServiceRoleClient, supabase as publicSupabase } from '@/lib/db/supabase';
 import {
   buildObligationActionMessage,
@@ -29,9 +30,15 @@ export async function GET(req: NextRequest) {
     let query = db.from('obligations').select('*').order('created_at', { ascending: false });
 
     if (groupId) {
+      if (!/^[0-9a-fA-F-]{36}$/.test(groupId)) {
+        return NextResponse.json({ error: 'Invalid groupId format' }, { status: 400 });
+      }
       query = query.eq('group_id', groupId);
     }
     if (participant) {
+      if (!isAddress(participant)) {
+        return NextResponse.json({ error: 'Invalid participant address format' }, { status: 400 });
+      }
       const lower = participant.toLowerCase();
       query = query.or(`debtor_address.eq.${lower},creditor_address.eq.${lower},proposer_address.eq.${lower}`);
     }
