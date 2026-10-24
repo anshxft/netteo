@@ -21,6 +21,8 @@ export function ensureUuid(id?: string, fallback: string = '00000000-0000-0000-0
 export async function syncGroupsFromSupabase(): Promise<Group[] | null> {
   if (!supabase) return null;
   try {
+    await flushUnsyncedGroups();
+
     const { data: groupsData, error: groupsError } = await supabase
       .from('groups')
       .select('id, name, description, creator_address, created_at')
@@ -85,6 +87,32 @@ export async function syncGroupToSupabase(group: Group, creatorAddress: string):
   } catch (err) {
     console.warn('[Supabase] Failed to persist group to database:', err);
     return false;
+  }
+}
+
+export async function flushUnsyncedGroups(): Promise<number> {
+  if (typeof window === 'undefined' || !supabase) return 0;
+  try {
+    const raw = localStorage.getItem('netteo_live_groups_v1');
+    if (!raw) return 0;
+    const localGroups: Group[] = JSON.parse(raw);
+    if (!Array.isArray(localGroups) || localGroups.length === 0) return 0;
+
+    const { data: remoteGroups, error } = await supabase.from('groups').select('id');
+    if (error) return 0;
+    const remoteIdSet = new Set((remoteGroups || []).map((g) => g.id));
+
+    let migrated = 0;
+    for (const group of localGroups) {
+      if (!remoteIdSet.has(group.id)) {
+        const creator = group.participants[0] || '0x0000000000000000000000000000000000000000';
+        const ok = await syncGroupToSupabase(group, creator);
+        if (ok) migrated++;
+      }
+    }
+    return migrated;
+  } catch {
+    return 0;
   }
 }
 
@@ -413,6 +441,7 @@ export async function flushUnsyncedProposals(): Promise<number> {
 // Auto-register background flush when coming back online
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
+    flushUnsyncedGroups();
     flushUnsyncedProposals().then((count) => {
       if (count > 0) {
         window.dispatchEvent(new CustomEvent('netteo_proposals_synced', { detail: { count } }));
