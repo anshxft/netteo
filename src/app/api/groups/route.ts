@@ -169,7 +169,11 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (groupErr || !insertedGroup) {
-      return NextResponse.json({ error: 'Failed to create working group' }, { status: 500 });
+      console.error('[API groups] Group insert error:', groupErr);
+      const detail = groupErr?.code === '42501'
+        ? 'Database permission denied (RLS policy). Configure SUPABASE_SERVICE_ROLE_KEY or run enable_writes.sql.'
+        : (groupErr?.message || 'Failed to create working group');
+      return NextResponse.json({ error: detail }, { status: 500 });
     }
 
     // 4. Persist group members
@@ -184,6 +188,7 @@ export async function POST(req: NextRequest) {
       .upsert(memberRows, { onConflict: 'group_id,wallet_address' });
 
     if (membersErr) {
+      console.error('[API groups] Members insert error:', membersErr);
       return NextResponse.json({ error: 'Failed to register group participants' }, { status: 500 });
     }
 
