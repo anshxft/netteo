@@ -93,14 +93,16 @@ export function AppLayout({
         </aside>
       )}
 
-      {/* Header & Nav */}
-      <AppHeader
-        walletAddress={activeAddress}
-        chainId={activeChainId}
-        isLandingPage={isLandingPage}
-        onConnectWallet={handleConnect}
-        onDisconnectWallet={handleDisconnect}
-      />
+      {/* Header & Nav: Workspace pages use AppHeader; Landing Page renders its own Floating Pill Navbar */}
+      {!isLandingPage && (
+        <AppHeader
+          walletAddress={activeAddress}
+          chainId={activeChainId}
+          isLandingPage={isLandingPage}
+          onConnectWallet={handleConnect}
+          onDisconnectWallet={handleDisconnect}
+        />
+      )}
 
       {/* Demo Explainer Banner: Shows simple English netting breakdown in Demo Mode (Suppressed on Landing Page) */}
       {!isLandingPage && <DemoExplainerBanner />}
@@ -126,8 +128,8 @@ export function AppLayout({
         {children}
       </main>
 
-      {/* Bespoke Architectural Footer */}
-      <AppFooter />
+      {/* Bespoke Architectural Footer for Workspace pages */}
+      {!isLandingPage && <AppFooter />}
 
       {/* Global Toast Notifications Container */}
       <ToastContainer />

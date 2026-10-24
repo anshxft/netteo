@@ -1,0 +1,226 @@
+/* ==========================================================================
+   Watermelon UI-Inspired Testimonials Carousel Styles
+   Restyled with Netteo Warm Minimal Fintech Tokens
+   ========================================================================== */
+
+.sectionWrapper {
+  width: 100%;
+  max-width: 1200px;
+  margin: var(--space-4xl) auto 0;
+  padding: 0 var(--space-md);
+  box-sizing: border-box;
+}
+
+.headerContainer {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto var(--space-3xl);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 5px 12px;
+  background-color: var(--color-sand);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-wine);
+  margin-bottom: var(--space-md);
+}
+
+.title {
+  font-size: clamp(30px, 4.2vw, 44px);
+  line-height: 1.16;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-sm);
+}
+
+.highlightPill {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--color-wine);
+  color: #FFFFFF;
+  padding: 2px 16px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 4px 12px rgba(127, 1, 31, 0.2);
+  margin-left: 6px;
+}
+
+.subtitle {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-ink-secondary);
+  margin: 0;
+}
+
+/* Carousel Outer Track */
+.carouselWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.cardsTrack {
+  display: flex;
+  gap: var(--space-xl);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding: var(--space-xs) 4px var(--space-lg);
+  scrollbar-width: none; /* Hide scrollbar for clean appearance */
+}
+
+.cardsTrack::-webkit-scrollbar {
+  display: none;
+}
+
+/* Testimonial Card (Watermelon UI Architecture) */
+.testimonialCard {
+  flex: 0 0 calc(33.333% - 16px);
+  min-width: 310px;
+  max-width: 380px;
+  scroll-snap-align: start;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 28px;
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 10px 30px -4px rgba(33, 26, 27, 0.04);
+  box-sizing: border-box;
+  transition: transform var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard),
+              box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.testimonialCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--color-border-strong);
+  box-shadow: 0 16px 40px -6px rgba(33, 26, 27, 0.08);
+}
+
+.cardTop {
+  margin-bottom: var(--space-xl);
+}
+
+.metricBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background-color: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-success);
+  margin-bottom: var(--space-md);
+}
+
+.cardHeading {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-sm);
+}
+
+.cardQuote {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-ink-secondary);
+  margin: 0;
+}
+
+/* Author Block */
+.authorBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: var(--space-md);
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--color-sand);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-wine);
+  flex-shrink: 0;
+}
+
+.authorMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.authorName {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.authorRole {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.companyTag {
+  color: var(--color-wine);
+  font-weight: 600;
+}
+
+/* Navigation Controls */
+.controlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.navBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(33, 26, 27, 0.04);
+  transition: all var(--motion-fast) var(--ease-standard);
+}
+
+.navBtn:hover {
+  background-color: var(--color-sand-light);
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+
+.navBtn:active {
+  transform: scale(0.96);
+}
+
+@media (max-width: 900px) {
+  .testimonialCard {
+    flex: 0 0 85%;
+    max-width: 85%;
+  }
+}
