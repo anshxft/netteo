@@ -179,7 +179,7 @@
 .select {
   width: 100%;
   height: 42px;
-  padding: 0 var(--space-md);
+  padding: 0 38px 0 var(--space-md);
   font-family: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -200,6 +200,13 @@
   box-shadow: 0 0 0 2px var(--color-wine-subtle);
 }
 
+.select:disabled {
+  background-color: var(--color-sand);
+  color: var(--color-muted);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
 .selectChevron {
   position: absolute;
   right: 12px;
@@ -207,6 +214,57 @@
   transform: translateY(-50%);
   pointer-events: none;
   color: var(--color-muted);
+}
+
+.emptyGroupNotice {
+  background-color: var(--color-sand-light);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-top: 4px;
+}
+
+.emptyGroupNoticeContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.emptyGroupNoticeTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-ink);
+  display: block;
+}
+
+.emptyGroupNoticeDesc {
+  font-size: 11.5px;
+  color: var(--color-ink-secondary);
+  margin: 2px 0 0;
+  line-height: 1.35;
+}
+
+.emptyGroupCreateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--color-wine);
+  color: #FFFFFF;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.emptyGroupCreateBtn:hover {
+  background-color: var(--color-wine-hover);
 }
 
 .input {

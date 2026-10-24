@@ -5,7 +5,8 @@ import Link from 'next/link';
 import styles from './ObligationsView.module.css';
 import { Obligation } from '../types';
 import { loadObligations, saveObligations, formatBaseUnitsToDisplay } from '../store';
-import { syncObligationsFromSupabase } from '@/lib/db/syncService';
+import { syncObligationsFromSupabase, syncGroupsFromSupabase } from '@/lib/db/syncService';
+import { saveGroups } from '@/features/groups/store';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
@@ -30,6 +31,13 @@ export function ObligationsView() {
     setError(null);
     try {
       if (mode === 'live') {
+        // Pre-warm groups in background so modal opens with loaded groups
+        syncGroupsFromSupabase()
+          .then((groups) => {
+            if (groups && groups.length > 0) saveGroups(groups, 'live');
+          })
+          .catch(() => {});
+
         const remote = await syncObligationsFromSupabase();
         if (remote && remote.length > 0) {
           setObligations(remote);
