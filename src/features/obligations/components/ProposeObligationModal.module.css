@@ -1,0 +1,505 @@
+/* ==========================================================================
+   Netteo Record New Payment Modal Card Styles
+   Neo-Minimal Fintech Theme — Roundo Typography, Wine & Sand Palette
+   Sources: design-addendum.md §7, §8, §15; UI.md §16, §19; UX.md §7
+   ========================================================================== */
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(33, 26, 27, 0.52);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.modalCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 580px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: var(--space-xl);
+  box-shadow: 0 24px 48px -12px rgba(33, 26, 27, 0.18), 0 2px 6px rgba(33, 26, 27, 0.06);
+  animation: modalEnter var(--motion-base) var(--ease-standard);
+  box-sizing: border-box;
+  margin: auto;
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modalCard {
+    animation: none;
+  }
+}
+
+/* Header & Meta */
+.headerMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+
+.categoryBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: 3px 8px;
+  background-color: var(--color-sand);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-wine);
+}
+
+.closeButton {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--motion-fast) var(--ease-standard);
+}
+
+.closeButton:hover {
+  background-color: var(--color-sand);
+  color: var(--color-ink);
+  border-color: var(--color-border);
+}
+
+.closeButton:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+}
+
+.modalTitle {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  margin: 0 0 var(--space-2xs) 0;
+  line-height: 1.25;
+}
+
+.modalSubtitle {
+  font-size: 13px;
+  color: var(--color-muted);
+  margin: 0 0 var(--space-lg) 0;
+  line-height: 1.45;
+}
+
+/* Form Structure */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.fieldLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quickActionBtn {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-wine);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quickActionBtn:hover {
+  background-color: var(--color-wine-subtle);
+  border-color: var(--color-wine);
+}
+
+.quickActionBtn:focus-visible {
+  outline: 2px solid var(--color-wine);
+}
+
+/* Standard Inputs */
+.selectWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.select {
+  width: 100%;
+  height: 42px;
+  padding: 0 var(--space-md);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-elevated);
+  color: var(--color-ink);
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--color-wine);
+  box-shadow: 0 0 0 2px var(--color-wine-subtle);
+}
+
+.selectChevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--color-muted);
+}
+
+.input {
+  width: 100%;
+  height: 42px;
+  padding: 0 var(--space-md);
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-elevated);
+  color: var(--color-ink);
+  box-sizing: border-box;
+  transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-wine);
+  box-shadow: 0 0 0 2px var(--color-wine-subtle);
+}
+
+.inputMono {
+  font-family: monospace;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+/* Counterparty Routing Box */
+.counterpartiesBox {
+  background-color: var(--color-sand-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.flowDivider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 0;
+}
+
+.flowIconPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-wine);
+}
+
+/* Member Chips */
+.memberSuggestions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.suggestionLabel {
+  font-size: 11px;
+  color: var(--color-muted);
+  font-weight: 500;
+}
+
+.memberChip {
+  font-size: 11px;
+  font-family: monospace;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+}
+
+.memberChip:hover {
+  border-color: var(--color-wine);
+  color: var(--color-wine);
+  background-color: var(--color-wine-subtle);
+}
+
+.memberChipActive {
+  border-color: var(--color-wine);
+  background-color: var(--color-wine);
+  color: #FFFFFF;
+}
+
+/* Compound Amount Input */
+.amountContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.amountInput {
+  width: 100%;
+  height: 44px;
+  padding: 0 76px 0 var(--space-md);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-elevated);
+  color: var(--color-ink);
+  box-sizing: border-box;
+  transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.amountInput:focus {
+  outline: none;
+  border-color: var(--color-wine);
+  box-shadow: 0 0 0 2px var(--color-wine-subtle);
+}
+
+.musdBadge {
+  position: absolute;
+  right: 8px;
+  padding: 4px 10px;
+  background-color: var(--color-sand);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-wine);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.presetsRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.presetChip {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+}
+
+.presetChip:hover {
+  border-color: var(--color-wine);
+  color: var(--color-wine);
+  background-color: var(--color-wine-subtle);
+}
+
+/* Settlement Preview Box */
+.settlementPreview {
+  background-color: var(--color-sand);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.previewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-wine);
+}
+
+.previewBody {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--color-ink);
+  font-weight: 600;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.previewAmount {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-wine);
+  font-variant-numeric: tabular-nums;
+}
+
+.previewNote {
+  font-size: 12px;
+  color: var(--color-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Warnings and Error Banners */
+.inlineWarning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-danger);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.errorBanner {
+  background-color: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.offlineNotice {
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  color: var(--color-warning);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  line-height: 1.4;
+}
+
+/* Action Footer */
+.actionsRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 520px) {
+  .modalCard {
+    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+  }
+
+  .modalTitle {
+    font-size: 19px;
+  }
+
+  .counterpartiesBox {
+    padding: var(--space-sm);
+  }
+
+  .actionsRow {
+    flex-direction: column-reverse;
+    gap: var(--space-xs);
+  }
+
+  .actionsRow button {
+    width: 100%;
+  }
+
+  .previewBody {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
