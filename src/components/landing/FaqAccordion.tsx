@@ -73,6 +73,7 @@ export function FaqAccordion() {
             <div key={item.id} className={styles.accordionItem}>
               <button
                 type="button"
+                id={`faq-question-${item.id}`}
                 className={styles.accordionHeader}
                 onClick={() => toggleItem(item.id)}
                 aria-expanded={isOpen}
@@ -84,11 +85,15 @@ export function FaqAccordion() {
                 </span>
               </button>
 
-              {isOpen && (
-                <div id={`faq-answer-${item.id}`} className={styles.accordionContent}>
-                  {item.answer}
-                </div>
-              )}
+              <div
+                id={`faq-answer-${item.id}`}
+                className={styles.accordionContent}
+                role="region"
+                aria-labelledby={`faq-question-${item.id}`}
+                hidden={!isOpen}
+              >
+                {item.answer}
+              </div>
             </div>
           );
         })}
