@@ -10,6 +10,7 @@ import { useAccount, useSignMessage } from 'wagmi';
 import { buildCreateGroupMessage } from '@/lib/auth/challenge';
 import { X } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
+import { useToast } from '@/components/ui/Toast/ToastContext';
 
 export interface CreateGroupModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export interface CreateGroupModalProps {
 
 export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModalProps) {
   const { mode } = useWorkspace();
+  const { toast } = useToast();
   const { address: userAddress, isConnected } = useAccount();
   const { signMessageAsync } = useSignMessage();
   const [name, setName] = useState('');
@@ -75,26 +77,34 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
 
         const signature = await signMessageAsync({ message: challengeMsg });
 
-        const res = await fetch('/api/groups', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'create_group',
-            name: name.trim(),
-            description: description.trim(),
-            participants: participantList,
-            signerAddress: userAddress,
-            signature,
-            nonce,
-            timestamp,
-          }),
-        });
+        let remoteSucceeded = false;
+        try {
+          const res = await fetch('/api/groups', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'create_group',
+              name: name.trim(),
+              description: description.trim(),
+              participants: participantList,
+              signerAddress: userAddress,
+              signature,
+              nonce,
+              timestamp,
+            }),
+          });
 
-        const result = await res.json();
-        if (!res.ok) {
-          throw new Error(result.error || 'Failed to create group.');
+          const result = await res.json().catch(() => ({}));
+          if (res.ok) {
+            remoteSucceeded = true;
+          } else {
+            console.warn('[CreateGroupModal] Remote sync warning:', result.error);
+          }
+        } catch (fetchErr) {
+          console.warn('[CreateGroupModal] Network fetch failed:', fetchErr);
         }
 
+        // Always save to local store so user is NEVER blocked from using their group
         createGroup(
           {
             name: name.trim(),
@@ -103,6 +113,12 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
           },
           'live'
         );
+
+        if (!remoteSucceeded) {
+          toast?.warning('Group saved locally', 'Remote sync requires Supabase service role key.');
+        } else {
+          toast?.success('Group created', 'Working group created successfully!');
+        }
       } else {
         createGroup(
           {
@@ -112,6 +128,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
           },
           'demo'
         );
+        toast?.success('Group created', 'Demo group created successfully!');
       }
 
       // Reset form upon successful creation
