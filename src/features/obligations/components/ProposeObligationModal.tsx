@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import styles from './ProposeObligationModal.module.css';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { proposeObligation, parseMusdToBaseUnits } from '../store';
-import { saveUnsyncedProposal } from '@/lib/db/syncService';
-import { loadGroups } from '@/features/groups/store';
+import { saveUnsyncedProposal, syncGroupsFromSupabase } from '@/lib/db/syncService';
+import { loadGroups, saveGroups, CANONICAL_GROUP } from '@/features/groups/store';
 import { Group } from '@/features/groups/types';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { useAccount, useSignMessage } from 'wagmi';
@@ -22,6 +23,7 @@ import {
   WifiOff,
   Send,
   Users,
+  Plus,
 } from 'lucide-react';
 import { ObligationIcon } from '@/components/icons/netteo';
 import { useToast } from '@/components/ui/Toast/ToastContext';
@@ -47,6 +49,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [groupId, setGroupId] = useState('');
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [debtorAddress, setDebtorAddress] = useState('');
   const [creditorAddress, setCreditorAddress] = useState('');
   const [amountMusd, setAmountMusd] = useState('');
@@ -69,16 +72,56 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
     };
   }, []);
 
-  // Load groups on open
+  // Load groups on open (cache-first + remote sync)
   useEffect(() => {
-    if (isOpen) {
-      const loaded = loadGroups(mode);
-      setGroups(loaded);
-      if (loaded.length > 0 && !groupId) {
-        setGroupId(loaded[0].id);
+    if (!isOpen) return;
+
+    let isMounted = true;
+    const initGroups = async () => {
+      // Phase 1: Immediate local cache load
+      const local = loadGroups(mode);
+      if (isMounted && local.length > 0) {
+        setGroups(local);
+        if (!groupId || !local.some((g) => g.id === groupId)) {
+          setGroupId(local[0].id);
+        }
+      } else if (isMounted && mode === 'demo') {
+        setGroups([CANONICAL_GROUP]);
+        setGroupId(CANONICAL_GROUP.id);
+        saveGroups([CANONICAL_GROUP], 'demo');
       }
-    }
-  }, [isOpen, groupId, mode]);
+
+      // Phase 2: Remote sync if live or local cache was empty
+      if (mode === 'live' || local.length === 0) {
+        setIsLoadingGroups(true);
+        try {
+          const remote = await syncGroupsFromSupabase();
+          if (isMounted) {
+            if (remote && remote.length > 0) {
+              setGroups(remote);
+              saveGroups(remote, 'live');
+              if (!groupId || !remote.some((g) => g.id === groupId)) {
+                setGroupId(remote[0].id);
+              }
+            } else if (local.length === 0 && mode === 'demo') {
+              setGroups([CANONICAL_GROUP]);
+              setGroupId(CANONICAL_GROUP.id);
+            }
+          }
+        } catch (err) {
+          console.warn('[Modal] Failed to sync groups from remote:', err);
+        } finally {
+          if (isMounted) setIsLoadingGroups(false);
+        }
+      }
+    };
+
+    initGroups();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, mode]);
 
   // Handle ESC key to close
   useEffect(() => {
@@ -105,7 +148,8 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
   const isAmountValid = !isNaN(numAmount) && numAmount > 0;
 
   const isFormReady =
-    groupId &&
+    Boolean(groupId) &&
+    groups.length > 0 &&
     isValidAddress(debtorAddress) &&
     isValidAddress(creditorAddress) &&
     !isDebtorSameAsCreditor &&
@@ -130,6 +174,10 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
     const cleanCreditor = creditorAddress.trim();
     const cleanRef = referenceLabel.trim();
 
+    if (!groupId || groups.length === 0) {
+      setErrorMsg('Please select or create a settlement group before recording a payment.');
+      return;
+    }
     if (!isValidAddress(cleanDebtor)) {
       setErrorMsg('Debtor address must be a valid 42-character hex address starting with 0x.');
       return;
@@ -358,19 +406,55 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
                 className={styles.select}
                 value={groupId}
                 onChange={(e) => setGroupId(e.target.value)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLoadingGroups || groups.length === 0}
                 required
               >
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
+                {isLoadingGroups && groups.length === 0 ? (
+                  <option value="" disabled>
+                    Loading settlement groups...
                   </option>
-                ))}
+                ) : groups.length === 0 ? (
+                  <option value="" disabled>
+                    No groups available — create one first
+                  </option>
+                ) : (
+                  <>
+                    {!groupId && (
+                      <option value="" disabled>
+                        Select a settlement group...
+                      </option>
+                    )}
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name} ({g.participants.length} member{g.participants.length !== 1 ? 's' : ''})
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
               <span className={styles.selectChevron}>
                 <Icon icon={ChevronDown} size="sm" />
               </span>
             </div>
+
+            {/* Inline Empty State Recovery Box */}
+            {!isLoadingGroups && groups.length === 0 && (
+              <div className={styles.emptyGroupNotice} role="alert">
+                <div className={styles.emptyGroupNoticeContent}>
+                  <Icon icon={AlertCircle} size="sm" color="var(--color-wine)" />
+                  <div>
+                    <span className={styles.emptyGroupNoticeTitle}>No settlement groups found</span>
+                    <p className={styles.emptyGroupNoticeDesc}>
+                      Payments require a mutual counterparty group. Create a group on Mezo to record bilateral claims.
+                    </p>
+                  </div>
+                </div>
+                <Link href="/groups" className={styles.emptyGroupCreateBtn} onClick={onClose}>
+                  <Icon icon={Plus} size="sm" />
+                  <span>Create Group</span>
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Counterparties Flow Box */}
