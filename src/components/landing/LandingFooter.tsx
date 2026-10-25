@@ -43,6 +43,9 @@ export function LandingFooter() {
 
             <div className={styles.linkCol}>
               <span className={styles.colHeader}>Protocol</span>
+              <Link href="/docs" className={styles.colLink}>
+                Documentation
+              </Link>
               <a href="#how-it-works" className={styles.colLink}>
                 Clearing Flow
               </a>

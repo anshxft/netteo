@@ -7,6 +7,8 @@ import { AppNav } from './AppNav';
 import { WalletBadge } from './WalletBadge';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { BookOpen } from 'lucide-react';
+import { Icon } from '@/components/icons/Icon';
 
 export interface AppHeaderProps {
   walletAddress?: string | null;
@@ -43,6 +45,28 @@ export function AppHeader({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+          <Link
+            href="/docs"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              fontSize: '12px',
+              fontWeight: 600,
+              borderRadius: '9999px',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surface)',
+              color: 'var(--color-ink)',
+              textDecoration: 'none',
+              transition: 'all var(--motion-fast)',
+            }}
+            title="Netteo Protocol Documentation"
+          >
+            <Icon icon={BookOpen} size="sm" color="var(--color-wine)" />
+            <span>Docs</span>
+          </Link>
+
           <ThemeToggle size="sm" />
 
           {!isLandingPage && (

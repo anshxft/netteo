@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { label: 'How It Works', href: '#how-it-works' },
   { label: 'Netting Solver', href: '#simulator' },
   { label: 'Architecture', href: '#architecture' },
+  { label: 'Docs', href: '/docs' },
   { label: 'Testimonials', href: '#testimonials' },
   { label: 'FAQ', href: '#faq' },
 ];
@@ -51,9 +52,15 @@ export function LandingNavbar() {
         <ul className={styles.navLinks}>
           {NAV_LINKS.map((link) => (
             <li key={link.href}>
-              <a href={link.href} className={styles.navLink}>
-                {link.label}
-              </a>
+              {link.href.startsWith('/') ? (
+                <Link href={link.href} className={styles.navLink}>
+                  {link.label}
+                </Link>
+              ) : (
+                <a href={link.href} className={styles.navLink}>
+                  {link.label}
+                </a>
+              )}
             </li>
           ))}
         </ul>
@@ -116,13 +123,23 @@ export function LandingNavbar() {
             <ul className={styles.drawerLinks}>
               {NAV_LINKS.map((link) => (
                 <li key={link.href}>
-                  <a
-                    href={link.href}
-                    className={styles.drawerLink}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    {link.label}
-                  </a>
+                  {link.href.startsWith('/') ? (
+                    <Link
+                      href={link.href}
+                      className={styles.drawerLink}
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={link.href}
+                      className={styles.drawerLink}
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      {link.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
