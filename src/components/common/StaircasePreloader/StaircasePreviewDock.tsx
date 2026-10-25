@@ -22,7 +22,7 @@ export function StaircasePreviewDock({
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<PreloaderMode>('converging');
   const [columnCount, setColumnCount] = useState<number>(5);
-  const [durationMs, setDurationMs] = useState<number>(2200);
+  const [durationMs, setDurationMs] = useState<number>(900);
   const [simulatedState, setSimulatedState] = useState<PreloaderState | 'normal'>('normal');
   const [isDebounced, setIsDebounced] = useState(false);
 

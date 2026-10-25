@@ -2,7 +2,7 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  height: 64px;
+  height: 68px;
   width: 100%;
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
@@ -241,4 +241,18 @@
 .appCtaButton:hover {
   background-color: var(--color-wine-hover);
   transform: translateY(-1px);
+}
+
+.appCtaButton:focus-visible,
+.searchButton:focus-visible,
+.iconLink:focus-visible,
+.mobileToggle:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .appCtaButton {
+    display: none;
+  }
 }

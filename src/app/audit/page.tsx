@@ -11,6 +11,7 @@ import { Icon } from '@/components/icons/Icon';
 import { SnapshotIcon } from '@/components/icons/netteo';
 import obStyles from '@/features/obligations/components/ObligationsView.module.css';
 import { FileText, ArrowRight } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function GeneralAuditPage() {
   const [cycles, setCycles] = useState<SettlementCycle[]>([]);
@@ -26,14 +27,10 @@ export default function GeneralAuditPage() {
 
   return (
     <AppLayout>
-      <div className={obStyles.pageHeader}>
-        <div className={obStyles.titleArea}>
-          <h1>Settlement Receipts</h1>
-          <p className={obStyles.subtitle}>
-            Permanent records and accounting statements for every completed settlement. Download CSV statements or verify cryptographic proofs on Mezo.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Settlement Receipts"
+        subtitle="Permanent records and accounting statements for every completed settlement. Download CSV statements or verify cryptographic proofs on Mezo."
+      />
 
       {isLoading && (
         <div style={{ padding: 'var(--space-2xl) 0', color: 'var(--color-muted)' }}>

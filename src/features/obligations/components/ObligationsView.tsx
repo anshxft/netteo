@@ -15,6 +15,7 @@ import { ProposeObligationModal } from './ProposeObligationModal';
 import { ObligationIcon, CycleIcon } from '@/components/icons/netteo';
 import { Plus, AlertCircle, RefreshCw, ArrowRight, WifiOff } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast/ToastContext';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export function ObligationsView() {
   const { mode, resetCounter } = useWorkspace();
@@ -108,37 +109,34 @@ export function ObligationsView() {
 
   return (
     <div>
-      {/* Header */}
-      <div className={styles.pageHeader}>
-        <div className={styles.titleArea}>
-          <h1>Payments</h1>
-          <p className={styles.subtitle}>
-            Track what you owe and what others owe you. Approve payment claims to include them in the next group settlement.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-          <Button
-            variant="secondary"
-            icon={<Icon icon={Plus} size="sm" />}
-            disabled={isLoading}
-            onClick={() => setIsModalOpen(true)}
-          >
-            New Payment Claim
-          </Button>
-          {acceptedCount >= 2 && (
-            <Link href="/cycles/new" style={{ textDecoration: 'none' }}>
-              <Button
-                variant="primary"
-                icon={<Icon icon={CycleIcon} size="sm" color="#FFFFFF" />}
-                disabled={isOffline || isLoading}
-              >
-                Start Group Settlement ({acceptedCount} ready)
-              </Button>
-            </Link>
-          )}
-        </div>
-      </div>
+      {/* Unified Page Header */}
+      <PageHeader
+        title="Payments"
+        subtitle="Track what you owe and what others owe you. Approve payment claims to include them in the next group settlement."
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              icon={<Icon icon={Plus} size="sm" />}
+              disabled={isLoading}
+              onClick={() => setIsModalOpen(true)}
+            >
+              New Payment Claim
+            </Button>
+            {acceptedCount >= 2 && (
+              <Link href="/cycles/new" style={{ textDecoration: 'none' }}>
+                <Button
+                  variant="primary"
+                  icon={<Icon icon={CycleIcon} size="sm" color="#FFFFFF" />}
+                  disabled={isOffline || isLoading}
+                >
+                  Start Group Settlement ({acceptedCount} ready)
+                </Button>
+              </Link>
+            )}
+          </>
+        }
+      />
 
       {/* --- STATE 5: Offline State Notice Banner --- */}
       {isOffline && (
@@ -237,13 +235,13 @@ export function ObligationsView() {
             }}
           >
             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Estimated Net Savings
+              Liquidity Conserved
             </div>
             <div style={{ fontSize: '26px', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--color-success)' }}>
-              ~70%
+              60%
             </div>
             <div style={{ fontSize: '11px', color: 'var(--color-ink-secondary)', marginTop: '2px' }}>
-              Freed up liquidity through netting
+              Standard 3-party benchmark volume reduction*
             </div>
           </div>
         </div>

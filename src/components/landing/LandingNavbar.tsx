@@ -68,7 +68,7 @@ export function LandingNavbar() {
         {/* Right CTA */}
         <div className={styles.navActions}>
           <ThemeToggle size="md" />
-          <Link href="/obligations" style={{ textDecoration: 'none' }}>
+          <Link href="/obligations" className={styles.desktopCta}>
             <Button
               variant="primary"
               icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}

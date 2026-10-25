@@ -1,0 +1,236 @@
+/* ==========================================================================
+   DemoExplainerBanner.module.css
+   Responsive sandbox explainer banner adhering to UI.md & Codex Part 10
+   ========================================================================== */
+
+.banner {
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-sm) var(--space-xl);
+  transition: padding var(--motion-fast) var(--ease-standard);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bannerExpanded {
+  padding: var(--space-md) var(--space-xl);
+}
+
+.container {
+  max-width: var(--workspace-max-width, 1200px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: var(--color-wine-subtle);
+  color: var(--color-wine);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--color-success);
+}
+
+.titleText {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1.4;
+}
+
+.controlsGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+  font-family: inherit;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+
+.resetButton {
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+}
+
+.resetButton:hover:not(:disabled) {
+  background-color: var(--color-sand-light);
+  border-color: var(--color-border-strong);
+}
+
+.resetButton:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+}
+
+.switchButton {
+  background-color: var(--color-wine);
+  border: 1px solid transparent;
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.switchButton:hover {
+  background-color: var(--color-wine-hover);
+}
+
+.switchButton:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+}
+
+.toggleExpandButton {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  cursor: pointer;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 36px;
+}
+
+.toggleExpandButton:hover {
+  color: var(--color-ink);
+  background-color: var(--color-sand-light);
+}
+
+.toggleExpandButton:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+}
+
+.cardsGrid {
+  display: grid;
+  grid-templateColumns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px dashed var(--color-border);
+  margin-top: var(--space-2xs);
+}
+
+.card {
+  background-color: var(--color-page);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.cardHighlight {
+  background-color: var(--color-sand-light);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+}
+
+.cardHeader {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  color: var(--color-muted);
+}
+
+.cardHeaderHighlight {
+  color: var(--color-wine);
+}
+
+.cardBody {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-ink);
+}
+
+.disclaimerText {
+  display: block;
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* Mobile Layout Tweaks */
+@media (max-width: 640px) {
+  .banner {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .topRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-xs);
+  }
+
+  .titleArea {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .titleText {
+    font-size: 13px;
+  }
+
+  .controlsGroup {
+    justify-content: flex-start;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .actionButton {
+    flex: 1;
+    justify-content: center;
+    font-size: 11.5px;
+    padding: 6px 8px;
+  }
+}

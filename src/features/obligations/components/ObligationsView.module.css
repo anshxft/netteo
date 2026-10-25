@@ -69,6 +69,11 @@
   background-color: var(--color-sand-light);
 }
 
+.tabButton:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+}
+
 .tabButtonActive {
   color: var(--color-wine);
   background-color: var(--color-sand);
@@ -95,10 +100,12 @@
 .tableWrapper {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ledgerTable {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 14px;
   text-align: left;

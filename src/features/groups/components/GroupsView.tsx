@@ -11,6 +11,7 @@ import { Icon } from '@/components/icons/Icon';
 import { ParticipantTable } from './ParticipantTable';
 import { CreateGroupModal } from './CreateGroupModal';
 import { Users, Plus, AlertCircle, RefreshCw } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export function GroupsView() {
   const { mode, resetCounter } = useWorkspace();
@@ -84,23 +85,21 @@ export function GroupsView() {
 
   return (
     <div>
-      {/* Page Header */}
-      <div className={styles.pageHeader}>
-        <div className={styles.titleArea}>
-          <h1>Groups</h1>
-          <p className={styles.subtitle}>
-            Partner collectives, project teams, and DAO pods that share mutual payments and settle net balances on Mezo.
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          icon={<Icon icon={Plus} size="sm" color="#FFFFFF" />}
-          disabled={isOffline || isLoading}
-          onClick={() => setIsModalOpen(true)}
-        >
-          New Group
-        </Button>
-      </div>
+      {/* Unified Page Header */}
+      <PageHeader
+        title="Groups"
+        subtitle="Partner collectives, project teams, and DAO pods that share mutual payments and settle net balances on Mezo."
+        actions={
+          <Button
+            variant="primary"
+            icon={<Icon icon={Plus} size="sm" color="#FFFFFF" />}
+            disabled={isOffline || isLoading}
+            onClick={() => setIsModalOpen(true)}
+          >
+            New Group
+          </Button>
+        }
+      />
 
       {/* Success Notification Banner */}
       {successNotice && (

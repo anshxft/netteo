@@ -53,8 +53,7 @@ export function LandingHero() {
 
           {/* 2-line Subtext */}
           <p className={styles.subtext}>
-            Turn tangled bilateral invoices into a single net settlement. Save up to 75% upfront liquidity
-            with zero-sum mathematical certainty on Mezo testnet.
+            Turn tangled bilateral invoices into a single net settlement. Conserve 60% upfront liquidity in standard 3-party settlements (and up to 75%+ in high-density networks) with zero-sum mathematical certainty on Mezo testnet.
           </p>
 
           {/* Dual Action Row */}
@@ -126,11 +125,11 @@ export function LandingHero() {
             <div className={styles.deviceSummaryCard}>
               <div className={styles.summaryTop}>
                 <span className={styles.summaryLabel}>Net Liquidity Required</span>
-                <span className={styles.summarySavingsBadge}>~70% Capital Conserved</span>
+                <span className={styles.summarySavingsBadge}>60% Volume Collapsed</span>
               </div>
               <div className={styles.summaryAmount}>$80.00 MUSD</div>
               <div className={styles.summarySub}>
-                Clears all $200.00 gross claims in 1 atomic Mezo transaction.
+                Clears all $200.00 gross claims in 1 atomic Mezo transaction. (Liquidity volume reduction, not guaranteed fee savings).
               </div>
             </div>
 

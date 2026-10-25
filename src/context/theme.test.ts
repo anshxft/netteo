@@ -19,16 +19,15 @@ console.log('✔ Passed: Light theme tokens preserved completely');
 assert.ok(tokensContent.includes("[data-theme='dark']"), "tokens.css must define [data-theme='dark']");
 assert.ok(tokensContent.includes('.dark'), 'tokens.css must define .dark class');
 
-// Check dark theme has wine red anchor with WCAG AA compliance (Finding 1)
+// Check dark theme has warm charcoal base, sand-tinted surfaces, and #7F011F wine primary action (Finding 1)
 const darkSection = tokensContent.split("[data-theme='dark']")[1];
-assert.ok(darkSection.includes('--color-wine: #C41E3D;'), 'Dark theme must define WCAG AA compliant wine red');
-assert.ok(darkSection.includes('--color-wine-active: #7F011F;'), 'Dark theme must retain brand wine red #7F011F on active state');
-assert.ok(darkSection.includes('--color-page: #080405;'), 'Dark theme must define deep black page background');
-assert.ok(darkSection.includes('--color-surface: #12090C;'), 'Dark theme must define deep obsidian surface');
-assert.ok(darkSection.includes('--color-surface-elevated: #1B0F15;'), 'Dark theme must define elevated surface');
-assert.ok(darkSection.includes('--color-ink: #F7EFF1;'), 'Dark theme must define high-contrast text');
-assert.ok(darkSection.includes('--color-border: #28131B;'), 'Dark theme must define clean wine-black borders');
-console.log('✔ Passed: Finding 1 - Dark theme tokens correctly configure WCAG AA wine red and obsidian black');
+assert.ok(darkSection.includes('--color-wine: #7F011F;'), 'Dark theme must reserve brand wine red #7F011F for primary actions');
+assert.ok(darkSection.includes('--color-page: #161314;'), 'Dark theme must define warm charcoal page background (#161314)');
+assert.ok(darkSection.includes('--color-surface: #221E1F;'), 'Dark theme must define sand-tinted warm charcoal surface (#221E1F)');
+assert.ok(darkSection.includes('--color-surface-elevated: #2B2527;'), 'Dark theme must define elevated surface (#2B2527)');
+assert.ok(darkSection.includes('--color-ink: #FAF6F0;'), 'Dark theme must define warm off-white text (#FAF6F0)');
+assert.ok(darkSection.includes('--color-border: #342A2D;'), 'Dark theme must define warm dark wine-charcoal borders (#342A2D)');
+console.log('✔ Passed: Finding 1 - Dark theme tokens correctly configure warm charcoal (#161314), sand-tinted surfaces, and #7F011F wine actions');
 
 // 2. Verify ThemeContext implements lazy init and multi-tab synchronization (Findings 2 & 3)
 const contextPath = path.resolve(process.cwd(), 'src/context/ThemeContext.tsx');
