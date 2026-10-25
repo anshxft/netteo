@@ -98,6 +98,11 @@ const NAV_CATEGORIES: NavCategory[] = [
         href: '/audit?action=export-csv',
         action: 'export-csv',
       },
+      {
+        title: 'Protocol Documentation',
+        desc: 'Read architectural invariants, Mezo specs, and contract ABI.',
+        href: '/docs',
+      },
     ],
   },
 ];
