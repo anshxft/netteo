@@ -329,32 +329,12 @@ export const DOC_GROUPS: DocGroup[] = [
         ],
         keywords: ['viem', 'wagmi', 'typescript', 'recipes', 'integration', 'snippets'],
       },
-    ],
-  },
-  {
-    id: 'judge-guide',
-    title: 'Judge & Verification Guide',
-    sections: [
-      {
-        id: 'judge-walkthrough',
-        slug: 'judge-walkthrough',
-        title: 'Hackathon Judge Walkthrough',
-        badge: 'Judge',
-        group: 'Judge & Verification Guide',
-        description: 'Fast, step-by-step verification ritual for hackathon judges and security auditors.',
-        subsections: [
-          { id: 'five-minute-test', title: '5-Minute Fast Verification Ritual' },
-          { id: 'faucet-and-gas', title: 'Obtaining Mezo Testnet tBTC & MUSD' },
-          { id: 'verify-on-explorer', title: 'Inspecting Real Contract Transactions on Explorer' },
-        ],
-        keywords: ['judge', 'verification', 'hackathon', 'audit', 'walkthrough', 'faucet'],
-      },
       {
         id: 'cast-commands',
         slug: 'cast-commands',
-        title: 'Foundry Cast CLI Commands',
+        title: 'Foundry Cast CLI Verification',
         badge: 'CLI',
-        group: 'Judge & Verification Guide',
+        group: 'Smart Contract API',
         description: 'Verify live contract state and balances directly from your terminal using cast call.',
         subsections: [
           { id: 'cast-read-kernel', title: 'Inspect SettlementKernel Details' },

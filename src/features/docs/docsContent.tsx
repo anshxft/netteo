@@ -795,7 +795,7 @@ export function SectionWorkspaceModes() {
       <div id="demo-sandbox-mode" className={styles.subBlock}>
         <h2 className={styles.subHeading}>Demo Sandbox Mode (Zero-Wallet Instant Preview)</h2>
         <p className={styles.paragraph}>
-          Allows anyone (e.g. hackathon judges or first-time reviewers) to explore all features, submit simulated claims,
+          Allows anyone (e.g. new contributors, developers, or external reviewers) to explore all features, submit simulated claims,
           and execute netting settlements instantly without requiring an external wallet.
         </p>
       </div>
@@ -1178,62 +1178,6 @@ const isFunded = await publicClient.readContract({
   );
 }
 
-export function SectionJudgeWalkthrough() {
-  return (
-    <div className={styles.sectionBody}>
-      <div id="five-minute-test" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>5-Minute Fast Verification Ritual</h2>
-        <div className={styles.ritualList}>
-          <div className={styles.ritualStep}>
-            <div className={styles.ritualNum}>1</div>
-            <div>
-              <strong>Open Netteo Workspace:</strong> Navigate to <a href="https://netteo-six.vercel.app" target="_blank" rel="noreferrer" className={styles.link}>https://netteo-six.vercel.app</a> or run locally.
-            </div>
-          </div>
-          <div className={styles.ritualStep}>
-            <div className={styles.ritualNum}>2</div>
-            <div>
-              <strong>Test in Demo Sandbox:</strong> Toggle &quot;Demo Sandbox&quot; in the top navigation bar to test instant netting with zero wallet connection.
-            </div>
-          </div>
-          <div className={styles.ritualStep}>
-            <div className={styles.ritualNum}>3</div>
-            <div>
-              <strong>Connect Wallet to Mezo:</strong> Switch to &quot;Live Mezo&quot; and connect MetaMask on Chain ID <code>31611</code>.
-            </div>
-          </div>
-          <div className={styles.ritualStep}>
-            <div className={styles.ritualNum}>4</div>
-            <div>
-              <strong>Record & Approve Claim:</strong> Create an obligation claim between two test addresses, approve it, and generate a settlement cycle.
-            </div>
-          </div>
-          <div className={styles.ritualStep}>
-            <div className={styles.ritualNum}>5</div>
-            <div>
-              <strong>Verify On Explorer:</strong> Inspect the resulting cycle transactions directly on <a href="https://explorer.test.mezo.org" target="_blank" rel="noreferrer" className={styles.link}>Mezo Explorer</a>.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="faucet-and-gas" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Obtaining Mezo Testnet tBTC & MUSD</h2>
-        <p className={styles.paragraph}>
-          Testnet gas (tBTC) and testnet MUSD tokens can be obtained through the official Mezo discord faucet or testnet portal.
-        </p>
-      </div>
-
-      <div id="verify-on-explorer" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Inspecting Real Contract Transactions on Explorer</h2>
-        <p className={styles.paragraph}>
-          All contracts are verified with open source code on Mezo Explorer.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export function SectionCastCommands() {
   return (
     <div className={styles.sectionBody}>
@@ -1332,8 +1276,6 @@ export function DocsContentRenderer({ sectionId }: SectionContentProps) {
       return <SectionEventsErrors />;
     case 'integration-guide':
       return <SectionIntegrationGuide />;
-    case 'judge-walkthrough':
-      return <SectionJudgeWalkthrough />;
     case 'cast-commands':
       return <SectionCastCommands />;
     default:
