@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npx tsx src/features/settlement-cycles/netting.test.ts && npx tsx src/lib/indexer/worker.test.ts && npx tsx src/lib/auth/auth.test.ts && npx tsx src/lib/db/syncService.test.ts && npx tsx src/context/theme.test.ts",
+    "test": "npx tsx src/features/settlement-cycles/netting.test.ts && npx tsx src/lib/indexer/worker.test.ts && npx tsx src/lib/auth/auth.test.ts && npx tsx src/lib/db/syncService.test.ts && npx tsx src/context/theme.test.ts && npx tsx src/components/common/StaircasePreloader/StaircasePreloader.test.ts && npx tsx src/components/common/Button.test.ts && npx tsx src/components/core/accordion.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],

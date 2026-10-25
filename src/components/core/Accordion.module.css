@@ -1,0 +1,150 @@
+/* ==========================================================================
+   Motion Primitives Accordion Styles (Netteo Edition)
+   Inspired by motion-primitives.com/docs/accordion
+   Adheres to design-addendum.md §8 (Motion tokens), tokens.css, and WCAG AA
+   ========================================================================== */
+
+.accordionRoot {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.accordionItem {
+  border-bottom: 1px solid var(--color-border);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+  overflow: hidden;
+}
+
+.accordionItem:last-child {
+  border-bottom: none;
+}
+
+.accordionItem:hover {
+  border-color: var(--color-border-strong);
+}
+
+/* Card-style variation when grouped inside an elevated surface */
+.accordionCardItem {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-sm);
+  overflow: hidden;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.accordionCardItem:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: 0 4px 12px rgba(33, 26, 27, 0.04);
+}
+
+.accordionCardItem[data-state='open'] {
+  border-color: var(--color-wine-subtle);
+}
+
+/* --- Trigger Button --- */
+.accordionTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-lg) var(--space-xl);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-ink);
+  text-align: left;
+  cursor: pointer;
+  min-height: 48px; /* Mobile touch target standard >= 44px */
+  user-select: none;
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.accordionTrigger:hover {
+  color: var(--color-wine);
+}
+
+.accordionTrigger:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: -2px;
+}
+
+/* Chevron indicator */
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-wine);
+  flex-shrink: 0;
+  transition: transform var(--motion-base) var(--ease-standard);
+}
+
+.accordionItem[data-state='open'] .chevron,
+.accordionCardItem[data-state='open'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* --- Content: CSS Grid Height Transition --- */
+.accordionContent {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition:
+    grid-template-rows var(--motion-base) var(--ease-standard),
+    visibility var(--motion-base) var(--ease-standard);
+  visibility: hidden;
+}
+
+.accordionContent[data-state='open'] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.contentInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.contentBody {
+  padding: 0 var(--space-xl) var(--space-lg);
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: var(--color-ink-secondary);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity var(--motion-base) var(--ease-standard),
+    transform var(--motion-base) var(--ease-standard);
+}
+
+.accordionContent[data-state='open'] .contentBody {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .accordionTrigger,
+  .chevron,
+  .accordionContent,
+  .contentBody {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .accordionItem[data-state='open'] .chevron,
+  .accordionCardItem[data-state='open'] .chevron {
+    transform: rotate(180deg) !important;
+  }
+
+  .accordionContent[data-state='open'] .contentBody {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}

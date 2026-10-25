@@ -5,6 +5,7 @@ import Link from 'next/link';
 import styles from './CtaBand.module.css';
 import { ArrowRight, FileCode } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
+import { Button } from '@/components/common/Button';
 
 export function CtaBand() {
   return (
@@ -24,19 +25,36 @@ export function CtaBand() {
         </p>
 
         <div className={styles.btnGroup}>
-          <Link href="/obligations" className={styles.primaryBtn}>
-            <span>Open Obligation Desk</span>
-            <Icon icon={ArrowRight} size="sm" color="#FFFFFF" />
+          <Link href="/obligations" style={{ textDecoration: 'none' }}>
+            <Button
+              variant="primary"
+              icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}
+              iconPosition="right"
+              style={{
+                minHeight: '50px',
+                padding: '0 28px',
+                fontSize: '15px',
+                borderRadius: 'var(--radius-full)',
+              }}
+            >
+              Open Obligation Desk
+            </Button>
           </Link>
 
           <a
             href="https://github.com/syther069/netteo"
             target="_blank"
             rel="noopener noreferrer"
-            className={styles.secondaryLink}
+            style={{ textDecoration: 'none' }}
           >
-            <Icon icon={FileCode} size="sm" />
-            <span>View Architecture Spec ↗</span>
+            <Button
+              variant="tertiary"
+              icon={<Icon icon={FileCode} size="sm" />}
+              iconPosition="left"
+              style={{ fontSize: '15px', color: 'var(--color-ink)' }}
+            >
+              View Architecture Spec ↗
+            </Button>
           </a>
         </div>
       </div>

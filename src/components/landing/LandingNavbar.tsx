@@ -6,6 +6,7 @@ import styles from './LandingNavbar.module.css';
 import { Menu, X, ArrowRight } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { Button } from '@/components/common/Button';
 
 const NAV_LINKS = [
   { label: 'How It Works', href: '#how-it-works' },
@@ -60,9 +61,15 @@ export function LandingNavbar() {
         {/* Right CTA */}
         <div className={styles.navActions}>
           <ThemeToggle size="md" />
-          <Link href="/obligations" className={styles.ctaButton}>
-            <span>Open Desk</span>
-            <Icon icon={ArrowRight} size="sm" color="#FFFFFF" />
+          <Link href="/obligations" style={{ textDecoration: 'none' }}>
+            <Button
+              variant="primary"
+              icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}
+              iconPosition="right"
+              style={{ minHeight: '42px', height: '42px', padding: '0 18px', borderRadius: 'var(--radius-full)' }}
+            >
+              Open Desk
+            </Button>
           </Link>
 
           {/* Mobile Hamburger */}
@@ -120,13 +127,15 @@ export function LandingNavbar() {
               ))}
             </ul>
 
-            <Link
-              href="/obligations"
-              className={styles.drawerCta}
-              onClick={() => setMobileOpen(false)}
-            >
-              <span>Launch Obligation Desk</span>
-              <Icon icon={ArrowRight} size="sm" color="#FFFFFF" />
+            <Link href="/obligations" onClick={() => setMobileOpen(false)} style={{ textDecoration: 'none', width: '100%' }}>
+              <Button
+                variant="primary"
+                icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}
+                iconPosition="right"
+                style={{ width: '100%', minHeight: '48px', borderRadius: 'var(--radius-md)' }}
+              >
+                Launch Obligation Desk
+              </Button>
             </Link>
           </div>
         </div>
