@@ -50,7 +50,7 @@ assert.ok(toggleContent.includes('handleToggle'), 'ThemeToggle must implement do
 assert.ok(toggleContent.includes('aria-label'), 'ThemeToggle must have accessible labeling');
 console.log('✔ Passed: ThemeToggle implements Skiper UI animation, a11y, and double-click protection');
 
-// 4. Verify placement in LandingNavbar and AppHeader immediately to the left of Open Desk
+// 4. Verify placement in LandingNavbar (with Open Desk) and AppHeader (Open Desk removed, only on landing)
 const landingNavPath = path.resolve(process.cwd(), 'src/components/landing/LandingNavbar.tsx');
 const landingNavContent = fs.readFileSync(landingNavPath, 'utf-8');
 const landingOpenDeskIndex = landingNavContent.indexOf('Open Desk');
@@ -60,14 +60,14 @@ console.log('✔ Passed: LandingNavbar places ThemeToggle immediately to the lef
 
 const appHeaderPath = path.resolve(process.cwd(), 'src/components/layout/AppHeader.tsx');
 const appHeaderContent = fs.readFileSync(appHeaderPath, 'utf-8');
-const appHeaderOpenDeskIndex = appHeaderContent.indexOf('Open Desk');
+assert.ok(!appHeaderContent.includes('Open Desk'), 'AppHeader must NOT contain Open Desk button (only on landing page)');
 const appHeaderThemeToggleIndex = appHeaderContent.indexOf('<ThemeToggle');
-assert.ok(appHeaderThemeToggleIndex > 0 && appHeaderThemeToggleIndex < appHeaderOpenDeskIndex, 'AppHeader must place ThemeToggle before Open Desk button');
+assert.ok(appHeaderThemeToggleIndex > 0, 'AppHeader must include ThemeToggle');
 
 // Verify AppHeader uses CSS tokens instead of hardcoded rgba (Finding 4)
 assert.ok(!appHeaderContent.includes('rgba(127, 1, 31, 0.08)'), 'AppHeader must not contain hardcoded rgba(127, 1, 31, 0.08)');
 assert.ok(appHeaderContent.includes('var(--color-wine-subtle)'), 'AppHeader Demo Sandbox button must use var(--color-wine-subtle)');
-console.log('✔ Passed: Finding 4 - AppHeader uses design tokens for Demo Sandbox and places ThemeToggle correctly');
+console.log('✔ Passed: Finding 4 - AppHeader uses design tokens for Demo Sandbox and Open Desk is exclusively on landing page');
 
 // 5. Verify skiper4.tsx dead code reference is removed (Finding 5)
 const skiper4Path = path.resolve(process.cwd(), 'skiper4.tsx');
