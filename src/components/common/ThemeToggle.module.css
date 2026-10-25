@@ -1,0 +1,77 @@
+/* ==========================================================================
+   Netteo Bespoke Theme Toggle Button Styles
+   Inspired by Skiper UI ThemeToggleButton2 (Toggles.dev)
+   Adheres to design-addendum.md §8 (Motion tokens) and §7 (Buttons spec)
+   ========================================================================== */
+
+.toggleButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(33, 26, 27, 0.05);
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Height matching Open Desk CTA button in LandingNavbar */
+.sizeMd {
+  width: 42px;
+  height: 42px;
+}
+
+/* Height matching Open Desk button in AppHeader (38px) */
+.sizeSm {
+  width: 38px;
+  height: 38px;
+}
+
+.svgIcon {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.sizeSm .svgIcon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Hover state: wine border and subtle wine background */
+.toggleButton:hover {
+  background-color: var(--color-wine-subtle);
+  border-color: var(--color-wine);
+  color: var(--color-wine);
+  box-shadow: 0 2px 8px rgba(127, 1, 31, 0.15);
+}
+
+[data-theme='dark'] .toggleButton:hover {
+  background-color: var(--color-wine-subtle);
+  border-color: var(--color-wine-hover);
+  color: #FFFFFF;
+  box-shadow: 0 2px 10px rgba(127, 1, 31, 0.35);
+}
+
+/* Tactile press */
+.toggleButton:active {
+  transform: scale(0.94);
+}
+
+/* Focus Visible: 2px ring with 2px offset */
+.toggleButton:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

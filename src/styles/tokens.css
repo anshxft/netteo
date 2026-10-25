@@ -48,6 +48,15 @@
   --color-info-bg: #EDF3FC;
   --color-info-border: #BED2F2;
 
+  /* Component Surface Gradients & Shadows */
+  --hero-card-bg: radial-gradient(ellipse 90% 65% at 50% -10%, #FAF5E8 0%, #FFFCF7 55%, #F9F6EF 100%);
+  --hero-mesh-glow: radial-gradient(circle, rgba(127, 1, 31, 0.06) 0%, rgba(245, 235, 208, 0.3) 60%, transparent 80%);
+  --cta-card-bg: radial-gradient(ellipse 90% 70% at 50% 0%, #FAF5E8 0%, #FFFCF7 60%, #F9F6EF 100%);
+  --nav-pill-bg: rgba(255, 252, 247, 0.92);
+  --nav-pill-shadow: 0 10px 30px -5px rgba(33, 26, 27, 0.08), 0 2px 8px rgba(33, 26, 27, 0.04);
+  --card-shadow: 0 12px 36px -6px rgba(33, 26, 27, 0.05);
+  --modal-backdrop-bg: rgba(33, 26, 27, 0.52);
+
   /* Spacing Scale (8pt grid basis) */
   --space-2xs: 2px;
   --space-xs: 4px;
@@ -109,9 +118,76 @@
   --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
 }
 
+/* ==========================================================================
+   Custom Dark Mode — Wine Red (#7F011F) & Black
+   Clean, professional fintech aesthetic with deep obsidian surfaces,
+   sculpted wine borders, and WCAG AA/AAA compliant high contrast.
+   ========================================================================== */
+
+[data-theme='dark'],
+.dark {
+  /* Brand Core Palette — Wine Red Anchor (Tuned for dark surfaces to pass WCAG AA contrast) */
+  --color-wine: #C41E3D;
+  --color-wine-hover: #DB2B4C;
+  --color-wine-active: #7F011F;
+  --color-wine-subtle: rgba(196, 30, 61, 0.22);
+
+  /* Warm Muted Dark Accents */
+  --color-sand: #241117;
+  --color-sand-light: #1A0C11;
+  --color-sand-hover: #301720;
+
+  /* Surfaces & Canvas — Deep obsidian black with clean wine undertone */
+  --color-page: #080405;
+  --color-surface: #12090C;
+  --color-surface-elevated: #1B0F15;
+
+  /* Text & Hierarchy — High contrast, crisp typography */
+  --color-ink: #F7EFF1;
+  --color-ink-secondary: #D4C4C9;
+  --color-muted: #9E8B91;
+  --color-muted-light: #6A5A60;
+
+  /* Structural Borders */
+  --color-border: #28131B;
+  --color-border-subtle: #1C0C12;
+  --color-border-strong: #441E2B;
+
+  /* Semantic Status Palette (tuned for dark surfaces) */
+  --color-success: #34D399;
+  --color-success-bg: rgba(16, 185, 129, 0.16);
+  --color-success-border: rgba(52, 211, 153, 0.3);
+
+  --color-danger: #F87171;
+  --color-danger-bg: rgba(239, 68, 68, 0.16);
+  --color-danger-border: rgba(248, 113, 113, 0.3);
+
+  --color-warning: #FBBF24;
+  --color-warning-bg: rgba(245, 158, 11, 0.16);
+  --color-warning-border: rgba(251, 191, 36, 0.3);
+
+  --color-info: #60A5FA;
+  --color-info-bg: rgba(59, 130, 246, 0.16);
+  --color-info-border: rgba(96, 165, 250, 0.3);
+
+  /* Component Surface Gradients & Shadows in Dark Mode */
+  --hero-card-bg: radial-gradient(ellipse 90% 65% at 50% -10%, #1D0E15 0%, #12090C 55%, #080405 100%);
+  --hero-mesh-glow: radial-gradient(circle, rgba(127, 1, 31, 0.18) 0%, rgba(36, 17, 23, 0.35) 60%, transparent 80%);
+  --cta-card-bg: radial-gradient(ellipse 90% 70% at 50% 0%, #1D0E15 0%, #12090C 60%, #080405 100%);
+  --nav-pill-bg: rgba(18, 9, 12, 0.92);
+  --nav-pill-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(127, 1, 31, 0.2);
+  --card-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.5);
+  --modal-backdrop-bg: rgba(0, 0, 0, 0.75);
+
+  /* Focus Ring */
+  --focus-ring-color: #9E1030;
+}
+
 /* Reduced Motion Override */
 @media (prefers-reduced-motion: reduce) {
-  :root {
+  :root,
+  [data-theme='dark'],
+  .dark {
     --motion-fast: 0ms !important;
     --motion-base: 0ms !important;
     --motion-slow: 0ms !important;

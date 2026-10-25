@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import '../styles/globals.css';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { Web3Provider } from '@/lib/chain/Web3Provider';
 import { ToastProvider } from '@/components/ui/Toast/ToastContext';
 
@@ -47,11 +48,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={roundo.variable}>
+    <html lang="en" className={roundo.variable} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function() {
+              try {
+                var stored = localStorage.getItem('netteo-theme');
+                if (stored === 'dark') {
+                  document.documentElement.setAttribute('data-theme', 'dark');
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.setAttribute('data-theme', 'light');
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (e) {}
+            })();`,
+          }}
+        />
+      </head>
       <body>
-        <Web3Provider>
-          <ToastProvider>{children}</ToastProvider>
-        </Web3Provider>
+        <ThemeProvider>
+          <Web3Provider>
+            <ToastProvider>{children}</ToastProvider>
+          </Web3Provider>
+        </ThemeProvider>
       </body>
     </html>
   );

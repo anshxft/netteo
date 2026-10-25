@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 import { ObligationIcon, CycleIcon, SnapshotIcon } from '../icons/netteo';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 interface SubItem {
   title: string;
@@ -267,18 +268,21 @@ export function AppNav() {
       {mobileMenuOpen && (
         <div className={styles.mobileDrawer} role="dialog" aria-label="Mobile Navigation Menu">
           <div style={{ marginBottom: 'var(--space-lg)' }}>
-            <Link href="/obligations" onClick={() => setMobileMenuOpen(false)}>
-              <Button
-                variant="primary"
-                style={{ width: '100%' }}
-                icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}
-                iconPosition="right"
-                enableLift
-                enableArrowSlide
-              >
-                Open Desk
-              </Button>
-            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+              <ThemeToggle size="sm" />
+              <Link href="/obligations" onClick={() => setMobileMenuOpen(false)} style={{ flex: 1, textDecoration: 'none' }}>
+                <Button
+                  variant="primary"
+                  style={{ width: '100%' }}
+                  icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}
+                  iconPosition="right"
+                  enableLift
+                  enableArrowSlide
+                >
+                  Open Desk
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {NAV_CATEGORIES.map((cat) => (

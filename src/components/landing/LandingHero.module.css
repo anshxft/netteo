@@ -13,7 +13,7 @@
 
 .heroCard {
   position: relative;
-  background: radial-gradient(ellipse 90% 65% at 50% -10%, #FAF5E8 0%, #FFFCF7 55%, #F9F6EF 100%);
+  background: var(--hero-card-bg);
   border: 1px solid var(--color-border);
   border-radius: 36px;
   padding: var(--space-4xl) var(--space-xl) var(--space-3xl);
@@ -22,7 +22,7 @@
   align-items: center;
   text-align: center;
   overflow: hidden;
-  box-shadow: 0 16px 48px -8px rgba(33, 26, 27, 0.05);
+  box-shadow: var(--card-shadow);
 }
 
 /* Subtle background ambient mesh glow */
@@ -34,7 +34,7 @@
   transform: translateX(-50%);
   width: 600px;
   height: 320px;
-  background: radial-gradient(circle, rgba(127, 1, 31, 0.06) 0%, rgba(245, 235, 208, 0.3) 60%, transparent 80%);
+  background: var(--hero-mesh-glow);
   pointer-events: none;
   z-index: 0;
 }
@@ -262,7 +262,7 @@
   font-size: 11px;
   font-weight: 700;
   color: var(--color-success);
-  background-color: #FFFFFF;
+  background-color: var(--color-surface-elevated);
   padding: 2px 8px;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-success-border);
@@ -427,7 +427,7 @@
   position: absolute;
   left: 60px;
   bottom: 10%;
-  background-color: #FFFFFF;
+  background-color: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   padding: 6px 14px;
@@ -446,7 +446,7 @@
   position: absolute;
   right: 50px;
   bottom: 8%;
-  background-color: #FFFFFF;
+  background-color: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   padding: 6px 14px;
