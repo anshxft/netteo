@@ -166,11 +166,11 @@ export function FeatureBento() {
           <span>✦ Liquidity Efficiency Benchmark</span>
         </div>
         <h2 className={styles.title}>
-          Save up to 85% upfront liquidity with
+          Conserve 60% upfront liquidity in standard cycles (up to 75%+ in dense networks) with
           <span className={styles.highlightPill}>Atomic Netting</span>
         </h2>
         <p className={styles.subtitle}>
-          Compare standard fragmented transfers against Netteo multilateral clearing across real Web3 team scenarios.
+          Compare standard fragmented transfers against Netteo multilateral clearing across real Web3 team scenarios. Liquidity conservation reflects settlement volume collapsed via cycle netting, not guaranteed fee savings.
         </p>
       </div>
 

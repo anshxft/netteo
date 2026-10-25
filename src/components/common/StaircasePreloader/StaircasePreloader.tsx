@@ -66,7 +66,7 @@ const DEFAULT_MILESTONES = [
 export function StaircasePreloader({
   columnCount = 5,
   mode = 'converging',
-  durationMs = 2200,
+  durationMs = 900,
   onComplete,
   showSkip = true,
   state: controlledState,
@@ -144,7 +144,7 @@ export function StaircasePreloader({
     setPhase('exit');
 
     // Exit transition duration is the max column exit delay + step transition (450ms)
-    const exitDuration = prefersReducedMotionRef.current ? 120 : 650;
+    const exitDuration = prefersReducedMotionRef.current ? 40 : 420;
     setTimeout(() => {
       setPhase('complete');
       setIsActionLocked(false);
@@ -155,10 +155,11 @@ export function StaircasePreloader({
     }, exitDuration);
   }, []);
 
-  // Keyboard shortcut: Escape to skip
+  // Keyboard shortcut: Escape, Space, or Enter to skip
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && phaseRef.current !== 'complete') {
+      if ((e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') && isOpen && phaseRef.current !== 'complete') {
+        if (e.key === ' ') e.preventDefault();
         triggerExit();
       }
     };
@@ -173,6 +174,16 @@ export function StaircasePreloader({
       return;
     }
 
+    // Immediate bypass under prefers-reduced-motion
+    if (prefersReducedMotionRef.current) {
+      setPhase('complete');
+      if (!completedCalledRef.current) {
+        completedCalledRef.current = true;
+        onCompleteRef.current?.();
+      }
+      return;
+    }
+
     completedCalledRef.current = false;
     setPhase('enter');
     setProgress(0);
@@ -180,13 +191,13 @@ export function StaircasePreloader({
     startTimeRef.current = Date.now();
 
     // After entrance staircase panels arrive, switch to holding stage
-    const entranceDuration = prefersReducedMotionRef.current ? 50 : 500;
+    const entranceDuration = 220;
     const enterTimer = setTimeout(() => {
       setPhase('holding');
     }, entranceDuration);
 
     // Progress counter ticker
-    const intervalMs = 30;
+    const intervalMs = 25;
     const totalSteps = durationMs / intervalMs;
     let stepCount = 0;
 
@@ -206,10 +217,10 @@ export function StaircasePreloader({
 
       if (currentPct >= 100) {
         if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-        // Small lingering beat at 100% before graceful exit
+        // Small brief lingering beat at 100% before exit
         timerRef.current = setTimeout(() => {
           triggerExit();
-        }, 320);
+        }, 120);
       }
     }, intervalMs);
 

@@ -13,6 +13,7 @@ import { Icon } from '@/components/icons/Icon';
 import { CycleIcon, SnapshotIcon } from '@/components/icons/netteo';
 import obStyles from '@/features/obligations/components/ObligationsView.module.css';
 import { Plus, ArrowRight } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function CyclesPage() {
   const { mode, resetCounter } = useWorkspace();
@@ -70,35 +71,42 @@ export default function CyclesPage() {
 
   return (
     <AppLayout>
-      <div className={obStyles.pageHeader}>
-        <div className={obStyles.titleArea}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-            <h1>Settlements</h1>
+      <PageHeader
+        title="Settlements"
+        subtitle="Conserve 60% liquidity in standard 3-claim cycles (up to 75%+ in multi-party networks) through atomic net transfers."
+        badge={
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              fontSize: '11px',
+              fontWeight: 600,
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: mode === 'demo' ? 'var(--color-wine-subtle)' : 'var(--color-sand)',
+              color: mode === 'demo' ? 'var(--color-wine)' : 'var(--color-ink)',
+            }}
+          >
             <span
               style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: mode === 'demo' ? 'var(--color-wine-subtle, #f5e8e8)' : 'var(--color-sand)',
-                color: mode === 'demo' ? 'var(--color-wine)' : 'var(--color-ink)',
-                border: '1px solid var(--color-border)',
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: mode === 'demo' ? 'var(--color-success)' : 'var(--color-wine)',
               }}
-            >
-              {mode === 'demo' ? 'Demo Sandbox' : 'Live Mezo'}
-            </span>
-          </div>
-          <p className={obStyles.subtitle}>
-            Batch and reconcile multiple accepted payments into single net transfers, saving up to 70% in liquidity.
-          </p>
-        </div>
-
-        <Link href="/cycles/new" style={{ textDecoration: 'none' }}>
-          <Button variant="primary" icon={<Icon icon={Plus} size="sm" color="#FFFFFF" />}>
-            Start New Settlement
-          </Button>
-        </Link>
-      </div>
+            />
+            {mode === 'demo' ? 'Demo Sandbox' : 'Live Mezo'}
+          </span>
+        }
+        actions={
+          <Link href="/cycles/new" style={{ textDecoration: 'none' }}>
+            <Button variant="primary" icon={<Icon icon={Plus} size="sm" color="#FFFFFF" />}>
+              Start New Settlement
+            </Button>
+          </Link>
+        }
+      />
 
       {isLoading && (
         <div style={{ padding: 'var(--space-2xl) 0', color: 'var(--color-muted)' }}>

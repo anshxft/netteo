@@ -162,10 +162,14 @@
   transition: background-color var(--motion-fast) var(--ease-standard);
 }
 
-.dropdownItem:hover,
+.dropdownItem:hover {
+  background-color: var(--color-sand-light);
+}
+
 .dropdownItem:focus-visible {
   background-color: var(--color-sand-light);
-  outline: none;
+  outline: 2px solid var(--color-wine);
+  outline-offset: -2px;
 }
 
 .itemTitle {

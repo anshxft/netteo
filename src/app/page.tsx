@@ -29,7 +29,7 @@ export default function LandingPage() {
   }>({
     mode: 'converging',
     columnCount: 5,
-    durationMs: 3200,
+    durationMs: 900,
   });
 
   const handleTrigger = (config: {
