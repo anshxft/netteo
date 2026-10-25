@@ -5,6 +5,7 @@ import Link from 'next/link';
 import styles from './LandingNavbar.module.css';
 import { Menu, X, ArrowRight } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 
 const NAV_LINKS = [
   { label: 'How It Works', href: '#how-it-works' },
@@ -58,6 +59,7 @@ export function LandingNavbar() {
 
         {/* Right CTA */}
         <div className={styles.navActions}>
+          <ThemeToggle size="md" />
           <Link href="/obligations" className={styles.ctaButton}>
             <span>Open Desk</span>
             <Icon icon={ArrowRight} size="sm" color="#FFFFFF" />

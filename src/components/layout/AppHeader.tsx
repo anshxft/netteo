@@ -8,6 +8,7 @@ import { WalletBadge } from './WalletBadge';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { ArrowRight } from 'lucide-react';
 
 export interface AppHeaderProps {
@@ -45,6 +46,7 @@ export function AppHeader({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+          <ThemeToggle size="sm" />
           <Link href="/obligations" style={{ textDecoration: 'none' }}>
             <Button
               variant="primary"
@@ -70,8 +72,8 @@ export function AppHeader({
                 fontSize: '12px',
                 fontWeight: 600,
                 borderRadius: '9999px',
-                border: mode === 'demo' ? '1px solid rgba(127, 1, 31, 0.3)' : '1px solid var(--color-border)',
-                backgroundColor: mode === 'demo' ? 'rgba(127, 1, 31, 0.08)' : 'var(--color-surface)',
+                border: mode === 'demo' ? '1px solid var(--color-wine)' : '1px solid var(--color-border)',
+                backgroundColor: mode === 'demo' ? 'var(--color-wine-subtle)' : 'var(--color-surface)',
                 color: mode === 'demo' ? 'var(--color-wine)' : 'var(--color-ink)',
                 cursor: 'pointer',
                 transition: 'all var(--motion-fast)',
