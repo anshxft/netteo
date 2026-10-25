@@ -2,8 +2,13 @@
 
 import React, { useState } from 'react';
 import styles from './FaqAccordion.module.css';
-import { ChevronDown } from 'lucide-react';
-import { Icon } from '@/components/icons/Icon';
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+  AccordionBasic,
+} from '@/components/core/accordion';
 
 interface FaqItem {
   id: string;
@@ -45,11 +50,7 @@ const FAQ_ITEMS: FaqItem[] = [
 ];
 
 export function FaqAccordion() {
-  const [openId, setOpenId] = useState<string | null>('1');
-
-  const toggleItem = (id: string) => {
-    setOpenId((prev) => (prev === id ? null : id));
-  };
+  const [activeTab, setActiveTab] = useState<'settlement' | 'primitives'>('settlement');
 
   return (
     <section id="faq" className={styles.faqSection}>
@@ -66,38 +67,49 @@ export function FaqAccordion() {
         </p>
       </div>
 
-      <div className={styles.accordionList} role="region" aria-label="FAQ Accordion">
-        {FAQ_ITEMS.map((item) => {
-          const isOpen = openId === item.id;
-          return (
-            <div key={item.id} className={styles.accordionItem}>
-              <button
-                type="button"
-                id={`faq-question-${item.id}`}
-                className={styles.accordionHeader}
-                onClick={() => toggleItem(item.id)}
-                aria-expanded={isOpen}
-                aria-controls={`faq-answer-${item.id}`}
-              >
-                <span>{item.question}</span>
-                <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>
-                  <Icon icon={ChevronDown} size="sm" />
-                </span>
-              </button>
-
-              <div
-                id={`faq-answer-${item.id}`}
-                className={styles.accordionContent}
-                role="region"
-                aria-labelledby={`faq-question-${item.id}`}
-                hidden={!isOpen}
-              >
-                {item.answer}
-              </div>
-            </div>
-          );
-        })}
+      <div className={styles.tabContainer} role="tablist" aria-label="FAQ Categories">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'settlement'}
+          className={`${styles.tabButton} ${activeTab === 'settlement' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('settlement')}
+        >
+          Protocol Clearing FAQs
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'primitives'}
+          className={`${styles.tabButton} ${activeTab === 'primitives' ? styles.tabButtonActive : ''}`}
+          onClick={() => setActiveTab('primitives')}
+        >
+          Motion Primitives Accordion
+        </button>
       </div>
+
+      {activeTab === 'settlement' ? (
+        <Accordion
+          type="multiple"
+          defaultValue={['1']}
+          className={styles.accordionList}
+        >
+          {FAQ_ITEMS.map((item) => (
+            <AccordionItem key={item.id} value={item.id}>
+              <AccordionTrigger>
+                {item.question}
+              </AccordionTrigger>
+              <AccordionContent>
+                {item.answer}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      ) : (
+        <div className={styles.dividedContainer}>
+          <AccordionBasic />
+        </div>
+      )}
     </section>
   );
 }

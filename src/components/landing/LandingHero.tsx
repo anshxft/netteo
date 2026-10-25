@@ -6,6 +6,7 @@ import styles from './LandingHero.module.css';
 import { ArrowRight, CheckCircle2, ShieldCheck, Zap, Lock, Sparkles } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 import { ObligationIcon, NettingIcon, CycleIcon } from '@/components/icons/netteo';
+import { Button } from '@/components/common/Button';
 
 export function LandingHero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,13 +59,24 @@ export function LandingHero() {
 
           {/* Dual Action Row */}
           <div className={styles.actionRow}>
-            <Link href="/obligations" className={styles.primaryCta}>
-              <span>Open Obligation Desk</span>
-              <Icon icon={ArrowRight} size="sm" color="#FFFFFF" />
+            <Link href="/obligations" style={{ textDecoration: 'none' }}>
+              <Button
+                variant="primary"
+                icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}
+                iconPosition="right"
+                style={{ minHeight: '50px', padding: '0 28px', fontSize: '15px', borderRadius: 'var(--radius-full)' }}
+              >
+                Open Obligation Desk
+              </Button>
             </Link>
 
-            <a href="#simulator" className={styles.secondaryLink}>
-              <span>Explore Netting Simulator ↓</span>
+            <a href="#simulator" style={{ textDecoration: 'none' }}>
+              <Button
+                variant="tertiary"
+                style={{ fontSize: '15px' }}
+              >
+                Explore Netting Simulator ↓
+              </Button>
             </a>
           </div>
         </div>
@@ -149,9 +161,15 @@ export function LandingHero() {
               </div>
             </div>
 
-            <Link href="/obligations" className={styles.deviceCta}>
-              <span>View Full Obligation Desk</span>
-              <ArrowRight size={14} />
+            <Link href="/obligations" style={{ textDecoration: 'none', width: '100%' }}>
+              <Button
+                variant="primary"
+                icon={<ArrowRight size={14} />}
+                iconPosition="right"
+                style={{ width: '100%', minHeight: '38px', fontSize: '12.5px' }}
+              >
+                View Full Obligation Desk
+              </Button>
             </Link>
           </div>
 

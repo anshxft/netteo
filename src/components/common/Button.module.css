@@ -209,6 +209,7 @@
 @media (prefers-reduced-motion: reduce) {
   .button {
     transition: none !important;
+    transform: none !important;
   }
   .spinner {
     animation-duration: 1.5s;

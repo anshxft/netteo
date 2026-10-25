@@ -1,0 +1,12 @@
+# Design References Log
+
+Adheres to `design-addendum.md` §17 (Reference log). Maintains provenance and records token adaptations for all adopted interaction patterns, icons, and motion.
+
+| Item | Source URL | What was adopted | What was changed | License checked | Dependencies added |
+|---|---|---|---|---|---|
+| Skiper 40 Buttons & Links (Legacy) | https://skiper-ui.com/components | Cursor.com-inspired interactive button hover states. | Stripped curtain wipe animation and `mix-blend-mode: difference` per `design-addendum.md` §7 anti-slop rules (which caused contrast failures and color inversions). Restored canonical Netteo button styling with wine hover, surface sand hover, 120ms transition, width-locked spinner, and double-click lock. | Free personal/commercial license by @gurvinder-singh02. | None (0 new npm dependencies; native CSS & React). |
+| Lucide Icons | https://lucide.dev/icons | `ArrowRight`, `ArrowUpRight`, `ChevronDown`, `CheckCircle2`, `ShieldCheck`, `Lock`, `Sparkles` | Unified icon stroke normalized to `--icon-stroke: 1.75px` via `<Icon />`. | ISC License | Already installed (`lucide-react`). |
+| Custom Netteo Icons | Internal | Obligation, netting, cycle, snapshot, net debit/credit | Bespoke SVGs on 24px grid with 1.75px stroke. | Netteo proprietary | None |
+| Double Staircase Preloader | Motion Primitives / Codrops | Dual-direction double staircase page preloader with synchronized top & bottom step cascades. | Bespoke CSS Module using Netteo design tokens (`--color-surface`, `--color-wine`, custom smooth cubic beziers), 3 choreography modes (`converging`, `interlocked`, `center-out`), full 5 screen states (loading, success, error, empty, offline), `prefers-reduced-motion` bypass, double-click lock, and interactive configurator dock. | MIT / Open Reference | None (0 dependencies added; native React & CSS). |
+| Motion Primitives Accordion | https://motion-primitives.com/docs/accordion | Smooth height expansion, disclosure/collapse choreography, multiple/single selection, chevron rotation motion. | Converted to native CSS Modules (`Accordion.module.css`) utilizing modern CSS Grid transition (`grid-template-rows: 0fr -> 1fr`) without heavy runtime dependencies. Reskinned with Netteo tokens (`--color-wine`, `--motion-base: 180ms`, `--ease-standard`, `--radius-lg`), full keyboard accessibility, and `prefers-reduced-motion` safety. | MIT License | None (0 dependencies added; native React & CSS). |
+

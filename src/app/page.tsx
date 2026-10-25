@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LandingNavbar } from '@/components/landing/LandingNavbar';
 import { LandingHero } from '@/components/landing/LandingHero';
@@ -11,10 +11,51 @@ import { TestimonialsCarousel } from '@/components/landing/TestimonialsCarousel'
 import { FaqAccordion } from '@/components/landing/FaqAccordion';
 import { CtaBand } from '@/components/landing/CtaBand';
 import { LandingFooter } from '@/components/landing/LandingFooter';
+import {
+  StaircasePreloader,
+  StaircasePreviewDock,
+  PreloaderMode,
+  PreloaderState,
+} from '@/components/common/StaircasePreloader';
 
 export default function LandingPage() {
+  const [isPreloaderOpen, setIsPreloaderOpen] = useState(true);
+  const [preloaderKey, setPreloaderKey] = useState(0);
+  const [preloaderConfig, setPreloaderConfig] = useState<{
+    mode: PreloaderMode;
+    columnCount: number;
+    durationMs: number;
+    state?: PreloaderState;
+  }>({
+    mode: 'converging',
+    columnCount: 5,
+    durationMs: 3200,
+  });
+
+  const handleTrigger = (config: {
+    mode: PreloaderMode;
+    columnCount: number;
+    durationMs: number;
+    state?: PreloaderState;
+  }) => {
+    setPreloaderConfig(config);
+    setPreloaderKey((prev) => prev + 1);
+    setIsPreloaderOpen(true);
+  };
+
   return (
     <AppLayout>
+      {/* 0. Advanced Dual-Direction Double Staircase Preloader */}
+      <StaircasePreloader
+        key={preloaderKey}
+        isOpen={isPreloaderOpen}
+        mode={preloaderConfig.mode}
+        columnCount={preloaderConfig.columnCount}
+        durationMs={preloaderConfig.durationMs}
+        state={preloaderConfig.state}
+        onComplete={() => setIsPreloaderOpen(false)}
+      />
+
       <div
         style={{
           width: '100%',
@@ -52,6 +93,12 @@ export default function LandingPage() {
         {/* 9. Landing Footer */}
         <LandingFooter />
       </div>
+
+      {/* Interactive Staircase Configurator & Replay Dock */}
+      <StaircasePreviewDock
+        onTrigger={handleTrigger}
+        isPreloaderActive={isPreloaderOpen}
+      />
     </AppLayout>
   );
 }
