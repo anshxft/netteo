@@ -6,10 +6,7 @@ import styles from './AppNav.module.css';
 import { AppNav } from './AppNav';
 import { WalletBadge } from './WalletBadge';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
-import { Button } from '@/components/common/Button';
-import { Icon } from '@/components/icons/Icon';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
-import { ArrowRight } from 'lucide-react';
 
 export interface AppHeaderProps {
   walletAddress?: string | null;
@@ -47,18 +44,6 @@ export function AppHeader({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           <ThemeToggle size="sm" />
-          <Link href="/obligations" style={{ textDecoration: 'none' }}>
-            <Button
-              variant="primary"
-              style={{ minHeight: '38px', padding: '0 var(--space-md)', fontSize: '13px' }}
-              icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}
-              iconPosition="right"
-              enableLift
-              enableArrowSlide
-            >
-              Open Desk
-            </Button>
-          </Link>
 
           {!isLandingPage && (
             <button

@@ -5,10 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './AppNav.module.css';
 import { Icon } from '../icons/Icon';
-import { Button } from '../common/Button';
 import {
   ChevronDown,
-  ArrowRight,
   Menu,
   X,
   Users,
@@ -267,22 +265,8 @@ export function AppNav() {
       {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && (
         <div className={styles.mobileDrawer} role="dialog" aria-label="Mobile Navigation Menu">
-          <div style={{ marginBottom: 'var(--space-lg)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-              <ThemeToggle size="sm" />
-              <Link href="/obligations" onClick={() => setMobileMenuOpen(false)} style={{ flex: 1, textDecoration: 'none' }}>
-                <Button
-                  variant="primary"
-                  style={{ width: '100%' }}
-                  icon={<Icon icon={ArrowRight} size="sm" color="#FFFFFF" />}
-                  iconPosition="right"
-                  enableLift
-                  enableArrowSlide
-                >
-                  Open Desk
-                </Button>
-              </Link>
-            </div>
+          <div style={{ marginBottom: 'var(--space-lg)', display: 'flex', justifyContent: 'flex-end' }}>
+            <ThemeToggle size="sm" />
           </div>
 
           {NAV_CATEGORIES.map((cat) => (
