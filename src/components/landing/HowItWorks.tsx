@@ -2,29 +2,29 @@
 
 import React from 'react';
 import styles from './HowItWorks.module.css';
-import { CheckCircle2, ArrowRight, ShieldCheck, Cpu, Wallet, Layers } from 'lucide-react';
+import { CheckCircle2, Wallet } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 import { ObligationIcon, NettingIcon, CycleIcon } from '@/components/icons/netteo';
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className={styles.sectionWrapper}>
+    <section id="how-it-works" className={styles.sectionWrapper} aria-labelledby="how-it-works-title">
       <div className={styles.headerContainer}>
         <div className={styles.eyebrow}>
-          <span>✦ Verified Clearing Lifecycle</span>
+          <span>✦ How Settlement Works</span>
         </div>
-        <h2 className={styles.title}>
+        <h2 id="how-it-works-title" className={styles.title}>
           How our platform makes settlement
           <span className={styles.highlightPill}>frictionless</span>
         </h2>
         <p className={styles.subtitle}>
-          From mutual invoice submission to on-chain non-custodial payout on Mezo in 4 simple steps.
+          From recording payments to one final payout on Mezo in 4 simple steps.
         </p>
       </div>
 
       {/* 2x2 Grid of Soft Rounded Cards */}
       <div className={styles.grid2x2}>
-        {/* Card 01 */}
+        {/* Step 1: Add and confirm debts */}
         <div className={styles.card}>
           <div className={styles.cardTop}>
             <div className={styles.badgeRow}>
@@ -33,28 +33,35 @@ export function HowItWorks() {
                 <Icon icon={ObligationIcon} size="md" />
               </div>
             </div>
-            <h3 className={styles.cardTitle}>Register Bilateral Claims</h3>
+            <h3 className={styles.cardTitle}>Add and confirm debts</h3>
             <p className={styles.cardSentence}>
-              Contributors log payment obligations; debtors explicitly verify and sign each claim with
-              cryptographic authorization before netting.
+              People record who owes whom and confirm the amounts.
             </p>
           </div>
 
           <div className={styles.previewBox}>
             <div className={styles.previewHeader}>
-              <span>Obligation Entry</span>
-              <span className={styles.previewStatusBadge}>
-                <CheckCircle2 size={11} /> Accepted
-              </span>
+              <span>Starting Debts</span>
+              <span className={styles.previewTotalBadge}>$200 Total</span>
             </div>
-            <div className={styles.previewRow}>
-              <span>Alice (0x1111...1111) owes Bob</span>
-              <span style={{ color: 'var(--color-ink)' }}>$100.00 MUSD</span>
+            <div className={styles.previewList}>
+              <div className={styles.previewRow}>
+                <span>Alice owes Bob</span>
+                <span>$100</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>Bob owes Charlie</span>
+                <span>$80</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>Charlie owes Alice</span>
+                <span>$20</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Card 02 */}
+        {/* Step 2: Cancel out matching debts */}
         <div className={styles.card}>
           <div className={styles.cardTop}>
             <div className={styles.badgeRow}>
@@ -63,30 +70,35 @@ export function HowItWorks() {
                 <Icon icon={NettingIcon} size="md" />
               </div>
             </div>
-            <h3 className={styles.cardTitle}>Graph Netting Elimination</h3>
+            <h3 className={styles.cardTitle}>Cancel out matching debts</h3>
             <p className={styles.cardSentence}>
-              Our deterministic solver analyzes circular debt paths across the partner graph and cancels
-              reciprocal obligations down to the mathematical minimum.
+              Netteo finds debts that can offset each other, reducing the total that needs to be paid.
             </p>
           </div>
 
           <div className={styles.previewBox}>
             <div className={styles.previewHeader}>
-              <span>Graph Cycle Detected</span>
-              <span style={{ color: 'var(--color-wine)', fontWeight: 700, fontSize: '11px' }}>
-                -$120.00 Loop Canceled
-              </span>
+              <span>Matching Debts Canceled</span>
+              <span className={styles.previewSavingsBadge}>-$120 Offset (60%)</span>
             </div>
-            <div className={styles.previewRow}>
-              <span style={{ fontSize: '12px', color: 'var(--color-ink-secondary)' }}>
-                Alice → Bob ($100) → Charlie ($80) → Alice ($20)
-              </span>
-              <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>Zero-Sum</span>
+            <div className={styles.previewList}>
+              <div className={styles.previewRow}>
+                <span>Starting debt total</span>
+                <span>$200</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>Debts canceled out</span>
+                <span style={{ color: 'var(--color-wine)' }}>-$120</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>Amount remaining to pay</span>
+                <span style={{ color: 'var(--color-success)' }}>$80</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Card 03 */}
+        {/* Step 3: Fund only what’s still owed */}
         <div className={styles.card}>
           <div className={styles.cardTop}>
             <div className={styles.badgeRow}>
@@ -95,27 +107,41 @@ export function HowItWorks() {
                 <Icon icon={Wallet} size="md" />
               </div>
             </div>
-            <h3 className={styles.cardTitle}>Deposit Net Deficit Only</h3>
+            <h3 className={styles.cardTitle}>Fund only what’s still owed</h3>
             <p className={styles.cardSentence}>
-              Only net debtors deposit MUSD into the automated settlement escrow contract on Mezo—no excess
-              working capital is ever trapped in flight.
+              The remaining debtors deposit the amounts needed for settlement.
             </p>
           </div>
 
           <div className={styles.previewBox}>
             <div className={styles.previewHeader}>
-              <span>Escrow Funding Progress</span>
-              <span style={{ color: 'var(--color-success)', fontWeight: 700, fontSize: '11px' }}>
-                $80 / $80 MUSD (100%)
-              </span>
+              <span>Settlement Deposits</span>
+              <span className={styles.previewStatusBadge}>100% Funded</span>
             </div>
-            <div className={styles.progressBarTrack}>
+            <div className={styles.previewList}>
+              <div className={styles.previewRow}>
+                <span>Alice deposits</span>
+                <span style={{ color: 'var(--color-ink)' }}>$80</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>Bob & Charlie deposit</span>
+                <span style={{ color: 'var(--color-muted)' }}>$0 (nothing owed)</span>
+              </div>
+            </div>
+            <div
+              className={styles.progressBarTrack}
+              role="progressbar"
+              aria-valuenow={100}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Settlement funding progress: 100%"
+            >
               <div className={styles.progressBarFill} style={{ width: '100%' }} />
             </div>
           </div>
         </div>
 
-        {/* Card 04 */}
+        {/* Step 4: Pay everyone in one settlement */}
         <div className={styles.card}>
           <div className={styles.cardTop}>
             <div className={styles.badgeRow}>
@@ -124,27 +150,32 @@ export function HowItWorks() {
                 <Icon icon={CycleIcon} size="md" />
               </div>
             </div>
-            <h3 className={styles.cardTitle}>Atomic Creditor Payout</h3>
+            <h3 className={styles.cardTitle}>Pay everyone in one settlement</h3>
             <p className={styles.cardSentence}>
-              Smart contract distributes funds to net creditors in one atomic execution, publishing
-              verifiable Merkle snapshot proofs permanently on-chain.
+              The contract distributes the funds and records the result on-chain.
             </p>
           </div>
 
           <div className={styles.previewBox}>
             <div className={styles.previewHeader}>
-              <span>Mezo Transaction Confirmation</span>
+              <span>Final Distribution</span>
               <span className={styles.previewStatusBadge}>
-                <CheckCircle2 size={11} /> Settled
+                <CheckCircle2 size={11} /> All Debts Cleared
               </span>
             </div>
-            <div className={styles.previewRow}>
-              <span style={{ fontSize: '12px', color: 'var(--color-muted)' }}>
-                Tx: 0x8f2a...9c14
-              </span>
-              <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>
-                1 Atomic Tx
-              </span>
+            <div className={styles.previewList}>
+              <div className={styles.previewRow}>
+                <span>Bob receives</span>
+                <span style={{ color: 'var(--color-success)' }}>+$20</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>Charlie receives</span>
+                <span style={{ color: 'var(--color-success)' }}>+$60</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>Remaining debts</span>
+                <span style={{ color: 'var(--color-muted)' }}>$0 (fully settled)</span>
+              </div>
             </div>
           </div>
         </div>

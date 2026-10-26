@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ObligationIcon, CycleIcon, SnapshotIcon } from '../icons/netteo';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { WorkspaceModeSelector } from './WorkspaceModeSelector';
 
 interface SubItem {
   title: string;
@@ -270,7 +271,8 @@ export function AppNav() {
       {/* Mobile Navigation Drawer */}
       {mobileMenuOpen && (
         <div className={styles.mobileDrawer} role="dialog" aria-label="Mobile Navigation Menu">
-          <div style={{ marginBottom: 'var(--space-lg)', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ marginBottom: 'var(--space-lg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            <WorkspaceModeSelector />
             <ThemeToggle size="sm" />
           </div>
 
