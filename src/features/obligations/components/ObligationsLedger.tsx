@@ -78,7 +78,15 @@ export function ObligationsLedger({
 
       setIsAuthorizing(true);
       try {
-        const action = newStatus.toLowerCase() as 'accept' | 'dispute' | 'withdraw';
+        const actionMap: Record<string, 'accept' | 'dispute' | 'withdraw'> = {
+          Accepted: 'accept',
+          accepted: 'accept',
+          Disputed: 'dispute',
+          disputed: 'dispute',
+          Withdrawn: 'withdraw',
+          withdrawn: 'withdraw',
+        };
+        const action = actionMap[newStatus] || (newStatus.toLowerCase() as 'accept' | 'dispute' | 'withdraw');
         const nonce = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `nonce-${Date.now()}`;
         const timestamp = Date.now();
 

@@ -7,6 +7,7 @@ import { ArrowRight, CheckCircle2, ShieldCheck, Zap, Lock, Sparkles } from 'luci
 import { Icon } from '@/components/icons/Icon';
 import { ObligationIcon, NettingIcon, CycleIcon } from '@/components/icons/netteo';
 import { Button } from '@/components/common/Button';
+import { NetteoLogoMark } from '@/components/common/NetteoLogo';
 
 export function LandingHero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,7 +42,7 @@ export function LandingHero() {
         <div className={styles.heroContent}>
           {/* Eyebrow Tag */}
           <div className={styles.eyebrow}>
-            <span className={styles.eyebrowSparkle}>✦</span>
+            <NetteoLogoMark size={14} />
             <span>Multilateral Debt Clearing on Mezo</span>
           </div>
 

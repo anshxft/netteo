@@ -152,6 +152,20 @@
   height: 100%;
 }
 
+.insigniaInnerDisc {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px dashed var(--color-border-strong);
+  background-color: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(33, 26, 27, 0.04);
+}
+
 .insigniaPulseRing {
   position: absolute;
   inset: -6px;

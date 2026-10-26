@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import styles from './StaircasePreloader.module.css';
 import { AlertCircle, WifiOff, CheckCircle2, RotateCw, X } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
+import { NetteoLogoMark } from '@/components/common/NetteoLogo';
 
 export type PreloaderMode = 'converging' | 'interlocked' | 'center-out';
 export type PreloaderState = 'loading' | 'success' | 'error' | 'empty' | 'offline';
@@ -372,54 +373,12 @@ export function StaircasePreloader({
             : ''
         }`}
       >
-        {/* Insignia / Netting Node Graphic */}
+        {/* Insignia / Official Netteo Brand Logo Mark */}
         <div className={styles.insigniaBox}>
           <div className={styles.insigniaPulseRing} />
-          <svg
-            className={styles.insigniaSvg}
-            viewBox="0 0 64 64"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            {/* Outer Hexagonal Clearing Ring */}
-            <circle
-              cx="32"
-              cy="32"
-              r="26"
-              stroke="var(--color-border-strong)"
-              strokeWidth="1.5"
-              strokeDasharray="4 3"
-            />
-            {/* Tri-Node Directed Obligation Lines Collapsing to Center */}
-            <path
-              d="M32 12 L32 28"
-              stroke="var(--color-wine)"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            <path
-              d="M14.68 42 L28.54 34"
-              stroke="var(--color-wine)"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            <path
-              d="M49.32 42 L35.46 34"
-              stroke="var(--color-wine)"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            {/* Central Atomic Net Settlement Nexus */}
-            <circle
-              cx="32"
-              cy="32"
-              r="6.5"
-              fill="var(--color-wine)"
-              stroke="var(--color-surface-elevated)"
-              strokeWidth="2"
-            />
-          </svg>
+          <div className={styles.insigniaInnerDisc}>
+            <NetteoLogoMark size={36} />
+          </div>
         </div>
 
         {/* Counter Badge Header */}

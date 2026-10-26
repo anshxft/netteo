@@ -1,6 +1,28 @@
 {
   "name": "Netteo",
+  "short_name": "Netteo",
   "description": "Multilateral Obligation Netting & MUSD Settlement on Mezo",
-  "iconPath": "favicon.ico",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDF9F2",
+  "theme_color": "#7F011F",
   "appUrl": "https://netteo-six.vercel.app"
 }
