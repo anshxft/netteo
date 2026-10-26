@@ -165,14 +165,55 @@
   border: 1px solid var(--color-success-border);
 }
 
+.previewTotalBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+  background-color: var(--color-sand);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+}
+
+.previewSavingsBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--color-wine);
+  background-color: var(--color-wine-subtle);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(127, 1, 31, 0.2);
+}
+
+.previewList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
 .previewRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
-  font-weight: 600;
+  gap: var(--space-xs);
+  font-size: 12.5px;
   color: var(--color-ink);
-  padding: 4px 0;
+  padding: 2px 0;
+}
+
+.previewRow span:first-child {
+  color: var(--color-ink-secondary);
+  font-weight: 500;
+}
+
+.previewRow span:last-child {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .progressBarTrack {

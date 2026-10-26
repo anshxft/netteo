@@ -5,9 +5,9 @@ import Link from 'next/link';
 import styles from './AppNav.module.css';
 import { AppNav } from './AppNav';
 import { WalletBadge } from './WalletBadge';
-import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { NetteoLogoMark } from '@/components/common/NetteoLogo';
+import { WorkspaceModeSelector } from './WorkspaceModeSelector';
 import { BookOpen } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 
@@ -30,7 +30,6 @@ export function AppHeader({
   onConnectWallet,
   onDisconnectWallet,
 }: AppHeaderProps) {
-  const { mode, toggleMode } = useWorkspace();
   return (
     <header className={styles.header}>
       <div className={styles.headerInner}>
@@ -71,36 +70,9 @@ export function AppHeader({
 
           <ThemeToggle size="sm" />
 
+          {/* Workspace Mode Selector (Demo vs Live) styled with var(--color-wine-subtle) */}
           {!isLandingPage && (
-            <button
-              type="button"
-              onClick={toggleMode}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 10px',
-                fontSize: '12px',
-                fontWeight: 600,
-                borderRadius: '9999px',
-                border: mode === 'demo' ? '1px solid var(--color-wine)' : '1px solid var(--color-border)',
-                backgroundColor: mode === 'demo' ? 'var(--color-wine-subtle)' : 'var(--color-surface)',
-                color: mode === 'demo' ? 'var(--color-wine)' : 'var(--color-ink)',
-                cursor: 'pointer',
-                transition: 'all var(--motion-fast)',
-              }}
-              title={mode === 'demo' ? 'Currently in Demo Sandbox with mock tokens. Click to switch to Live Mezo Testnet.' : 'Currently in Live Mezo mode. Click to switch to Demo Sandbox.'}
-            >
-              <span
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: mode === 'demo' ? 'var(--color-success)' : 'var(--color-wine)',
-                }}
-              />
-              <span>{mode === 'demo' ? 'Demo Sandbox' : 'Live Mezo'}</span>
-            </button>
+            <WorkspaceModeSelector />
           )}
 
           <WalletBadge

@@ -1,0 +1,216 @@
+/* ==========================================================================
+   WorkspaceModeSelector.module.css
+   Accessible Segmented Control for Demo vs Live Mezo Mode
+   Tokens: design-addendum.md §7, §8, §14 & UI.md §2, §5
+   ========================================================================== */
+
+.container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.segmentedControl {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--color-page);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 2px;
+  gap: 2px;
+  height: 32px;
+  box-sizing: border-box;
+}
+
+.segment {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: all var(--motion-fast) var(--ease-standard);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.segment:hover:not(.active) {
+  color: var(--color-ink);
+  background-color: var(--color-sand-hover, rgba(245, 235, 208, 0.4));
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+/* Active Demo Pill */
+.activeDemo {
+  background-color: var(--color-wine-subtle);
+  border-color: var(--color-wine-subtle);
+  color: var(--color-wine);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(127, 1, 31, 0.08);
+}
+
+/* Active Live Pill */
+.activeLive {
+  background-color: var(--color-wine);
+  border-color: var(--color-wine);
+  color: #FFFFFF;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(127, 1, 31, 0.28);
+}
+
+.iconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.inactiveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-muted);
+  opacity: 0.5;
+}
+
+/* Modal Overlay & Dialog */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(22, 19, 20, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
+  animation: fadeIn var(--motion-fast) var(--ease-standard);
+}
+
+.dialog {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  max-width: 480px;
+  width: 100%;
+  padding: var(--space-xl);
+  box-shadow: 0 24px 64px -12px rgba(33, 26, 27, 0.22), 0 4px 16px rgba(33, 26, 27, 0.06);
+  animation: scaleUp var(--motion-fast) var(--ease-standard);
+  box-sizing: border-box;
+}
+
+.dialogHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.dialogIconWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background-color: var(--color-wine-subtle);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-wine);
+}
+
+.dialogTitleGroup {
+  flex: 1;
+}
+
+.dialogTitle {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-ink);
+  margin: 0 0 4px 0;
+}
+
+.badgeMezo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-sand);
+  color: var(--color-ink);
+  letter-spacing: 0.02em;
+}
+
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-wine);
+}
+
+.dialogBody {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-ink-secondary);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.dialogNotice {
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-page);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .segment {
+    padding: 0 7px;
+    font-size: 11px;
+    gap: 4px;
+  }
+}
