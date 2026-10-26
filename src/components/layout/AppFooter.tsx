@@ -6,6 +6,7 @@ import styles from './AppFooter.module.css';
 import { Icon } from '@/components/icons/Icon';
 import { Copy, ExternalLink, ShieldCheck, Check } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast/ToastContext';
+import { NetteoLogoMark } from '@/components/common/NetteoLogo';
 
 export function AppFooter() {
   const { toast } = useToast();
@@ -38,7 +39,7 @@ export function AppFooter() {
           {/* Column 1: Brand & Network Status */}
           <div className={styles.col}>
             <div className={styles.brandRow}>
-              <div className={styles.brandLogo}>N</div>
+              <NetteoLogoMark size={28} />
               <span className={styles.brandName}>Netteo</span>
             </div>
             <p className={styles.brandDesc}>

@@ -7,6 +7,7 @@ import { Menu, X, ArrowRight } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { Button } from '@/components/common/Button';
+import { NetteoLogoMark } from '@/components/common/NetteoLogo';
 
 const NAV_LINKS = [
   { label: 'How It Works', href: '#how-it-works' },
@@ -40,7 +41,8 @@ export function LandingNavbar() {
     <div className={styles.navWrapper}>
       <nav className={styles.navPill} aria-label="Landing Page Navigation">
         {/* Brand */}
-        <Link href="/" className={styles.brandGroup}>
+        <Link href="/" className={styles.brandGroup} title="Netteo — Multilateral Netting on Mezo">
+          <NetteoLogoMark size={26} />
           <span className={styles.brandLogo}>Netteo</span>
           <div className={styles.networkBadge}>
             <span className={styles.networkDot} />
@@ -104,6 +106,7 @@ export function LandingNavbar() {
           >
             <div className={styles.drawerHeader}>
               <div className={styles.brandGroup}>
+                <NetteoLogoMark size={26} />
                 <span className={styles.brandLogo}>Netteo</span>
                 <div className={styles.networkBadge}>
                   <span className={styles.networkDot} />

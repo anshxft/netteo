@@ -7,6 +7,7 @@ import { AppNav } from './AppNav';
 import { WalletBadge } from './WalletBadge';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { NetteoLogoMark } from '@/components/common/NetteoLogo';
 import { BookOpen } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 
@@ -34,7 +35,8 @@ export function AppHeader({
     <header className={styles.header}>
       <div className={styles.headerInner}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xl)', height: '100%' }}>
-          <Link href="/" className={styles.brandGroup}>
+          <Link href="/" className={styles.brandGroup} title="Netteo — Multilateral Netting on Mezo">
+            <NetteoLogoMark size={28} />
             <span className={styles.brandTitle}>Netteo</span>
             <div className={styles.brandTag}>
               <span className={styles.networkDot} />

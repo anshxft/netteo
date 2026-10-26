@@ -6,6 +6,7 @@ import styles from './DocsHeader.module.css';
 import { Search, ArrowRight, ExternalLink, Menu, X, BookOpen } from 'lucide-react';
 import { Icon } from '@/components/icons/Icon';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { NetteoLogoMark } from '@/components/common/NetteoLogo';
 
 interface DocsHeaderProps {
   onOpenSearch: () => void;
@@ -30,6 +31,7 @@ export function DocsHeader({ onOpenSearch, mobileMenuOpen, onToggleMobileMenu }:
           </button>
 
           <Link href="/" className={styles.brandLink}>
+            <NetteoLogoMark size={24} />
             <span className={styles.brandLogo}>Netteo</span>
             <span className={styles.docsBadge}>DOCS</span>
           </Link>

@@ -171,21 +171,34 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Actions: ACCEPT, DISPUTE, WITHDRAW
-    if (action === 'accept' || action === 'dispute' || action === 'withdraw') {
+    const normalizedAction =
+      action === 'accepted' ? 'accept' : action === 'disputed' ? 'dispute' : action === 'withdrawn' ? 'withdraw' : action;
+
+    if (normalizedAction === 'accept' || normalizedAction === 'dispute' || normalizedAction === 'withdraw') {
       const { obligationId } = body;
       if (!obligationId) {
         return NextResponse.json({ error: 'Missing obligation ID' }, { status: 400 });
       }
 
-      // Verify challenge signature
+      // Verify challenge signature (support both normalized and raw action for backward compatibility)
       const challengeMsg = buildObligationActionMessage({
-        action,
+        action: normalizedAction,
         obligationId,
         nonce,
         timestamp,
       });
 
-      const isSigValid = await verifyChallengeSignature(challengeMsg, signature, normalizedSigner);
+      let isSigValid = await verifyChallengeSignature(challengeMsg, signature, normalizedSigner);
+      if (!isSigValid && action !== normalizedAction) {
+        const rawChallengeMsg = buildObligationActionMessage({
+          action: action as any,
+          obligationId,
+          nonce,
+          timestamp,
+        });
+        isSigValid = await verifyChallengeSignature(rawChallengeMsg, signature, normalizedSigner);
+      }
+
       if (!isSigValid) {
         return NextResponse.json({ error: 'Invalid cryptographic signature' }, { status: 401 });
       }
@@ -207,7 +220,7 @@ export async function POST(req: NextRequest) {
 
       // Check role permissions:
       // ACCEPT / DISPUTE: Only designated debtor can accept or dispute
-      if (action === 'accept' || action === 'dispute') {
+      if (normalizedAction === 'accept' || normalizedAction === 'dispute') {
         if (existing.debtor_address.toLowerCase() !== normalizedSigner) {
           return NextResponse.json(
             { error: 'Forbidden: Only the designated debtor can accept or dispute this obligation' },
@@ -217,7 +230,7 @@ export async function POST(req: NextRequest) {
       }
 
       // WITHDRAW: Only proposer or creditor can withdraw
-      if (action === 'withdraw') {
+      if (normalizedAction === 'withdraw') {
         const isProposer = existing.proposer_address.toLowerCase() === normalizedSigner;
         const isCreditor = existing.creditor_address.toLowerCase() === normalizedSigner;
         if (!isProposer && !isCreditor) {
@@ -228,7 +241,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const targetStatus = action === 'accept' ? 'accepted' : action === 'dispute' ? 'disputed' : 'withdrawn';
+      const targetStatus = normalizedAction === 'accept' ? 'accepted' : normalizedAction === 'dispute' ? 'disputed' : 'withdrawn';
 
       const { data: updated, error: updateErr } = await db
         .from('obligations')

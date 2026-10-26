@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { NetteoLogoMark } from '@/components/common/NetteoLogo';
 import styles from './LandingFooter.module.css';
 
 export function LandingFooter() {
@@ -11,7 +12,10 @@ export function LandingFooter() {
         <div className={styles.topRow}>
           {/* Brand Col */}
           <div className={styles.brandCol}>
-            <div className={styles.brandTitle}>Netteo</div>
+            <div className={styles.brandTitle}>
+              <NetteoLogoMark size={28} />
+              <span>Netteo</span>
+            </div>
             <p className={styles.brandTagline}>
               Many obligations. One net settlement.
               <br />
