@@ -91,15 +91,8 @@ export const VERIFIED_MEZO_CYCLE: SettlementCycle = {
   },
 };
 
-export function getActiveWorkspaceMode(): 'demo' | 'live' {
-  if (typeof window === 'undefined') return 'demo';
-  try {
-    const mode = localStorage.getItem('netteo_workspace_mode_v1');
-    return mode === 'live' ? 'live' : 'demo';
-  } catch {
-    return 'demo';
-  }
-}
+import { getActiveWorkspaceMode } from '../workspace/mode';
+export { getActiveWorkspaceMode };
 
 function getStorageKey(mode?: 'demo' | 'live'): string {
   const m = mode || getActiveWorkspaceMode();

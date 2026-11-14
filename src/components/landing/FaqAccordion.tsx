@@ -27,25 +27,25 @@ const FAQ_ITEMS: FaqItem[] = [
     id: '2',
     question: 'Does Netteo take custody of user funds?',
     answer:
-      'No. Netteo is strictly non-custodial. Net debtors deposit funds into an automated smart contract (SettlementCycle.sol) on Mezo. Funds remain in escrow until the cycle deadline or until all required debtor deposits arrive, at which point the contract atomically distributes the exact net payouts to creditors. If a cycle expires without full funding, depositors withdraw 100% of their funds directly.',
+      'Netteo itself never holds your funds. Net debtors deposit into a settlement contract (SettlementKernel) on Mezo that has no owner, admin or pause function. Funds stay in escrow until every required deposit has arrived, then anyone can trigger the payout to creditors. If the cycle is never fully funded, depositors take their own deposit back with claimRefund(). The contracts have not been independently audited.',
   },
   {
     id: '3',
     question: 'What happens if a debtor fails to deposit their net balance?',
     answer:
-      'Every settlement cycle has a strictly enforced funding deadline (typically 24–72 hours). If any net debtor fails to fund their required net amount before expiration, the cycle automatically enters the Expired state. No creditor distributions execute, and all funded participants can immediately withdraw their deposits via the claimRefund() contract function with zero loss.',
+      'Every cycle has a funding deadline (72 hours in the app). If a debtor has not funded by then, nobody is paid out, and each depositor can call claimRefund() to take back exactly what they deposited. A cycle that is fully funded but cannot pay out (for example, a token blocks one creditor) can be refunded 3 days after the deadline.',
   },
   {
     id: '4',
     question: 'What tokens and blockchains are supported?',
     answer:
-      'Netteo is built for Mezo Mainnet (Chain ID 31612) and its canonical MUSD token. Settlement transactions require BTC for gas and are final once confirmed on-chain.',
+      'Netteo runs on Mezo Mainnet (Chain ID 31612) and settles in MUSD, mUSDC or mUSDT. One cycle uses one token. Transactions need BTC for gas and are final once confirmed on-chain.',
   },
   {
     id: '5',
     question: 'Are original invoices and obligations preserved after netting?',
     answer:
-      'Yes. Netteo does not erase the historical obligation ledger. Every settlement cycle computes a cryptographic Merkle root of all included gross obligations and records this snapshot commitment hash permanently on-chain. Counterparties can verify and export the complete bilateral claim history for tax, accounting, and compliance.',
+      'Yes. Netting changes what is paid, not what is on record. Each cycle stores a keccak256 hash of its claim set on-chain, the app checks that hash against the group\'s accepted claims before deposits open, and the receipt export lists every original claim next to that hash.',
   },
 ];
 
@@ -59,11 +59,11 @@ export function FaqAccordion() {
           <span>✦ Frequently Asked Questions</span>
         </div>
         <h2 className={styles.title}>
-          Clear answers to institutional
+          Clear answers to common
           <span className={styles.highlightPill}>questions</span>
         </h2>
         <p className={styles.subtitle}>
-          Everything you need to know about non-custodial clearing, smart contracts, and settlement guarantees.
+          What the contract does, what it does not, and what happens when something goes wrong.
         </p>
       </div>
 

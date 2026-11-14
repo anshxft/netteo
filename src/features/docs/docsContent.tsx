@@ -21,7 +21,7 @@ export function SectionOverview() {
         <p className={styles.paragraph}>
           Instead of requiring every contributor, vendor, or project partner to fund, sign, and execute dozens of independent
           invoices back-and-forth, Netteo records approved bilateral claims, simplifies the debt graph into a single net debtor
-          and net creditor vector, locks net debtor funds in a non-custodial smart contract, and distributes funds atomically in one click.
+          and net creditor vector, locks net debtor funds in a settlement contract with no admin keys, and distributes funds atomically in one click.
         </p>
 
         <div className={styles.calloutCard}>
@@ -55,8 +55,8 @@ export function SectionOverview() {
           </li>
         </ul>
         <p className={styles.paragraph}>
-          Netteo collapses this complexity into a single verifiable on-chain settlement, slashing required transfer volume by up to 60–80%
-          while preserving complete cryptographic provenance of every underlying gross obligation.
+          Netteo collapses this complexity into a single verifiable on-chain settlement. In the three-party example, $200 of claims
+          needs only $80 of deposits. How much a real group saves depends on how circular its debts are, and it is not a guaranteed fee saving.
         </p>
       </div>
 
@@ -123,13 +123,13 @@ export function SectionOverview() {
           </div>
           <div className={styles.pillarItem}>
             <div className={styles.pillarNumber}>02</div>
-            <div className={styles.pillarTitle}>Non-Custodial Escrow</div>
-            <div className={styles.pillarText}>Funds are held directly in the verified SettlementKernel smart contract, never by any relayer or admin.</div>
+            <div className={styles.pillarTitle}>Escrow With No Admin Keys</div>
+            <div className={styles.pillarText}>Funds are held directly in the SettlementKernel contract, which has no owner, admin or pause function. No relayer ever holds them.</div>
           </div>
           <div className={styles.pillarItem}>
             <div className={styles.pillarNumber}>03</div>
-            <div className={styles.pillarTitle}>Immutable Gross Audit Trail</div>
-            <div className={styles.pillarText}>Original obligations are permanently preserved and cryptographically committed in on-chain cycle records.</div>
+            <div className={styles.pillarTitle}>Gross Audit Trail</div>
+            <div className={styles.pillarText}>Original claims stay on record after netting, and each cycle stores a hash of its claim set on-chain.</div>
           </div>
           <div className={styles.pillarItem}>
             <div className={styles.pillarNumber}>04</div>
@@ -312,11 +312,11 @@ export function SectionSystemArchitecture() {
               Next.js 16 App Router, React 19, Viem 2.x, Wagmi 3.x, TanStack Query, Roundo typography, and the signature Warm Minimal fintech design tokens.
             </div>
           </div>
-          <div className={styles.archArrow}>↓ Cryptographic Commitments & EIP-712 Intent Signatures</div>
+          <div className={styles.archArrow}>↓ Hash commitments & wallet-signed actions</div>
           <div className={styles.archBox}>
             <div className={styles.archHeader}>2. State & Audit Projection Layer</div>
             <div className={styles.archDesc}>
-              Supabase PostgreSQL with Row Level Security (RLS) policies, idempotent real-time event projection indexer, and Merkle snapshot commitment calculator.
+              Supabase PostgreSQL with Row Level Security (RLS) policies, an idempotent event projection indexer, and a keccak256 snapshot commitment calculator.
             </div>
           </div>
           <div className={styles.archArrow}>↓ Atomic On-Chain Settlement Payouts</div>
@@ -348,7 +348,7 @@ export function SectionSystemArchitecture() {
       <div id="settlement-kernel" className={styles.subBlock}>
         <h2 className={styles.subHeading}>SettlementKernel Smart Contract</h2>
         <p className={styles.paragraph}>
-          The settlement core is an audited Solidity smart contract that enforces the collect-then-distribute invariant:
+          The settlement core is a Solidity smart contract (not independently audited) that enforces the collect-then-distribute invariant:
           funds are locked until 100% of required net deposits arrive, after which payouts become permissionless and atomic.
         </p>
       </div>
@@ -501,7 +501,7 @@ export function SectionProtocolInvariants() {
   );
 }
 
-export function SectionMerkleCommitments() {
+export function SectionSnapshotCommitments() {
   return (
     <div className={styles.sectionBody}>
       <div id="snapshot-hash" className={styles.subBlock}>
@@ -1254,8 +1254,8 @@ export function DocsContentRenderer({ sectionId }: SectionContentProps) {
       return <SectionStateMachine />;
     case 'protocol-invariants':
       return <SectionProtocolInvariants />;
-    case 'merkle-commitments':
-      return <SectionMerkleCommitments />;
+    case 'snapshot-commitments':
+      return <SectionSnapshotCommitments />;
     case 'mezo-overview':
       return <SectionMezoOverview />;
     case 'musd-token':

@@ -97,12 +97,10 @@ export function LandingFooter() {
         {/* Bottom Bar */}
         <div className={styles.bottomBar}>
           <p className={styles.copyText}>
-            © {new Date().getFullYear()} Netteo. Non-custodial autonomous debt clearing.
+            © {new Date().getFullYear()} Netteo. Multilateral debt clearing on Mezo.
           </p>
           <div className={styles.metaText}>
-            <span>WCAG AA Accessible</span>
-            <span>•</span>
-            <span>Audited Smart Contracts</span>
+            <span>Contracts not independently audited</span>
           </div>
         </div>
       </div>

@@ -166,11 +166,11 @@ export function FeatureBento() {
           <span>✦ Liquidity Efficiency Benchmark</span>
         </div>
         <h2 className={styles.title}>
-          Conserve 60% upfront liquidity in standard cycles (up to 75%+ in dense networks) with
+          See how much less has to be paid with
           <span className={styles.highlightPill}>Atomic Netting</span>
         </h2>
         <p className={styles.subtitle}>
-          Compare standard fragmented transfers against Netteo multilateral clearing across real Web3 team scenarios. Liquidity conservation reflects settlement volume collapsed via cycle netting, not guaranteed fee savings.
+          Compare separate transfers against one net settlement. These are illustrative scenarios with made-up names, not customer data. The saving is in how much money must be deposited, not in guaranteed fees.
         </p>
       </div>
 
@@ -327,8 +327,8 @@ export function FeatureBento() {
             </div>
             <h4 className={styles.cardHeading}>Debtor Authorization</h4>
             <p className={styles.cardText}>
-              Every obligation requires an explicit cryptographic EIP-712 debtor acknowledgement signature
-              before being eligible for netting. No unilateral unauthorized charges.
+              A claim only enters a settlement after the debtor signs it with their wallet. Nobody can add
+              a debt to your name without that signature.
             </p>
           </div>
 
@@ -338,8 +338,8 @@ export function FeatureBento() {
             </div>
             <h4 className={styles.cardHeading}>Zero-Sum Invariant</h4>
             <p className={styles.cardText}>
-              The mathematical netting solver enforces that total net debits strictly equal total net
-              credits (Σ Net = 0). Verified by Solidity invariants on Mezo.
+              The netting solver checks that total net debits equal total net credits (Σ Net = 0), and the
+              contract refuses to create a cycle where they differ.
             </p>
           </div>
 
@@ -347,10 +347,10 @@ export function FeatureBento() {
             <div className={styles.cardIconPill}>
               <Icon icon={SnapshotIcon} size="md" />
             </div>
-            <h4 className={styles.cardHeading}>Permanent Merkle Proofs</h4>
+            <h4 className={styles.cardHeading}>Claims Are Never Erased</h4>
             <p className={styles.cardText}>
-              Gross invoices and counterparty claims are never erased. Every settlement anchors an immutable
-              Merkle root hash on-chain for exportable accounting and compliance.
+              Original claims stay on record after netting. Each cycle stores a keccak256 hash of its claim
+              set on-chain, and the receipt export lists every original claim next to that hash.
             </p>
           </div>
         </div>

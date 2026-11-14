@@ -32,6 +32,7 @@ export function WalletBadge({
   if (!address) {
     return (
       <Button
+        className={styles.walletConnect}
         variant="secondary"
         onClick={onConnect}
         style={{ minHeight: '36px', padding: '0 var(--space-md)', fontSize: '13px' }}
@@ -77,6 +78,7 @@ export function WalletBadge({
       {/* Native BTC Gas Balance Pill */}
       {isCorrectNetwork && (
         <div
+          className={styles.hideOnMobile}
           title={isZeroGas ? 'Add BTC to this wallet to pay Mezo Mainnet gas.' : `Native gas balance: ${btcBalance}.`}
           style={{
             textDecoration: 'none',
@@ -108,6 +110,7 @@ export function WalletBadge({
 
       {onDisconnect && (
         <Button
+          className={styles.hideOnMobile}
           variant="tertiary"
           onClick={onDisconnect}
           style={{ minHeight: '36px', padding: '0 var(--space-xs)', fontSize: '12px', color: 'var(--color-muted)' }}

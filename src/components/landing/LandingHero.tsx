@@ -54,7 +54,7 @@ export function LandingHero() {
 
           {/* 2-line Subtext */}
           <p className={styles.subtext}>
-          Turn tangled bilateral invoices into a single net settlement. Conserve 60% upfront liquidity in standard 3-party settlements (and up to 75%+ in high-density networks) with zero-sum mathematical certainty on Mezo Mainnet.
+          Turn tangled bilateral invoices into a single net settlement. In the 3-party example below, $200 of claims settles with $80 of deposits (60% less), paid out atomically in MUSD on Mezo Mainnet.
           </p>
 
           {/* Dual Action Row */}
@@ -166,7 +166,7 @@ export function LandingHero() {
                 variant="primary"
                 icon={<ArrowRight size={14} />}
                 iconPosition="right"
-                style={{ width: '100%', minHeight: '38px', fontSize: '12.5px' }}
+                style={{ width: '100%', minHeight: '44px', fontSize: '12.5px' }}
               >
                 View Full Obligation Desk
               </Button>
@@ -196,12 +196,12 @@ export function LandingHero() {
           {/* Floating Chips */}
           <div className={styles.floatingChip1}>
             <ShieldCheck size={14} color="var(--color-success)" />
-            <span>Non-Custodial Escrow</span>
+            <span>Contract escrow, no admin keys</span>
           </div>
 
           <div className={styles.floatingChip2}>
             <Lock size={14} color="var(--color-wine)" />
-            <span>EIP-712 Signed Claims</span>
+            <span>Wallet-signed claims</span>
           </div>
         </div>
       </div>

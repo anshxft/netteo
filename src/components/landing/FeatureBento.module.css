@@ -347,3 +347,11 @@
     border-radius: 20px;
   }
 }
+
+/* Touch targets: 44px on small screens. */
+@media (max-width: 640px) {
+  .scenarioTab,
+  .modeBtn {
+    min-height: 44px;
+  }
+}

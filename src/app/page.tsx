@@ -4,10 +4,9 @@ import React, { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LandingNavbar } from '@/components/landing/LandingNavbar';
 import { LandingHero } from '@/components/landing/LandingHero';
-import { TrustStrip } from '@/components/landing/TrustStrip';
+import { MainnetEvidence } from '@/components/landing/MainnetEvidence';
 import { HowItWorks } from '@/components/landing/HowItWorks';
 import { FeatureBento } from '@/components/landing/FeatureBento';
-import { TestimonialsCarousel } from '@/components/landing/TestimonialsCarousel';
 import { FaqAccordion } from '@/components/landing/FaqAccordion';
 import { CtaBand } from '@/components/landing/CtaBand';
 import { LandingFooter } from '@/components/landing/LandingFooter';
@@ -72,8 +71,8 @@ export default function LandingPage() {
         {/* 2. Hero: Large rounded container with warm gradient & floating UI cards */}
         <LandingHero />
 
-        {/* 3. Trust Strip: Infinite marquee */}
-        <TrustStrip />
+        {/* 3. Evidence: real mainnet cycles with explorer links */}
+        <MainnetEvidence />
 
         {/* 4. How It Works: 2x2 grid of soft rounded cards with mini UI previews */}
         <HowItWorks />
@@ -81,10 +80,7 @@ export default function LandingPage() {
         {/* 5. Feature/Benefit Bento: Large Netting Simulator + 3 Companion Cards */}
         <FeatureBento />
 
-        {/* 6. Testimonials: Watermelon UI-inspired layout with carousel */}
-        <TestimonialsCarousel />
-
-        {/* 7. FAQ Accordion: Institutional questions */}
+        {/* 6. FAQ Accordion */}
         <FaqAccordion />
 
         {/* 8. Final CTA Band */}

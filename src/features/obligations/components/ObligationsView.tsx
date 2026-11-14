@@ -16,9 +16,11 @@ import { ObligationIcon, CycleIcon } from '@/components/icons/netteo';
 import { Plus, AlertCircle, RefreshCw, ArrowRight, WifiOff } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast/ToastContext';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useNeedsWallet, WalletRequiredState } from '@/components/wallet/WalletRequired';
 
 export function ObligationsView() {
   const { mode, resetCounter } = useWorkspace();
+  const needsWallet = useNeedsWallet();
   const { toast } = useToast();
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -290,8 +292,11 @@ export function ObligationsView() {
         </div>
       )}
 
+      {/* --- STATE 3a: Live mode without a wallet: not "empty", just not signed in --- */}
+      {!isLoading && !error && obligations.length === 0 && needsWallet && <WalletRequiredState what="your payments" />}
+
       {/* --- STATE 3: Empty State --- */}
-      {!isLoading && !error && obligations.length === 0 && (
+      {!isLoading && !error && obligations.length === 0 && !needsWallet && (
         <div className={styles.emptyState}>
           <div
             style={{

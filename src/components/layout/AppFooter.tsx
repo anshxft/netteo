@@ -81,7 +81,7 @@ export function AppFooter() {
 
           {/* Column 3: Verified Smart Contracts */}
           <div className={styles.col}>
-            <span className={styles.colHeader}>Verified Contracts</span>
+            <span className={styles.colHeader}>Deployed Contracts</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {contracts.map((c) => (
                 <div key={c.address} className={styles.contractCard}>
@@ -106,12 +106,8 @@ export function AppFooter() {
           <div className={styles.col}>
             <span className={styles.colHeader}>Solvency Invariants</span>
             <p className={styles.solvencyNote}>
-              Non-custodial and mathematically zero-sum. Deposits are collected prior to distribution, with a 72-hour automated refund timeout if any party defaults.
+              Net positions always sum to zero. Deposits are collected before anyone is paid, and depositors can reclaim them after the 72-hour funding deadline if a cycle is not fully funded. Not independently audited.
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-success)' }}>
-              <Icon icon={ShieldCheck} size="sm" color="var(--color-success)" />
-              <span>Cryptographically Verified</span>
-            </div>
           </div>
         </div>
 

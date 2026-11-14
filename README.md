@@ -14,6 +14,17 @@
 
 ---
 
+## Try it in two minutes
+
+1. **See real evidence first.** The landing page's **Evidence** section links to two real three-party cycles settled in MUSD on Mezo Mainnet, with explorer links for each transaction. The same hashes are in [DEPLOYMENTS.md](DEPLOYMENTS.md).
+2. **No wallet?** Open the app and switch to **Demo** (the header toggle, or the menu on a phone). Demo runs the three-party example on sample data and is labelled as a sandbox; nothing in it is on-chain.
+3. **With a wallet** (Mezo Mainnet, a little BTC for gas, some MUSD): create a group with the other participants, propose claims, have each debtor accept with a wallet signature, then open **Settlements**, start a settlement, deposit, and settle. A real cycle needs at least two wallets, because a debtor must accept their own claims.
+4. **Check the result yourself:** the commands under "Verify it yourself" in [DEPLOYMENTS.md](DEPLOYMENTS.md) read the cycle state and the contract's balance straight from the chain.
+
+The contracts have not been independently audited. Amounts in the evidence cycles are small on purpose.
+
+---
+
 ## 1. Mainnet Settlement Configuration
 
 The app targets Mezo Mainnet (chain 31612) and settles in canonical MUSD, mUSDC and mUSDT. Each token has its own settlement kernel, immutably bound to that token and deployed by `script/Deploy.s.sol`. A token is selectable in Live mode only once its kernel is deployed and configured; until then live settlement for that token fails closed.
@@ -29,7 +40,7 @@ The app targets Mezo Mainnet (chain 31612) and settles in canonical MUSD, mUSDC 
 | **SettlementKernel mUSDT (v2)** | `0xFecBE8a962F5C2628E877AA4C0C90C399549f18f` | Current | [View](https://explorer.mezo.org/address/0xFecBE8a962F5C2628E877AA4C0C90C399549f18f) |
 
 v2 fixes three contract bugs found in an audit (locked funds in a stuck cycle, fee-on-transfer tokens, cycle id squatting). v1 (a real MUSD cycle settled there on 2026-11-12) is superseded, holds no funds, and is not used by the app. Addresses, transaction hashes, fees and what each version proves: see [DEPLOYMENTS.md](DEPLOYMENTS.md).
-| **Legacy SettlementKernels** | Testnet only | Not used by the Mainnet app | [Mezo Testnet Explorer](https://explorer.test.mezo.org) |
+Older kernels on Mezo Testnet are not used by the Mainnet app.
 
 ---
 

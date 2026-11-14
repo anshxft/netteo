@@ -14,9 +14,11 @@ import { CycleIcon, SnapshotIcon } from '@/components/icons/netteo';
 import obStyles from '@/features/obligations/components/ObligationsView.module.css';
 import { Plus, ArrowRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useNeedsWallet, WalletRequiredState } from '@/components/wallet/WalletRequired';
 
 export default function CyclesPage() {
   const { mode, resetCounter } = useWorkspace();
+  const needsWallet = useNeedsWallet();
   const [cycles, setCycles] = useState<SettlementCycle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -73,7 +75,7 @@ export default function CyclesPage() {
     <AppLayout>
       <PageHeader
         title="Settlements"
-        subtitle="Conserve 60% liquidity in standard 3-claim cycles (up to 75%+ in multi-party networks) through atomic net transfers."
+        subtitle="Settle many claims with one net deposit per debtor and atomic payouts to creditors."
         badge={
           <span
             style={{
@@ -114,7 +116,9 @@ export default function CyclesPage() {
         </div>
       )}
 
-      {!isLoading && cycles.length === 0 && (
+      {!isLoading && cycles.length === 0 && needsWallet && <WalletRequiredState what="your settlements" />}
+
+      {!isLoading && cycles.length === 0 && !needsWallet && (
         <div className={obStyles.emptyState}>
           <Icon icon={CycleIcon} size="lg" color="var(--color-wine)" />
           <h2 className={obStyles.emptyStateTitle}>No Settlements Yet</h2>

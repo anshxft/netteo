@@ -216,3 +216,18 @@
     align-items: flex-start;
   }
 }
+
+/* Touch targets: 44px on small screens (design-addendum.md buttons rule). */
+@media (max-width: 640px) {
+  .footerLink,
+  .bottomLinks a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .copyButton {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

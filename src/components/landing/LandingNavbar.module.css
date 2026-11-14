@@ -305,3 +305,10 @@
     height: 38px;
   }
 }
+
+@media (max-width: 640px) {
+  .mobileToggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

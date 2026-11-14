@@ -14,6 +14,9 @@ import {
 import { ObligationIcon, CycleIcon, SnapshotIcon } from '../icons/netteo';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { WorkspaceModeSelector } from './WorkspaceModeSelector';
+import { useAccount, useDisconnect } from 'wagmi';
+import { useMezoGasBalance } from '@/lib/chain/useMezoGasBalance';
+import { isSupportedNetwork } from '@/lib/chain/config';
 
 interface SubItem {
   title: string;
@@ -113,6 +116,10 @@ export function AppNav() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [pinnedDropdown, setPinnedDropdown] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { address, chainId, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { formatted: btcBalance, isZeroGas } = useMezoGasBalance();
+  const isCorrectGasNetwork = isSupportedNetwork(chainId);
   const navRef = useRef<HTMLDivElement>(null);
   const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -275,6 +282,28 @@ export function AppNav() {
             <WorkspaceModeSelector />
             <ThemeToggle size="sm" />
           </div>
+
+          <Link href="/docs" className={styles.drawerRow} onClick={() => setMobileMenuOpen(false)}>
+            <span>Docs</span>
+          </Link>
+          {isConnected && address && (
+            <div className={styles.drawerRow} style={{ marginBottom: 'var(--space-lg)' }}>
+              <span title={address}>
+                {address.slice(0, 6)}...{address.slice(-4)}
+                {isCorrectGasNetwork && <> &middot; {isZeroGas ? 'Gas needed' : btcBalance}</>}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  disconnect();
+                  setMobileMenuOpen(false);
+                }}
+                style={{ minHeight: '44px', padding: '0 var(--space-sm)', background: 'none', border: 'none', color: 'var(--color-wine)', fontWeight: 600, cursor: 'pointer', font: 'inherit' }}
+              >
+                Disconnect
+              </button>
+            </div>
+          )}
 
           {NAV_CATEGORIES.map((cat) => (
             <div key={cat.id} className={styles.mobileCategory}>

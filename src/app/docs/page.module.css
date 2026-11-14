@@ -132,17 +132,18 @@
   padding-top: var(--space-2xl);
   border-top: 1px solid var(--color-border);
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-md);
 }
 
 @media (min-width: 640px) {
   .prevNextNav {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
 .navCard {
+  min-width: 0;
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

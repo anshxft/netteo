@@ -1,8 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { DEFAULT_WORKSPACE_MODE, MODE_STORAGE_KEY, type WorkspaceMode } from './mode';
 
-export type WorkspaceMode = 'demo' | 'live';
+export type { WorkspaceMode };
 
 interface WorkspaceContextType {
   mode: WorkspaceMode;
@@ -14,11 +15,8 @@ interface WorkspaceContextType {
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
-const MODE_STORAGE_KEY = 'netteo_workspace_mode_v1';
-
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  // Default to 'demo' so visitors immediately see the concept explainer with mock tokens
-  const [mode, setModeState] = useState<WorkspaceMode>('demo');
+  const [mode, setModeState] = useState<WorkspaceMode>(DEFAULT_WORKSPACE_MODE);
   const [resetCounter, setResetCounter] = useState(0);
 
   useEffect(() => {

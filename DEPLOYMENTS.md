@@ -80,6 +80,20 @@ Final state read back from the chain (not from the script's own checks): cycle s
 
 Cumulative fees for everything in this record (v1 deploy and cycle, v2 deploy and cycle): 0.0000189266 BTC.
 
+### Verify the v2 cycle yourself
+
+```bash
+RPC=https://mezo-mainnet.boar.network
+K=0x427Ff00c792252cC364Cb3240Dc26E6e7872340e
+
+# cycle summary: snapshot commitment, algorithm, gross, net, funded, distributed, refunded, deadline, state (3 = Completed), creator
+cast call $K "getCycle(bytes32)(bytes32,string,uint256,uint256,uint256,uint256,uint256,uint256,uint8,address)" \
+  0x7ff4cbf39083469093a005be46bf698bd2d36b2d0c343374d4fecb224d32d420 --rpc-url $RPC
+
+# the kernel retains nothing
+cast call 0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186 "balanceOf(address)(uint256)" $K --rpc-url $RPC
+```
+
 ## App and API checked end to end
 
 Against the live Supabase project and Mezo Mainnet RPC, using throwaway wallets (test rows deleted afterwards): 44 checks passed. Covered: wallet sign-in, replay and stale-signature refusal, signed group and obligation creation, tampered-signature refusal, accept / dispute / withdraw rules, per-wallet read scoping (a stranger sees nothing), indexer secret check, indexing of the real cycle above, and cycle registration. Cycle registration was run against a local fork of mainnet (so no extra gas): a cycle whose commitment differs from the group's accepted obligations is refused, and one that matches is registered. That run found a database column that was too narrow (`algorithm_version`); fixed by `migrations/004_widen_algorithm_version.sql`.

@@ -33,7 +33,7 @@ export function AppHeader({
   return (
     <header className={styles.header}>
       <div className={styles.headerInner}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xl)', height: '100%' }}>
+        <div className={styles.headerLeft}>
           <Link href="/" className={styles.brandGroup} title="Netteo — Multilateral Netting on Mezo">
             <NetteoLogoMark size={28} />
             <span className={styles.brandTitle}>Netteo</span>
@@ -45,9 +45,10 @@ export function AppHeader({
           <AppNav />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+        <div className={styles.headerRight}>
           <Link
             href="/docs"
+            className={styles.hideWithDrawer}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -68,11 +69,13 @@ export function AppHeader({
             <span>Docs</span>
           </Link>
 
-          <ThemeToggle size="sm" />
+          <span className={styles.hideOnMobile}>
+            <ThemeToggle size="sm" />
+          </span>
 
           {/* Workspace Mode Selector (Demo vs Live) styled with var(--color-wine-subtle) */}
           {!isLandingPage && (
-            <WorkspaceModeSelector />
+            <WorkspaceModeSelector className={styles.hideOnMobile} />
           )}
 
           <WalletBadge

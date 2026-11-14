@@ -335,8 +335,8 @@ export function StaircasePreloader({
                 style={{
                   backgroundColor: colIndex % 2 === 0 ? 'var(--color-surface-elevated)' : 'var(--color-surface)',
                   transform: prefersReducedMotion ? 'none' : topTransform,
-                  transition: prefersReducedMotion ? 'none' : topTransition,
-                  transitionDelay: prefersReducedMotion ? '0ms' : topDelay,
+                  // The delay is the second time value in the shorthand; a separate transitionDelay conflicts with it.
+                  transition: prefersReducedMotion ? 'none' : `${topTransition} ${topDelay}`,
                 }}
               />
 
@@ -346,8 +346,7 @@ export function StaircasePreloader({
                 style={{
                   backgroundColor: colIndex % 2 === 0 ? 'var(--color-surface)' : 'var(--color-sand-light)',
                   transform: prefersReducedMotion ? 'none' : bottomTransform,
-                  transition: prefersReducedMotion ? 'none' : bottomTransition,
-                  transitionDelay: prefersReducedMotion ? '0ms' : bottomDelay,
+                  transition: prefersReducedMotion ? 'none' : `${bottomTransition} ${bottomDelay}`,
                 }}
               />
             </div>

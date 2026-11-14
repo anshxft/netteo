@@ -12,9 +12,11 @@ import { ParticipantTable } from './ParticipantTable';
 import { CreateGroupModal } from './CreateGroupModal';
 import { Users, Plus, AlertCircle, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useNeedsWallet, WalletRequiredState } from '@/components/wallet/WalletRequired';
 
 export function GroupsView() {
   const { mode, resetCounter } = useWorkspace();
+  const needsWallet = useNeedsWallet();
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -133,8 +135,11 @@ export function GroupsView() {
         </div>
       )}
 
+      {/* --- STATE 3a: Live mode without a wallet: not "empty", just not signed in --- */}
+      {!isLoading && !error && groups.length === 0 && needsWallet && <WalletRequiredState what="your groups" />}
+
       {/* --- STATE 3: Empty State --- */}
-      {!isLoading && !error && groups.length === 0 && (
+      {!isLoading && !error && groups.length === 0 && !needsWallet && (
         <div className={styles.emptyState}>
           <div
             style={{

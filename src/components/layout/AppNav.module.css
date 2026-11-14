@@ -214,7 +214,7 @@
   display: none;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1100px) {
   .nav {
     display: none;
   }
@@ -263,5 +263,77 @@
 
   .mobileItem:active {
     background-color: var(--color-sand);
+  }
+}
+
+/* --- Header layout hooks (AppHeader) --- */
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  height: 100%;
+  min-width: 0;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+/* --- Mobile drawer: wallet and docs rows --- */
+.drawerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: var(--space-xs) var(--space-sm);
+  margin-bottom: var(--space-2xs);
+  border-radius: var(--radius-md);
+  background-color: var(--color-page);
+  border: 1px solid var(--color-border);
+  font-size: 14px;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+/* Small screens: keep brand, wallet and menu in the header. Utilities live in the drawer. */
+@media (max-width: 640px) {
+  .headerInner {
+    padding: 0 var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .headerLeft {
+    gap: var(--space-sm);
+  }
+
+  .brandGroup {
+    gap: var(--space-sm);
+  }
+
+  .brandTag,
+  .hideOnMobile {
+    /* !important: some of these elements set display inline (Docs link, gas pill). */
+    display: none !important;
+  }
+}
+
+/* Same breakpoint as the mobile drawer, which carries a Docs link. */
+@media (max-width: 1100px) {
+  .hideWithDrawer {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .brandGroup {
+    min-height: 44px;
+  }
+
+  .walletConnect {
+    min-height: 44px !important; /* beats the inline 36px used on desktop */
   }
 }

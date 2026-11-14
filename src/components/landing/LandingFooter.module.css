@@ -136,3 +136,12 @@
     gap: var(--space-xl);
   }
 }
+
+/* Touch targets: 44px on small screens. */
+@media (max-width: 640px) {
+  .colLink {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}

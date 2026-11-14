@@ -14,7 +14,7 @@ const NAV_LINKS = [
   { label: 'Netting Solver', href: '#simulator' },
   { label: 'Architecture', href: '#architecture' },
   { label: 'Docs', href: '/docs' },
-  { label: 'Testimonials', href: '#testimonials' },
+  { label: 'Evidence', href: '#evidence' },
   { label: 'FAQ', href: '#faq' },
 ];
 

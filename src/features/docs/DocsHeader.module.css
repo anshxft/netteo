@@ -256,3 +256,14 @@
     display: none;
   }
 }
+
+/* Touch targets: 44px on small screens. */
+@media (max-width: 640px) {
+  .mobileToggle,
+  .searchButton,
+  .brandLink,
+  .iconLink {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

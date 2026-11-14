@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { loadCycles } from '@/features/settlement-cycles/store';
+import { syncCyclesFromSupabase } from '@/lib/db/syncService';
+import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { SettlementCycle } from '@/features/settlement-cycles/types';
 import { formatBaseUnitsToDisplay } from '@/features/obligations/store';
 import { Button } from '@/components/common/Button';
@@ -12,18 +14,37 @@ import { SnapshotIcon } from '@/components/icons/netteo';
 import obStyles from '@/features/obligations/components/ObligationsView.module.css';
 import { FileText, ArrowRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useNeedsWallet, WalletRequiredState } from '@/components/wallet/WalletRequired';
 
 export default function GeneralAuditPage() {
+  const { mode, resetCounter } = useWorkspace();
+  const needsWallet = useNeedsWallet();
   const [cycles, setCycles] = useState<SettlementCycle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let isCancelled = false;
     try {
-      setCycles(loadCycles());
+      setCycles(loadCycles(mode));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+
+    if (mode === 'live') {
+      // Same source as the Settlements page: registered cycles from the server merged over the local ones.
+      syncCyclesFromSupabase()
+        .then((remote) => {
+          if (isCancelled || !remote) return;
+          const byId = new Map(loadCycles('live').map((c) => [c.id.toLowerCase(), c]));
+          remote.forEach((c) => byId.set(c.id.toLowerCase(), c));
+          setCycles(Array.from(byId.values()));
+        })
+        .catch(() => {});
+    }
+    return () => {
+      isCancelled = true;
+    };
+  }, [mode, resetCounter]);
 
   return (
     <AppLayout>
@@ -38,7 +59,9 @@ export default function GeneralAuditPage() {
         </div>
       )}
 
-      {!isLoading && cycles.length === 0 && (
+      {!isLoading && cycles.length === 0 && needsWallet && <WalletRequiredState what="your receipts" />}
+
+      {!isLoading && cycles.length === 0 && !needsWallet && (
         <div className={obStyles.emptyState}>
           <Icon icon={SnapshotIcon} size="lg" color="var(--color-wine)" />
           <h2 className={obStyles.emptyStateTitle}>No Receipts Yet</h2>
