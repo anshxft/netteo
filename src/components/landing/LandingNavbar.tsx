@@ -46,7 +46,7 @@ export function LandingNavbar() {
           <span className={styles.brandLogo}>Netteo</span>
           <div className={styles.networkBadge}>
             <span className={styles.networkDot} />
-            <span>Mezo Testnet</span>
+            <span>Mezo Mainnet</span>
           </div>
         </Link>
 
@@ -110,7 +110,7 @@ export function LandingNavbar() {
                 <span className={styles.brandLogo}>Netteo</span>
                 <div className={styles.networkBadge}>
                   <span className={styles.networkDot} />
-                  <span>Mezo Testnet</span>
+                  <span>Mezo Mainnet</span>
                 </div>
               </div>
               <button

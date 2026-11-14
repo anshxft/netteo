@@ -1,7 +1,7 @@
 # Netteo — Architecture
 
-**System:** Netteo multilateral MUSD settlement  
-**Target:** Mezo testnet for MVP  
+**System:** Netteo multilateral stablecoin settlement  
+**Target:** Mezo Mainnet with canonical MUSD, mUSDC and mUSDT
 **Version:** 1.0  
 **Last updated:** 20 October 2026
 
@@ -512,16 +512,21 @@ Using fresh testnet accounts:
 
 ## 13. Deployment and configuration
 
-Use separate environments for local development and testnet. Keep the contract address and token address explicit.
+Use separate environments for local development, testnet verification, and Mainnet. Mainnet live mode must use the official Mainnet MUSD address and a kernel deployed specifically against it.
 
 Example environment variables:
 
 ```bash
-NEXT_PUBLIC_CHAIN_ID=31611
-NEXT_PUBLIC_RPC_URL=https://rpc.test.mezo.org
-NEXT_PUBLIC_EXPLORER_URL=<verified Mezo testnet explorer base URL>
-NEXT_PUBLIC_MUSD_ADDRESS=<verified MUSD contract address>
-NEXT_PUBLIC_SETTLEMENT_KERNEL_ADDRESS=<deployed contract address>
+NEXT_PUBLIC_CHAIN_ID=31612
+NEXT_PUBLIC_MEZO_MAINNET_RPC_URL=https://mezo-mainnet.boar.network
+NEXT_PUBLIC_MEZO_MAINNET_EXPLORER_URL=https://explorer.mezo.org
+# One kernel per token, from SettlementKernelFactory (script/Deploy.s.sol). Tokens themselves come
+# from the verified registry in src/lib/chain/tokens.ts, not from env.
+NEXT_PUBLIC_SETTLEMENT_KERNEL_FACTORY_ADDRESS=<verified Mainnet factory address>
+NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD=<verified Mainnet MUSD kernel>
+NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSDC=<verified Mainnet mUSDC kernel>
+NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSDT=<verified Mainnet mUSDT kernel>
+NEXT_PUBLIC_SETTLEMENT_KERNEL_DEPLOY_BLOCK=<Mainnet deployment block>
 
 NEXT_PUBLIC_SUPABASE_URL=<project URL>
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<public anon key>
@@ -530,17 +535,16 @@ DATABASE_URL=<server-only database connection>
 INDEXER_START_BLOCK=<deployment block>
 ```
 
-Do not commit `.env` files. The RPC, explorer, token address, decimals, and deployed contract must be verified against current official Mezo resources before deployment; do not assume a testnet address is suitable for mainnet.
+Do not commit `.env` files. Verify the RPC, explorer, token address, decimals, deployed contract, and kernel token binding against current official Mezo resources before enabling Mainnet writes. Never reuse a testnet kernel address on Mainnet.
 
 ### Release steps
 1. Run formatting, lint, TypeScript, unit tests and contract tests.
-2. Deploy SettlementKernel to Mezo testnet.
-3. Verify the deployed bytecode and constructor configuration where explorer support permits.
-4. Run a real MUSD transfer test with a disposable test account.
-5. Run the complete multi-party settlement acceptance test.
-6. Configure the production-like testnet frontend and database policies.
-7. Verify fresh-session onboarding and transaction explorer links.
-8. Publish contract addresses, known limitations, and a demo walkthrough.
+2. Run the acceptance settlement only on testnet with testnet MUSD.
+3. Deploy SettlementKernel to Mezo Mainnet with canonical Mainnet MUSD after deployment approval.
+4. Verify the deployed bytecode, constructor token binding, and token decimals on-chain.
+5. Configure the Mainnet kernel address and deployment block, then verify fresh-session wallet onboarding.
+6. Enable Mainnet live mode only after the verified kernel address is configured.
+7. Publish the deployment and mainnet settlement evidence after a real acceptance cycle is explicitly authorized.
 
 ## 14. Architecture decisions and trade-offs
 
@@ -556,9 +560,9 @@ Do not commit `.env` files. The RPC, explorer, token address, decimals, and depl
 **Decision:** Require full funding before atomic distribution.  
 **Reason:** Avoids partial creditor payouts and gives a simple, testable failure model. It does mean participants must fund the cycle before any creditor is paid.
 
-### ADR-04: Single settlement asset
-**Decision:** MUSD only in the MVP.  
-**Reason:** Avoids exchange-rate, token-decimal and mixed-asset netting complexity.
+### ADR-04: One asset per cycle, one kernel per asset
+**Decision:** A cycle settles in exactly one token. MUSD (18 decimals), mUSDC and mUSDT (6 decimals) are supported, each through its own kernel with an immutable token binding, deployed via `SettlementKernelFactory`.  
+**Reason:** Avoids exchange-rate and mixed-asset netting, since base units are not comparable across tokens (1 MUSD = 10^18, 1 mUSDC = 10^6). Asset isolation means a cycle in one token can never touch another token's funds. The app refuses to net obligations of different tokens in one cycle.
 
 ### ADR-05: Bounded cycle size
 **Decision:** Enforce a small hard cap on participants and obligations.  

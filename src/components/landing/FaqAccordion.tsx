@@ -39,7 +39,7 @@ const FAQ_ITEMS: FaqItem[] = [
     id: '4',
     question: 'What tokens and blockchains are supported?',
     answer:
-      'Netteo is natively built on Mezo (Chain ID 31611) using MUSD, Mezo’s yield-backed native stablecoin. By utilizing Mezo’s high-throughput EVM execution environment, Web3 teams settle high-volume contributor claims with sub-second finality and negligible gas fees.',
+      'Netteo is built for Mezo Mainnet (Chain ID 31612) and its canonical MUSD token. Settlement transactions require BTC for gas and are final once confirmed on-chain.',
   },
   {
     id: '5',

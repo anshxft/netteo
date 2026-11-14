@@ -1,6 +1,7 @@
-import { verifyMessage, getAddress, createPublicClient, http, type PublicClient } from 'viem';
-import { mezoTestnet } from '../chain/config';
-import { getServiceRoleClient, supabase } from '../db/supabase';
+import { verifyMessage, getAddress, createPublicClient, type PublicClient } from 'viem';
+import { mezoMainnet } from '../chain/config';
+import { mezoTransport } from '../chain/transport';
+import { getServiceRoleClient } from '../db/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 let defaultClient: PublicClient | undefined;
@@ -8,8 +9,8 @@ let defaultClient: PublicClient | undefined;
 function getVerificationClient(): PublicClient {
   if (!defaultClient) {
     defaultClient = createPublicClient({
-      chain: mezoTestnet,
-      transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.test.mezo.org'),
+      chain: mezoMainnet,
+      transport: mezoTransport(),
     });
   }
   return defaultClient;
@@ -28,6 +29,8 @@ export interface ProposeObligationChallenge {
   debtorAddress: string;
   creditorAddress: string;
   amountUnits: string;
+  /** Token the amount is denominated in. Signed, so a relayed request cannot swap 1 mUSDC for 1 MUSD of base units. */
+  tokenAddress: string;
   referenceLabel: string;
   nonce: string;
   timestamp: number;
@@ -69,7 +72,21 @@ export function buildProposeObligationMessage(payload: ProposeObligationChalleng
     `Debtor: ${payload.debtorAddress.toLowerCase()}`,
     `Creditor: ${payload.creditorAddress.toLowerCase()}`,
     `Amount (Base Units): ${payload.amountUnits}`,
+    `Token: ${payload.tokenAddress.toLowerCase()}`,
     `Reference: ${payload.referenceLabel}`,
+    `Nonce: ${payload.nonce}`,
+    `Timestamp: ${payload.timestamp}`,
+  ].join('\n');
+}
+
+/**
+ * Builds the message a wallet signs once to open an API session (see POST /api/session).
+ */
+export function buildSessionMessage(payload: { nonce: string; timestamp: number }): string {
+  return [
+    'Netteo Sign-In',
+    'Prove you control this wallet to load your groups, payments and settlements.',
+    'This does not move funds and costs no gas.',
     `Nonce: ${payload.nonce}`,
     `Timestamp: ${payload.timestamp}`,
   ].join('\n');
@@ -129,6 +146,33 @@ export async function verifyChallengeSignature(
 }
 
 /**
+ * Cheap, database-free check that a challenge is recent. Run it before the signature check so garbage
+ * requests are rejected without any RPC call (EIP-1271 verification can hit the network).
+ */
+export function isChallengeFresh(nonce: string, timestamp: number, now = Date.now()): { valid: boolean; reason?: string } {
+  if (!nonce || typeof nonce !== 'string' || nonce.trim().length === 0 || nonce.length > 128) {
+    return { valid: false, reason: 'Missing challenge nonce.' };
+  }
+  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp) || Math.abs(now - timestamp) > MAX_CHALLENGE_AGE_MS) {
+    return { valid: false, reason: 'Challenge timestamp has expired or is invalid.' };
+  }
+  return { valid: true };
+}
+
+/**
+ * Deletes nonces older than the challenge window. They can never be replayed once the timestamp is stale,
+ * so keeping them only grows the table.
+ */
+export async function purgeConsumedNonces(db: SupabaseClient | null, now = Date.now()): Promise<void> {
+  if (!db) return;
+  try {
+    await db.from('consumed_nonces').delete().lt('challenge_timestamp', now - 2 * MAX_CHALLENGE_AGE_MS);
+  } catch {
+    // Best effort: a failed purge only delays cleanup.
+  }
+}
+
+/**
  * Checks that the challenge timestamp is within the acceptable time window
  * and that the nonce has not been consumed previously (replay protection).
  * Persists consumed nonces to Supabase (`consumed_nonces` table) to maintain
@@ -139,14 +183,10 @@ export async function validateAndConsumeNonce(
   timestamp: number,
   customDbClient?: SupabaseClient | null
 ): Promise<{ valid: boolean; reason?: string }> {
-  if (!nonce || nonce.trim().length === 0) {
-    return { valid: false, reason: 'Missing challenge nonce.' };
-  }
+  const fresh = isChallengeFresh(nonce, timestamp);
+  if (!fresh.valid) return fresh;
 
   const now = Date.now();
-  if (Math.abs(now - timestamp) > MAX_CHALLENGE_AGE_MS) {
-    return { valid: false, reason: 'Challenge timestamp has expired or is invalid.' };
-  }
 
   // 1. Fast local in-memory check (prevents replay within the same node instance)
   if (consumedNonces.has(nonce)) {
@@ -167,7 +207,8 @@ export async function validateAndConsumeNonce(
   }
 
   // 2. Database persistence for cross-lambda serverless replay protection
-  const dbClient = customDbClient !== undefined ? customDbClient : (getServiceRoleClient() || supabase);
+  // The public (anon) client has no write access to this table, so only the service client is used.
+  const dbClient = customDbClient !== undefined ? customDbClient : getServiceRoleClient();
   if (dbClient) {
     try {
       const { error } = await dbClient.from('consumed_nonces').insert({

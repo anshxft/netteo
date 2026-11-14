@@ -35,12 +35,13 @@ export function ObligationsView() {
         // Pre-warm groups in background so modal opens with loaded groups
         syncGroupsFromSupabase()
           .then((groups) => {
-            if (groups && groups.length > 0) saveGroups(groups, 'live');
+            // An empty list is an authoritative answer too: it clears groups cached from before access was scoped.
+            if (groups) saveGroups(groups, 'live');
           })
           .catch(() => {});
 
         const remote = await syncObligationsFromSupabase();
-        if (remote && remote.length > 0) {
+        if (remote) {
           setObligations(remote);
           saveObligations(remote, 'live');
         } else {

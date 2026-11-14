@@ -54,7 +54,7 @@ export function LandingHero() {
 
           {/* 2-line Subtext */}
           <p className={styles.subtext}>
-            Turn tangled bilateral invoices into a single net settlement. Conserve 60% upfront liquidity in standard 3-party settlements (and up to 75%+ in high-density networks) with zero-sum mathematical certainty on Mezo testnet.
+          Turn tangled bilateral invoices into a single net settlement. Conserve 60% upfront liquidity in standard 3-party settlements (and up to 75%+ in high-density networks) with zero-sum mathematical certainty on Mezo Mainnet.
           </p>
 
           {/* Dual Action Row */}

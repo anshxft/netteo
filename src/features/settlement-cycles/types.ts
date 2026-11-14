@@ -9,6 +9,7 @@ export type CycleState =
 
 export interface SettlementCycle {
   id: string;
+  chainId?: number;
   groupId: string;
   cycleNumber: number;
   snapshotCommitment: string;
@@ -34,6 +35,12 @@ export interface SettlementCycle {
   // Multi-currency settlement token
   tokenAddress?: string;
   tokenSymbol?: string;
+  /**
+   * True once the server has checked this on-chain cycle against the group's accepted obligations.
+   * createCycle is open to anyone, so an unregistered cycle proves nothing about who agreed to it and the app
+   * does not let a wallet deposit into one.
+   */
+  registered?: boolean;
   // On-chain verified transaction hashes
   txCreationHash?: string;
   txDepositHash?: string;

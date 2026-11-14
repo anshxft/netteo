@@ -25,7 +25,7 @@ export interface AppHeaderProps {
  */
 export function AppHeader({
   walletAddress,
-  chainId = 31611,
+  chainId = 31612,
   isLandingPage = false,
   onConnectWallet,
   onDisconnectWallet,
@@ -39,7 +39,7 @@ export function AppHeader({
             <span className={styles.brandTitle}>Netteo</span>
             <div className={styles.brandTag}>
               <span className={styles.networkDot} />
-              <span>Mezo Testnet</span>
+              <span>Mezo Mainnet</span>
             </div>
           </Link>
           <AppNav />

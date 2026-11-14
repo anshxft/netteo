@@ -52,7 +52,7 @@ export function Toast({ toast, onClose }: ToastProps) {
         {toast.message && <span className={styles.message}>{toast.message}</span>}
         {toast.txHash && (
           <a
-            href={`https://explorer.test.mezo.org/tx/${toast.txHash}`}
+            href={`https://explorer.mezo.org/tx/${toast.txHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.txLink}

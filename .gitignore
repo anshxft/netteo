@@ -41,3 +41,6 @@ yarn-error.log*
 *.sw?
 *.tsbuildinfo
 Thumbs.db
+
+# Local browser profile / crash dumps from screenshot tooling (can contain memory excerpts)
+.chrome-gallery-tmp/

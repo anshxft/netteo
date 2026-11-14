@@ -12,6 +12,14 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * Enforces atomic collect-then-distribute settlement of net payment obligations in MUSD.
  * Solvency Invariant: All net debtors must deposit 100% of required funds before distribution.
  * If funding deadline expires without 100% funding or if cycle is cancelled, depositors can claim individual refunds.
+ *
+ * v2 hardening:
+ * - A fully funded cycle that cannot pay out (for example a token that blocks one creditor) is no longer
+ *   stuck: once REFUND_GRACE has passed after the funding deadline, depositors can refund. Settlement is
+ *   impossible from that moment on, so a cycle can never both pay out and refund.
+ * - Every deposit must increase the kernel's token balance by exactly the amount booked. A token that skims a
+ *   transfer fee is rejected instead of leaving the kernel owing more than it holds.
+ * - A cycle id is keccak256(creator, salt), so nobody can squat or impersonate another creator's cycle id.
  */
 contract SettlementKernel is ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -21,6 +29,8 @@ contract SettlementKernel is ReentrancyGuard {
     uint256 public constant MIN_FUNDING_DURATION = 1 hours;
     uint256 public constant MAX_FUNDING_DURATION = 30 days;
     uint256 public constant DEFAULT_FUNDING_DURATION = 72 hours;
+    /// @notice How long after the funding deadline a fully funded cycle may still be settled before refunds open.
+    uint256 public constant REFUND_GRACE = 3 days;
 
     IERC20 public immutable musdToken;
 
@@ -36,6 +46,7 @@ contract SettlementKernel is ReentrancyGuard {
     }
 
     struct CycleInput {
+        /// @dev A salt chosen by the creator. The stored id is computeCycleId(msg.sender, cycleId).
         bytes32 cycleId;
         bytes32 snapshotCommitment;
         string algorithmVersion;
@@ -99,6 +110,8 @@ contract SettlementKernel is ReentrancyGuard {
     error CycleNotInRefundableState(bytes32 cycleId, CycleState state);
     error TerminalStateReached(bytes32 cycleId, CycleState state);
     error NoRefundAvailable(bytes32 cycleId, address caller);
+    error UnexpectedTransferAmount(uint256 expected, uint256 received);
+    error RefundNotYetOpen(bytes32 cycleId, uint256 opensAt, uint256 currentTimestamp);
 
     // --- Events ---
     event CycleCreated(
@@ -148,11 +161,20 @@ contract SettlementKernel is ReentrancyGuard {
     }
 
     /**
+     * @notice The id a cycle gets when `creator` submits `salt`. Binding the creator into the id means no one
+     * can pre-create (squat) an id that another wallet is about to use.
+     */
+    function computeCycleId(address creator, bytes32 salt) public pure returns (bytes32) {
+        return keccak256(abi.encode(creator, salt));
+    }
+
+    /**
      * @notice Creates and freezes a new settlement cycle on-chain.
      * @param input CycleInput struct containing cycle parameters, participant lists, and bounds.
+     * @return cycleId The stored id, computeCycleId(msg.sender, input.cycleId).
      */
     function createCycle(CycleInput calldata input) external returns (bytes32) {
-        bytes32 cycleId = input.cycleId;
+        bytes32 cycleId = computeCycleId(msg.sender, input.cycleId);
         if (_cycles[cycleId].state != CycleState.NonExistent) {
             revert CycleAlreadyExists(cycleId);
         }
@@ -269,7 +291,13 @@ contract SettlementKernel is ReentrancyGuard {
             cycle.totalFunded
         );
 
+        // The booked amount must be exactly what arrived. A fee-on-transfer token would otherwise leave the kernel
+        // owing creditors more than it holds, and a funded cycle could then never settle. Reverting here also
+        // undoes the bookkeeping above.
+        uint256 balanceBefore = musdToken.balanceOf(address(this));
         musdToken.safeTransferFrom(debtor, address(this), amount);
+        uint256 received = musdToken.balanceOf(address(this)) - balanceBefore;
+        if (received != amount) revert UnexpectedTransferAmount(amount, received);
     }
 
     /**
@@ -330,7 +358,9 @@ contract SettlementKernel is ReentrancyGuard {
         if (cycle.state == CycleState.Completed) revert TerminalStateReached(cycleId, cycle.state);
         if (cycle.state == CycleState.Refunded) revert TerminalStateReached(cycleId, cycle.state);
 
-        if (cycle.state != CycleState.ReadyToSettle && cycle.totalFunded != cycle.netDebtTotal) {
+        // Strictly ReadyToSettle. Once refunds start the state becomes Expired while totalFunded still equals
+        // netDebtTotal, so a "funded amount is enough" check would let a cycle pay out AND refund.
+        if (cycle.state != CycleState.ReadyToSettle) {
             revert CycleNotReadyToSettle(cycleId, cycle.totalFunded, cycle.netDebtTotal);
         }
 
@@ -364,6 +394,14 @@ contract SettlementKernel is ReentrancyGuard {
             if (block.timestamp <= cycle.fundingDeadline) {
                 revert FundingDeadlineNotReached(cycleId, cycle.fundingDeadline, block.timestamp);
             }
+            cycle.state = CycleState.Expired;
+            emit CycleExpired(cycleId, cycle.totalFunded, block.timestamp);
+        } else if (cycle.state == CycleState.ReadyToSettle) {
+            // Fully funded but nobody has been able to settle (for example a creditor address the token blocks).
+            // After the grace period the deposits come back instead of being locked forever. Moving to Expired
+            // also makes executeSettlement revert from here on.
+            uint256 opensAt = cycle.fundingDeadline + REFUND_GRACE;
+            if (block.timestamp <= opensAt) revert RefundNotYetOpen(cycleId, opensAt, block.timestamp);
             cycle.state = CycleState.Expired;
             emit CycleExpired(cycleId, cycle.totalFunded, block.timestamp);
         } else if (cycle.state != CycleState.Expired && cycle.state != CycleState.Cancelled && cycle.state != CycleState.Refunded) {

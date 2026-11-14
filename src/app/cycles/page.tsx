@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { SettlementCycle } from '@/features/settlement-cycles/types';
-import { loadCycles, VERIFIED_MEZO_CYCLE } from '@/features/settlement-cycles/store';
+import { loadCycles } from '@/features/settlement-cycles/store';
 import { syncCyclesFromSupabase } from '@/lib/db/syncService';
 import { formatBaseUnitsToDisplay } from '@/features/obligations/store';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
@@ -33,9 +33,9 @@ export default function CyclesPage() {
       syncCyclesFromSupabase()
         .then((remoteCycles) => {
           if (isCancelled) return;
-          const map = new Map<string, SettlementCycle>();
-          // Canonical verified Mezo cycle is always accessible in Live mode
-          map.set(VERIFIED_MEZO_CYCLE.id.toLowerCase(), VERIFIED_MEZO_CYCLE);
+          const map = new Map<string, SettlementCycle>(
+            loadCycles('live').map((cycle) => [cycle.id.toLowerCase(), cycle])
+          );
           const local = loadCycles('live');
           if (remoteCycles) {
             remoteCycles.forEach((c) => map.set(c.id.toLowerCase(), c));

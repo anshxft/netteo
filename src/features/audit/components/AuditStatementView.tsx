@@ -13,13 +13,14 @@ import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { SnapshotIcon } from '@/components/icons/netteo';
 import { ArrowLeft, Download, ShieldCheck, CheckCircle, ExternalLink } from 'lucide-react';
-import { CONTRACT_ADDRESSES } from '@/lib/chain/config';
+import { kernelForToken, MEZO_MAINNET_EXPLORER_URL } from '@/lib/chain/config';
+import { DEFAULT_SETTLEMENT_TOKEN } from '@/lib/chain/tokens';
 
 export interface AuditStatementViewProps {
   cycleId?: string;
 }
 
-const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.test.mezo.org';
+const EXPLORER_BASE = MEZO_MAINNET_EXPLORER_URL;
 
 export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
   const { mode } = useWorkspace();
@@ -94,9 +95,11 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
     rows.push(`Snapshot Commitment Hash,${cycle.snapshotCommitment}`);
     rows.push(`Algorithm Version,${cycle.algorithmVersion}`);
     rows.push(`Settlement Currency,${cycle.tokenSymbol || 'MUSD'}`);
-    rows.push(`Settlement Token Address,${cycle.tokenAddress || CONTRACT_ADDRESSES.musd}`);
-    rows.push(`Settlement Contract Address,${CONTRACT_ADDRESSES.settlementKernel}`);
-    rows.push(`Network,Mezo Testnet (Chain ID 31611)`);
+    const statementToken = cycle.tokenAddress || DEFAULT_SETTLEMENT_TOKEN.address;
+    rows.push(`Settlement Token Address,${statementToken}`);
+    // Each token settles in its own kernel, so the contract must come from this cycle's token.
+    rows.push(`Settlement Contract Address,${kernelForToken(statementToken) ?? 'Not deployed'}`);
+    rows.push(`Network,Mezo Mainnet (Chain ID 31612)`);
     rows.push(`Gross Obligation Total (Base Units),${cycle.grossObligationTotal.toString()}`);
     rows.push(`Gross Obligation Total (Formatted),${formatBaseUnitsToDisplay(cycle.grossObligationTotal, cycle.tokenSymbol || 'MUSD')}`);
     rows.push(`Net Funding Requirement (Base Units),${cycle.netDebtTotal.toString()}`);
@@ -136,7 +139,7 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
 
     for (const alloc of cycle.nettingResult.allocations) {
       rows.push(
-        `"${alloc.from}","${alloc.to}","${alloc.amount.toString()}","${formatBaseUnitsToDisplay(alloc.amount)}"`
+        `"${alloc.from}","${alloc.to}","${alloc.amount.toString()}","${formatBaseUnitsToDisplay(alloc.amount, cycle.tokenSymbol || 'MUSD')}"`
       );
     }
 
@@ -235,16 +238,26 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
             <code style={{ fontSize: '12px', color: 'var(--color-wine)' }}>{cycle.snapshotCommitment}</code>
           </div>
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Settlement Contract (Mezo 31611)</div>
-            <a
-              href={`${EXPLORER_BASE}/address/${CONTRACT_ADDRESSES.settlementKernel}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontSize: '12px', color: 'var(--color-ink)', textDecoration: 'underline' }}
-            >
-              {CONTRACT_ADDRESSES.settlementKernel.slice(0, 10)}...{CONTRACT_ADDRESSES.settlementKernel.slice(-8)}
-              <Icon icon={ExternalLink} size="sm" style={{ marginLeft: '4px', verticalAlign: 'middle' }} />
-            </a>
+            <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>Settlement Contract (Mezo 31612)</div>
+            {(() => {
+              // Each token settles in its own kernel, so link the one for THIS cycle's currency.
+              const kernelAddress = kernelForToken(cycle.tokenAddress || DEFAULT_SETTLEMENT_TOKEN.address);
+              return kernelAddress ? (
+                <a
+                  href={`${EXPLORER_BASE}/address/${kernelAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '12px', color: 'var(--color-ink)', textDecoration: 'underline' }}
+                >
+                  {kernelAddress.slice(0, 10)}...{kernelAddress.slice(-8)}
+                  <Icon icon={ExternalLink} size="sm" style={{ marginLeft: '4px', verticalAlign: 'middle' }} />
+                </a>
+              ) : (
+                <span style={{ fontSize: '12px', color: 'var(--color-muted)' }}>
+                  Not deployed for {cycle.tokenSymbol || 'this token'}
+                </span>
+              );
+            })()}
           </div>
           <div>
             <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase' }}>On-Chain Solvency Invariant</div>

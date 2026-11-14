@@ -5,6 +5,7 @@ import styles from './TransactionStatus.module.css';
 import { Icon } from '../icons/Icon';
 import { Button } from './Button';
 import { CheckCircle2, AlertCircle, ExternalLink, Copy, Check, X } from 'lucide-react';
+import { MEZO_MAINNET_EXPLORER_URL } from '@/lib/chain/config';
 
 export type TransactionLifecycleState = 'awaiting_signature' | 'pending' | 'confirmed' | 'reverted';
 
@@ -17,7 +18,7 @@ export interface TransactionStatusProps {
   onRetry?: () => void;
 }
 
-const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.test.mezo.org';
+const EXPLORER_BASE = MEZO_MAINNET_EXPLORER_URL;
 
 /**
  * TransactionStatus component providing truthful, multi-state visual feedback

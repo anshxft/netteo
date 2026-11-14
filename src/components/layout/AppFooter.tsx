@@ -7,6 +7,8 @@ import { Icon } from '@/components/icons/Icon';
 import { Copy, ExternalLink, ShieldCheck, Check } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast/ToastContext';
 import { NetteoLogoMark } from '@/components/common/NetteoLogo';
+import { kernelForToken } from '@/lib/chain/config';
+import { SUPPORTED_SETTLEMENT_TOKENS } from '@/lib/chain/tokens';
 
 export function AppFooter() {
   const { toast } = useToast();
@@ -19,18 +21,17 @@ export function AppFooter() {
     setTimeout(() => setCopiedAddress(null), 2000);
   };
 
-  const contracts = [
-    {
-      label: 'Settlement Kernel (Mezo)',
-      address: '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5',
-      display: '0x3c5E...c3D5',
-    },
-    {
-      label: 'Canonical MUSD Token',
-      address: '0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503',
-      display: '0x1189...c503',
-    },
-  ];
+  // One kernel per supported token; only deployed kernels are listed, so nothing here is invented.
+  const contracts = SUPPORTED_SETTLEMENT_TOKENS.flatMap((token) => {
+    const kernel = kernelForToken(token.address);
+    return [
+      ...(kernel ? [{ label: `${token.symbol} Settlement Kernel`, address: kernel as string }] : []),
+      { label: `${token.symbol} Token`, address: token.address as string },
+    ];
+  }).map((contract) => ({
+    ...contract,
+    display: `${contract.address.slice(0, 6)}...${contract.address.slice(-4)}`,
+  }));
 
   return (
     <footer className={styles.footerWrapper} role="contentinfo">
@@ -43,11 +44,11 @@ export function AppFooter() {
               <span className={styles.brandName}>Netteo</span>
             </div>
             <p className={styles.brandDesc}>
-              Autonomous multilateral obligation netting and atomic settlement in MUSD on Mezo.
+              Autonomous multilateral obligation netting and atomic settlement in Mezo stablecoins.
             </p>
             <div className={styles.networkStatusBadge}>
               <span className={styles.pulseDot} />
-              <span>Mezo Testnet • Chain 31611</span>
+              <span>Mezo Mainnet • Chain 31612</span>
             </div>
           </div>
 
@@ -116,10 +117,10 @@ export function AppFooter() {
 
         {/* Bottom Bar */}
         <div className={styles.bottomBar}>
-          <span>&copy; {new Date().getFullYear()} Netteo Protocol. Experimental fintech software on Mezo Testnet.</span>
+          <span>&copy; {new Date().getFullYear()} Netteo Protocol. Mainnet settlement in MUSD, mUSDC and mUSDT.</span>
           <div className={styles.bottomLinks}>
             <a
-              href="https://explorer.test.mezo.org"
+              href="https://explorer.mezo.org"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.footerLink}

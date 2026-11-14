@@ -30,6 +30,13 @@ contract SettlementKernelTest is Test {
         musd.approve(address(kernel), type(uint256).max);
     }
 
+    /// The stored id for the canonical cycle: the contract binds the creator into it. Computed locally on purpose:
+    /// an external call here would consume a pending vm.prank (it runs while a call's arguments are evaluated).
+    /// test_CycleIdMatchesLocalFormula proves this matches the contract.
+    function _id() internal view returns (bytes32) {
+        return keccak256(abi.encode(coordinator, CANONICAL_CYCLE_ID));
+    }
+
     function _buildCanonicalInput() internal view returns (SettlementKernel.CycleInput memory) {
         address[] memory debtors = new address[](1);
         debtors[0] = debtorA;
@@ -64,7 +71,7 @@ contract SettlementKernelTest is Test {
         vm.prank(coordinator);
         bytes32 cycleId = kernel.createCycle(input);
 
-        assertEq(cycleId, CANONICAL_CYCLE_ID);
+        assertEq(cycleId, _id());
 
         // Verify initial state
         (
@@ -78,7 +85,7 @@ contract SettlementKernelTest is Test {
             ,
             SettlementKernel.CycleState state,
             address creator
-        ) = kernel.getCycle(CANONICAL_CYCLE_ID);
+        ) = kernel.getCycle(_id());
 
         assertEq(commitment, CANONICAL_COMMITMENT);
         assertEq(grossTotal, 200 * BASE);
@@ -90,18 +97,18 @@ contract SettlementKernelTest is Test {
 
         // Debtor A deposits 80 MUSD
         vm.prank(debtorA);
-        kernel.deposit(CANONICAL_CYCLE_ID, 80 * BASE);
+        kernel.deposit(_id(), 80 * BASE);
 
-        (,,,,, , , , SettlementKernel.CycleState fundedState,) = kernel.getCycle(CANONICAL_CYCLE_ID);
+        (,,,,, , , , SettlementKernel.CycleState fundedState,) = kernel.getCycle(_id());
         assertEq(uint8(fundedState), uint8(SettlementKernel.CycleState.ReadyToSettle));
-        assertTrue(kernel.isCycleFullyFunded(CANONICAL_CYCLE_ID));
+        assertTrue(kernel.isCycleFullyFunded(_id()));
 
         // Atomic distribution trigger (permissionless, coordinator triggers)
         vm.prank(coordinator);
-        kernel.executeSettlement(CANONICAL_CYCLE_ID);
+        kernel.executeSettlement(_id());
 
         // Assert terminal state
-        (,,,,, uint256 finalDistributed, , , SettlementKernel.CycleState completedState,) = kernel.getCycle(CANONICAL_CYCLE_ID);
+        (,,,,, uint256 finalDistributed, , , SettlementKernel.CycleState completedState,) = kernel.getCycle(_id());
         assertEq(uint8(completedState), uint8(SettlementKernel.CycleState.Completed));
         assertEq(finalDistributed, 80 * BASE);
 
@@ -179,6 +186,7 @@ contract SettlementKernelTest is Test {
 
     function test_RevertIf_DepositExceedsRequired() public {
         SettlementKernel.CycleInput memory input = _buildCanonicalInput();
+        vm.prank(coordinator);
         kernel.createCycle(input);
 
         vm.prank(debtorA);
@@ -189,16 +197,17 @@ contract SettlementKernelTest is Test {
                 80 * BASE
             )
         );
-        kernel.deposit(CANONICAL_CYCLE_ID, 81 * BASE);
+        kernel.deposit(_id(), 81 * BASE);
     }
 
     function test_RefundLifecycleOnExpiry() public {
         SettlementKernel.CycleInput memory input = _buildCanonicalInput();
+        vm.prank(coordinator);
         kernel.createCycle(input);
 
         // A deposits partial amount: 50 MUSD
         vm.prank(debtorA);
-        kernel.deposit(CANONICAL_CYCLE_ID, 50 * BASE);
+        kernel.deposit(_id(), 50 * BASE);
 
         uint256 debtorBalAfterDeposit = musd.balanceOf(debtorA);
 
@@ -208,15 +217,15 @@ contract SettlementKernelTest is Test {
         // Cannot deposit after deadline
         vm.prank(debtorA);
         vm.expectRevert();
-        kernel.deposit(CANONICAL_CYCLE_ID, 30 * BASE);
+        kernel.deposit(_id(), 30 * BASE);
 
         // Cannot execute settlement
         vm.expectRevert();
-        kernel.executeSettlement(CANONICAL_CYCLE_ID);
+        kernel.executeSettlement(_id());
 
         // Debtor A claims refund
         vm.prank(debtorA);
-        kernel.claimRefund(CANONICAL_CYCLE_ID);
+        kernel.claimRefund(_id());
 
         // Assert A received 50 MUSD back
         assertEq(musd.balanceOf(debtorA), debtorBalAfterDeposit + 50 * BASE);
@@ -226,14 +235,14 @@ contract SettlementKernelTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 SettlementKernel.NoRefundAvailable.selector,
-                CANONICAL_CYCLE_ID,
+                _id(),
                 debtorA
             )
         );
-        kernel.claimRefund(CANONICAL_CYCLE_ID);
+        kernel.claimRefund(_id());
 
         // Cycle state is now Refunded
-        (,,,,, , , , SettlementKernel.CycleState state,) = kernel.getCycle(CANONICAL_CYCLE_ID);
+        (,,,,, , , , SettlementKernel.CycleState state,) = kernel.getCycle(_id());
         assertEq(uint8(state), uint8(SettlementKernel.CycleState.Refunded));
     }
 
@@ -243,9 +252,9 @@ contract SettlementKernelTest is Test {
         kernel.createCycle(input);
 
         vm.prank(coordinator);
-        kernel.cancelCycle(CANONICAL_CYCLE_ID);
+        kernel.cancelCycle(_id());
 
-        (,,,,, , , , SettlementKernel.CycleState state,) = kernel.getCycle(CANONICAL_CYCLE_ID);
+        (,,,,, , , , SettlementKernel.CycleState state,) = kernel.getCycle(_id());
         assertEq(uint8(state), uint8(SettlementKernel.CycleState.Cancelled));
     }
 
@@ -262,7 +271,7 @@ contract SettlementKernelTest is Test {
                 coordinator
             )
         );
-        kernel.cancelCycle(CANONICAL_CYCLE_ID);
+        kernel.cancelCycle(_id());
     }
 
     function test_RevertIf_CancelAfterFullyFunded() public {
@@ -272,18 +281,18 @@ contract SettlementKernelTest is Test {
 
         // Debtor A fully funds
         vm.prank(debtorA);
-        kernel.deposit(CANONICAL_CYCLE_ID, 80 * BASE);
+        kernel.deposit(_id(), 80 * BASE);
 
         // State is now ReadyToSettle; creator cannot cancel
         vm.prank(coordinator);
         vm.expectRevert(
             abi.encodeWithSelector(
                 SettlementKernel.CycleNotInFundingState.selector,
-                CANONICAL_CYCLE_ID,
+                _id(),
                 SettlementKernel.CycleState.ReadyToSettle
             )
         );
-        kernel.cancelCycle(CANONICAL_CYCLE_ID);
+        kernel.cancelCycle(_id());
     }
 
     function test_ImmediateRefundAfterCancellation() public {
@@ -293,21 +302,21 @@ contract SettlementKernelTest is Test {
 
         // Debtor A deposits 50 MUSD
         vm.prank(debtorA);
-        kernel.deposit(CANONICAL_CYCLE_ID, 50 * BASE);
+        kernel.deposit(_id(), 50 * BASE);
 
         uint256 debtorBalAfterDeposit = musd.balanceOf(debtorA);
 
         // Coordinator cancels cycle immediately (no time warp)
         vm.prank(coordinator);
-        kernel.cancelCycle(CANONICAL_CYCLE_ID);
+        kernel.cancelCycle(_id());
 
         // Debtor A claims refund immediately
         vm.prank(debtorA);
-        kernel.claimRefund(CANONICAL_CYCLE_ID);
+        kernel.claimRefund(_id());
 
         assertEq(musd.balanceOf(debtorA), debtorBalAfterDeposit + 50 * BASE);
 
-        (,,,,, , , , SettlementKernel.CycleState state,) = kernel.getCycle(CANONICAL_CYCLE_ID);
+        (,,,,, , , , SettlementKernel.CycleState state,) = kernel.getCycle(_id());
         assertEq(uint8(state), uint8(SettlementKernel.CycleState.Refunded));
     }
 
@@ -327,9 +336,10 @@ contract SettlementKernelTest is Test {
         uint256[] memory creditAmounts = new uint256[](1);
         creditAmounts[0] = 50 * BASE;
 
-        bytes32 permitCycleId = keccak256("permit-cycle-001");
+        bytes32 permitSalt = keccak256("permit-cycle-001");
+        bytes32 permitCycleId = keccak256(abi.encode(coordinator, permitSalt));
         SettlementKernel.CycleInput memory input = SettlementKernel.CycleInput({
-            cycleId: permitCycleId,
+            cycleId: permitSalt,
             snapshotCommitment: CANONICAL_COMMITMENT,
             algorithmVersion: "netteo-v1.0-deterministic",
             grossObligationTotal: 100 * BASE,

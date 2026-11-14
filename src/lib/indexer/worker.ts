@@ -1,13 +1,17 @@
-import { createPublicClient, http, parseEventLogs, type Address } from 'viem';
+import { createPublicClient, parseEventLogs, type Address } from 'viem';
 import {
-  mezoTestnet,
-  MEZO_TESTNET_CHAIN_ID,
-  CONTRACT_ADDRESSES,
+  mezoMainnet,
+  MEZO_MAINNET_CHAIN_ID,
   CANONICAL_SETTLEMENT_KERNEL_DEPLOY_BLOCK,
   DEFAULT_INDEXER_CONFIRMATION_DEPTH,
+  kernelForToken,
+  liveSettlementTokens,
 } from '../chain/config';
+import { SUPPORTED_SETTLEMENT_TOKENS, type TokenMetadata } from '../chain/tokens';
+import { mezoTransport } from '../chain/transport';
 import { settlementKernelAbi } from '../chain/abi';
 import { getServiceRoleClient } from '../db/supabase';
+import { purgeConsumedNonces } from '../auth/challenge';
 
 export interface IndexerResult {
   fromBlock: bigint;
@@ -18,27 +22,51 @@ export interface IndexerResult {
   message?: string;
 }
 
+/** Resolves which registry token a kernel settles, or undefined for a kernel we do not recognise. */
+function tokenForKernel(kernelAddress: string): TokenMetadata | undefined {
+  const kernel = kernelAddress.toLowerCase();
+  return SUPPORTED_SETTLEMENT_TOKENS.find((t) => kernelForToken(t.address)?.toLowerCase() === kernel);
+}
+
 /**
  * Apply state projection for a single parsed contract event into Supabase tables.
  * Separated as an exported unit for direct testability and replay safety.
+ *
+ * Every row is keyed by (kernel, cycleId): createCycle is permissionless and cycleId is
+ * caller-chosen, so the same id can legitimately exist on several kernels, one per token.
+ *
+ * @param tokenAddress Token the kernel settles. Derived from configuration when omitted; an
+ *   unrecognised kernel is refused rather than projected under a guessed currency.
  */
 export async function applyEventProjection(
   db: any,
   client: any,
   contractAddress: string,
-  log: { blockNumber: bigint; eventName: string; args: any }
+  log: { blockNumber: bigint; eventName: string; args: any },
+  tokenAddress?: string
 ): Promise<void> {
   const { blockNumber, eventName, args } = log;
   const cycleId = args.cycleId as string;
   if (!cycleId) return;
 
+  const kernel = contractAddress.toLowerCase();
+  const token = tokenAddress ? tokenAddress.toLowerCase() : tokenForKernel(kernel)?.address.toLowerCase();
+  if (!token) {
+    throw new Error(`Refusing to project events from unrecognised kernel ${kernel}.`);
+  }
+
   const blockNum = Number(blockNumber);
+
+  // Scope a cycle_projection query to this kernel's copy of the cycle.
+  const cycleRow = (q: any) => q.eq('cycle_id', cycleId).eq('kernel_address', kernel);
 
   if (eventName === 'CycleCreated') {
     const { error } = await db.from('cycle_projection').upsert(
       {
+        kernel_address: kernel,
+        token_address: token,
         cycle_id: cycleId,
-        chain_id: MEZO_TESTNET_CHAIN_ID,
+        chain_id: MEZO_MAINNET_CHAIN_ID,
         snapshot_commitment: args.snapshotCommitment,
         gross_obligation_total: args.grossObligationTotal.toString(),
         net_debt_total: args.netDebtTotal.toString(),
@@ -50,7 +78,7 @@ export async function applyEventProjection(
         creator: (args.creator as string).toLowerCase(),
         last_updated_block: blockNum,
       },
-      { onConflict: 'cycle_id' }
+      { onConflict: 'kernel_address,cycle_id' }
     );
     if (error) throw new Error(`CycleCreated projection failed: ${error.message}`);
 
@@ -82,6 +110,7 @@ export async function applyEventProjection(
 
               const { error: debErr } = await db.from('participant_position_projection').upsert(
                 {
+                  kernel_address: kernel,
                   cycle_id: cycleId,
                   participant_address: debtorAddr,
                   position_type: 'debtor',
@@ -90,7 +119,7 @@ export async function applyEventProjection(
                   is_fully_funded: isFullyFunded,
                   last_updated_block: blockNum,
                 },
-                { onConflict: 'cycle_id,participant_address' }
+                { onConflict: 'kernel_address,cycle_id,participant_address' }
               );
               if (debErr) throw new Error(`CycleCreated debtor participant projection failed: ${debErr.message}`);
             })
@@ -111,6 +140,7 @@ export async function applyEventProjection(
 
               const { error: credErr } = await db.from('participant_position_projection').upsert(
                 {
+                  kernel_address: kernel,
                   cycle_id: cycleId,
                   participant_address: creditorAddr,
                   position_type: 'creditor',
@@ -120,7 +150,7 @@ export async function applyEventProjection(
                   is_fully_funded: false,
                   last_updated_block: blockNum,
                 },
-                { onConflict: 'cycle_id,participant_address' }
+                { onConflict: 'kernel_address,cycle_id,participant_address' }
               );
               if (credErr) throw new Error(`CycleCreated creditor participant projection failed: ${credErr.message}`);
             })
@@ -138,14 +168,13 @@ export async function applyEventProjection(
     const totalDebtorFunded = (args.totalDebtorFunded as bigint).toString();
 
     // 1. Update cycle projection total funded
-    const { error: cycleErr } = await db
-      .from('cycle_projection')
-      .update({
+    const { error: cycleErr } = await cycleRow(
+      db.from('cycle_projection').update({
         total_funded: totalCycleFunded,
         last_updated_block: blockNum,
         last_updated_at: new Date().toISOString(),
       })
-      .eq('cycle_id', cycleId);
+    );
     if (cycleErr) throw new Error(`DepositReceived cycle_projection failed: ${cycleErr.message}`);
 
     // 2. Fetch authoritative required debtor amount from contract if client is available
@@ -174,6 +203,7 @@ export async function applyEventProjection(
         .from('participant_position_projection')
         .select('required_amount')
         .eq('cycle_id', cycleId)
+        .eq('kernel_address', kernel)
         .eq('participant_address', debtor)
         .single();
 
@@ -191,6 +221,7 @@ export async function applyEventProjection(
     // 3. Update participant position projection
     const { error: posErr } = await db.from('participant_position_projection').upsert(
       {
+        kernel_address: kernel,
         cycle_id: cycleId,
         participant_address: debtor,
         position_type: 'debtor',
@@ -199,7 +230,7 @@ export async function applyEventProjection(
         is_fully_funded: isFullyFunded,
         last_updated_block: blockNum,
       },
-      { onConflict: 'cycle_id,participant_address' }
+      { onConflict: 'kernel_address,cycle_id,participant_address' }
     );
     if (posErr) throw new Error(`DepositReceived participant_position_projection failed: ${posErr.message}`);
   } else if (eventName === 'CycleReadyToSettle') {
@@ -212,22 +243,18 @@ export async function applyEventProjection(
     if (totalFunded !== undefined) {
       updates.total_funded = totalFunded;
     }
-    const { error } = await db
-      .from('cycle_projection')
-      .update(updates)
-      .eq('cycle_id', cycleId);
+    const { error } = await cycleRow(db.from('cycle_projection').update(updates));
     if (error) throw new Error(`CycleReadyToSettle projection failed: ${error.message}`);
   } else if (eventName === 'CycleSettled') {
     const totalDistributed = (args.totalDistributed as bigint).toString();
-    const { error } = await db
-      .from('cycle_projection')
-      .update({
+    const { error } = await cycleRow(
+      db.from('cycle_projection').update({
         state: 'Completed',
         total_distributed: totalDistributed,
         last_updated_block: blockNum,
         last_updated_at: new Date().toISOString(),
       })
-      .eq('cycle_id', cycleId);
+    );
     if (error) throw new Error(`CycleSettled projection failed: ${error.message}`);
 
     // Update creditor distributed amounts in participant_position_projection if client is available
@@ -258,6 +285,7 @@ export async function applyEventProjection(
                 last_updated_block: blockNum,
               })
               .eq('cycle_id', cycleId)
+              .eq('kernel_address', kernel)
               .eq('participant_address', creditorAddr);
           }
         }
@@ -266,26 +294,24 @@ export async function applyEventProjection(
       }
     }
   } else if (eventName === 'CycleExpired') {
-    const { error } = await db
-      .from('cycle_projection')
-      .update({
+    const { error } = await cycleRow(
+      db.from('cycle_projection').update({
         state: 'Expired',
         last_updated_block: blockNum,
         last_updated_at: new Date().toISOString(),
       })
-      .eq('cycle_id', cycleId);
+    );
     if (error) throw new Error(`CycleExpired projection failed: ${error.message}`);
   } else if (eventName === 'RefundClaimed') {
     const participant = (args.participant as string).toLowerCase();
     const amount = (args.amount as bigint).toString();
 
-    const { error: cycleErr } = await db
-      .from('cycle_projection')
-      .update({
+    const { error: cycleErr } = await cycleRow(
+      db.from('cycle_projection').update({
         last_updated_block: blockNum,
         last_updated_at: new Date().toISOString(),
       })
-      .eq('cycle_id', cycleId);
+    );
     if (cycleErr) throw new Error(`RefundClaimed cycle_projection failed: ${cycleErr.message}`);
 
     const { error: posErr } = await db
@@ -295,50 +321,28 @@ export async function applyEventProjection(
         last_updated_block: blockNum,
       })
       .eq('cycle_id', cycleId)
+      .eq('kernel_address', kernel)
       .eq('participant_address', participant);
     if (posErr) throw new Error(`RefundClaimed participant_position_projection failed: ${posErr.message}`);
   }
 }
 
 /**
- * Server-side event indexer worker for Netteo SettlementKernel on Mezo Testnet.
- * Conforms to architecture.md §8 & Prompt 5:
- * - Filter logs by SettlementKernel address and chain ID 31611.
+ * Indexes one kernel. Each kernel has its own cursor, so a failure or lag on one token's
+ * contract never holds back (or skips past) another's.
+ * Conforms to architecture.md §8:
+ * - Filter logs by the kernel address and chain ID 31612.
  * - Reorg/confirmation window: only indexes blocks with at least N confirmations.
  * - Idempotent event persistence keyed by (chain_id, transaction_hash, log_index).
- * - Projection updates with strict failure atomicity: never advance cursor past a failed block.
+ * - Strict failure atomicity: never advance the cursor past a failed block.
  */
-export async function runIndexerWorker(): Promise<IndexerResult> {
-  const contractAddress = CONTRACT_ADDRESSES.settlementKernel;
-  if (!contractAddress || contractAddress === '0x0000000000000000000000000000000000000000') {
-    return {
-      fromBlock: 0n,
-      toBlock: 0n,
-      logsCount: 0,
-      eventsProcessed: 0,
-      skipped: true,
-      message: 'SettlementKernel contract address is not configured. Indexer skipped.',
-    };
-  }
-
-  const db = getServiceRoleClient();
-  if (!db) {
-    return {
-      fromBlock: 0n,
-      toBlock: 0n,
-      logsCount: 0,
-      eventsProcessed: 0,
-      skipped: true,
-      message: 'Supabase service role credentials not configured. Indexer skipped.',
-    };
-  }
-
-  const client = createPublicClient({
-    chain: mezoTestnet,
-    transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.test.mezo.org'),
-  });
-
-  const cursorId = `mezo_testnet_${contractAddress.toLowerCase()}`;
+export async function runIndexerForKernel(
+  db: any,
+  client: any,
+  token: TokenMetadata,
+  contractAddress: `0x${string}`
+): Promise<IndexerResult> {
+  const cursorId = `mezo_mainnet_${contractAddress.toLowerCase()}`;
 
   // 1. Retrieve last indexed block from cursor
   const { data: cursorData } = await db
@@ -371,7 +375,7 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
       logsCount: 0,
       eventsProcessed: 0,
       skipped: true,
-      message: 'Indexer is already caught up to the latest confirmed block.',
+      message: `${token.symbol} indexer is already caught up to the latest confirmed block.`,
     };
   }
 
@@ -416,7 +420,7 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
       // Idempotent record insert in indexed_events
       const { error: insertError } = await db.from('indexed_events').upsert(
         {
-          chain_id: MEZO_TESTNET_CHAIN_ID,
+          chain_id: MEZO_MAINNET_CHAIN_ID,
           contract_address: contractAddress.toLowerCase(),
           block_number: Number(blockNum),
           transaction_hash: txHash,
@@ -436,15 +440,17 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
       }
 
       // Update projections
-      await applyEventProjection(db, client, contractAddress, {
-        blockNumber: blockNum,
-        eventName,
-        args,
-      });
+      await applyEventProjection(
+        db,
+        client,
+        contractAddress,
+        { blockNumber: blockNum, eventName, args },
+        token.address
+      );
 
       processedCount++;
     } catch (err: any) {
-      console.error(`[Indexer] Failure at block ${blockNum} on event ${eventName}:`, err?.message || err);
+      console.error(`[Indexer] ${token.symbol} failure at block ${blockNum} on event ${eventName}:`, err?.message || err);
       batchError = err;
       break; // Halt batch immediately; do NOT advance cursor past the failed block!
     }
@@ -464,21 +470,25 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
   const cursorBlock = batchError ? lastFullyCompletedBlock : toBlock;
 
   if (cursorBlock >= fromBlock) {
-    await db.from('indexer_cursor').upsert(
+    const { error: cursorError } = await db.from('indexer_cursor').upsert(
       {
         id: cursorId,
-        chain_id: MEZO_TESTNET_CHAIN_ID,
+        chain_id: MEZO_MAINNET_CHAIN_ID,
         contract_address: contractAddress.toLowerCase(),
         last_processed_block: Number(cursorBlock),
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'id' }
     );
+    // An unsaved cursor means the next run silently rescans from the start block. Surface it.
+    if (cursorError) {
+      throw new Error(`${token.symbol} indexer could not persist its cursor: ${cursorError.message}`);
+    }
   }
 
   if (batchError) {
     throw new Error(
-      `Indexer batch failed during block ${currentBlockUnderProcess}. Cursor held safely at ${cursorBlock}: ${batchError.message}`
+      `${token.symbol} indexer batch failed during block ${currentBlockUnderProcess}. Cursor held safely at ${cursorBlock}: ${batchError.message}`
     );
   }
 
@@ -488,5 +498,70 @@ export async function runIndexerWorker(): Promise<IndexerResult> {
     logsCount: rawLogs.length,
     eventsProcessed: processedCount,
     skipped: false,
+  };
+}
+
+/**
+ * Server-side event indexer for every deployed Netteo SettlementKernel on Mezo Mainnet.
+ * Runs each kernel independently: one token's failure is reported but does not stop the
+ * others from advancing their own cursors.
+ */
+export async function runIndexerWorker(): Promise<IndexerResult> {
+  const tokens = liveSettlementTokens();
+  if (tokens.length === 0) {
+    return {
+      fromBlock: 0n,
+      toBlock: 0n,
+      logsCount: 0,
+      eventsProcessed: 0,
+      skipped: true,
+      message: 'No SettlementKernel contract addresses are configured. Indexer skipped.',
+    };
+  }
+
+  const db = getServiceRoleClient();
+  if (!db) {
+    return {
+      fromBlock: 0n,
+      toBlock: 0n,
+      logsCount: 0,
+      eventsProcessed: 0,
+      skipped: true,
+      message: 'Supabase service role credentials not configured. Indexer skipped.',
+    };
+  }
+
+  const client = createPublicClient({
+    chain: mezoMainnet,
+    transport: mezoTransport(),
+  });
+
+  const results: IndexerResult[] = [];
+  const failures: string[] = [];
+
+  for (const token of tokens) {
+    const kernel = kernelForToken(token.address)!;
+    try {
+      results.push(await runIndexerForKernel(db, client, token, kernel));
+    } catch (err: any) {
+      failures.push(err?.message || `${token.symbol} indexer failed.`);
+    }
+  }
+
+  // Signed-request nonces older than the challenge window can never be replayed; drop them so the table stays small.
+  await purgeConsumedNonces(db);
+
+  if (failures.length > 0) {
+    throw new Error(failures.join(' | '));
+  }
+
+  const active = results.filter((r) => !r.skipped);
+  return {
+    fromBlock: results.reduce((min, r) => (r.fromBlock < min ? r.fromBlock : min), results[0].fromBlock),
+    toBlock: results.reduce((max, r) => (r.toBlock > max ? r.toBlock : max), results[0].toBlock),
+    logsCount: results.reduce((n, r) => n + r.logsCount, 0),
+    eventsProcessed: results.reduce((n, r) => n + r.eventsProcessed, 0),
+    skipped: active.length === 0,
+    message: active.length === 0 ? 'All kernel indexers are caught up to the latest confirmed block.' : undefined,
   };
 }

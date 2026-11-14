@@ -193,12 +193,12 @@ function DocsContent() {
                 [ GitHub ]
               </a>
               <a
-                href="https://explorer.test.mezo.org/address/0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5"
+                href="https://explorer.mezo.org/token/0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186"
                 target="_blank"
                 rel="noreferrer"
                 className={styles.footerLink}
               >
-                [ Mezo Contract ]
+                [ Canonical Mainnet MUSD ]
               </a>
             </div>
           </footer>

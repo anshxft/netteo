@@ -28,7 +28,7 @@ export interface CdpAutoBorrowDrawerProps {
   onBorrowSuccess?: (mintedAmount: bigint) => void;
 }
 
-const BTC_PRICE_USD = 68500; // Simulated Mezo Testnet Oracle Price Index ($68,500.00 / BTC)
+const BTC_PRICE_USD = 68500; // Demo-only estimate; live borrowing uses Mezo's current quote.
 const BASE_18 = 10n ** 18n;
 
 export function CdpAutoBorrowDrawer({
@@ -100,9 +100,7 @@ export function CdpAutoBorrowDrawer({
     try {
       if (mode === 'live') {
         // Generate prefilled deep link to Mezo CDP portal
-        const cdpUrl = `https://cdp.test.mezo.org/borrow?collateral=tbtc&borrow=${borrowTargetFloat.toFixed(
-          2
-        )}&cr=${collateralRatio}`;
+        const cdpUrl = 'https://mezo.org/feature/borrow';
         window.open(cdpUrl, '_blank', 'noopener,noreferrer');
         setIsSubmitting(false);
         return;
@@ -135,13 +133,15 @@ export function CdpAutoBorrowDrawer({
                 <Icon icon={Zap} size="sm" color="var(--color-wine)" />
                 <span>Mezo Bitcoin-Fi CDP</span>
               </span>
-              <span className={styles.networkBadge}>Matsnet Testnet (31611)</span>
+              <span className={styles.networkBadge}>{mode === 'live' ? 'Mezo Mainnet (31612)' : 'Demo estimate'}</span>
             </div>
             <h2 id={titleId} className={styles.drawerTitle}>
               Mezo CDP Auto-Borrow
             </h2>
             <p id={descId} className={styles.drawerSubtitle}>
-              Mint required MUSD collateralized by Bitcoin without liquidating your BTC holdings.
+              {mode === 'live'
+                ? 'Continue to Mezo to review current borrowing terms and complete the transaction there.'
+                : 'Preview a demo estimate for MUSD borrowing collateralized by Bitcoin.'}
             </p>
           </div>
           <button
@@ -215,6 +215,20 @@ export function CdpAutoBorrowDrawer({
         ) : (
           /* Main Interactive Borrow Body */
           <div className={styles.drawerBody}>
+            {mode === 'live' ? (
+              <div className={styles.metricCard}>
+                <div className={styles.metricHeader}>
+                  <span className={styles.metricLabel}>Cycle MUSD requirement</span>
+                  <span className={styles.metricValue}>
+                    {borrowTargetFloat.toFixed(2)} <span className={styles.metricUnit}>MUSD</span>
+                  </span>
+                </div>
+                <p className={styles.metricSubRow}>
+                  Mezo will show the current collateral, fees, and borrowing terms before you confirm there.
+                </p>
+              </div>
+            ) : (
+              <>
             {/* Obligation Deficit Summary */}
             <div className={styles.metricCard}>
               <div className={styles.metricHeader}>
@@ -316,6 +330,8 @@ export function CdpAutoBorrowDrawer({
                 </span>
               </div>
             </div>
+              </>
+            )}
 
             {/* Execution Footer */}
             <div className={styles.drawerFooter}>
@@ -334,7 +350,7 @@ export function CdpAutoBorrowDrawer({
                 }
               >
                 {mode === 'live'
-                  ? `Borrow ${borrowTargetFloat.toFixed(2)} MUSD on Mezo CDP`
+                  ? 'Review borrowing on Mezo'
                   : `Mint ${borrowTargetFloat.toFixed(2)} MUSD via CDP (Demo)`}
               </Button>
               <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>

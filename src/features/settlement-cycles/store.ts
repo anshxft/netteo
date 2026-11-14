@@ -4,8 +4,8 @@ import { SettlementCycle, CycleState } from './types';
 import { calculateNetting, ObligationInput, NETTING_ALGORITHM_VERSION } from './netting';
 import { loadObligations, updateObligationStatus } from '../obligations/store';
 import { normalizeAddress } from './netting';
-import { MEZO_TESTNET_CHAIN_ID, CONTRACT_ADDRESSES } from '@/lib/chain/config';
-import { getTokenByAddress } from '@/lib/chain/tokens';
+import { MEZO_MAINNET_CHAIN_ID } from '@/lib/chain/config';
+import { DEFAULT_SETTLEMENT_TOKEN, requireTokenByAddress } from '@/lib/chain/tokens';
 
 const STORAGE_KEY = 'netteo_cycles_v1';
 
@@ -117,18 +117,22 @@ export function loadCycles(mode?: 'demo' | 'live'): SettlementCycle[] {
     if (!raw) {
       if (activeMode === 'demo') {
         saveCycles([VERIFIED_MEZO_CYCLE], 'demo');
+        return [VERIFIED_MEZO_CYCLE];
       }
-      return [VERIFIED_MEZO_CYCLE];
+      return [];
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) {
       if (activeMode === 'demo') {
         saveCycles([VERIFIED_MEZO_CYCLE], 'demo');
+        return [VERIFIED_MEZO_CYCLE];
       }
-      return [VERIFIED_MEZO_CYCLE];
+      return [];
     }
 
-    return parsed.map((item) => ({
+    return parsed
+      .filter((item) => activeMode !== 'live' || Number(item.chainId) === MEZO_MAINNET_CHAIN_ID)
+      .map((item) => ({
       ...item,
       grossObligationTotal: BigInt(item.grossObligationTotal),
       netDebtTotal: BigInt(item.netDebtTotal),
@@ -163,7 +167,7 @@ export function loadCycles(mode?: 'demo' | 'live'): SettlementCycle[] {
           },
         ])
       ),
-    }));
+      }));
   } catch {
     return [];
   }
@@ -216,7 +220,7 @@ export function saveCycles(cycles: SettlementCycle[], mode?: 'demo' | 'live'): v
 }
 
 export function getCycleById(id: string, mode?: 'demo' | 'live'): SettlementCycle | undefined {
-  if (id && id.toLowerCase() === VERIFIED_MEZO_CYCLE.id.toLowerCase()) {
+  if ((mode || getActiveWorkspaceMode()) === 'demo' && id && id.toLowerCase() === VERIFIED_MEZO_CYCLE.id.toLowerCase()) {
     return VERIFIED_MEZO_CYCLE;
   }
   const cycles = loadCycles(mode);
@@ -244,8 +248,21 @@ export function createCycleFromObligations(
     }
   }
 
-  // Determine token metadata
-  const activeToken = getTokenByAddress(tokenAddress || CONTRACT_ADDRESSES.musd);
+  // Determine token metadata. Unknown tokens throw: pricing a cycle in one asset and
+  // settling in another is the failure this registry exists to prevent.
+  const activeToken = requireTokenByAddress(tokenAddress || DEFAULT_SETTLEMENT_TOKEN.address);
+
+  // A cycle nets in exactly one token. Amounts are base units of each obligation's own
+  // token (1 MUSD = 10^18, 1 mUSDC = 10^6), so summing across tokens would silently
+  // treat 100 mUSDC as 0.0000000000001 MUSD.
+  const mismatched = selected.filter(
+    (o) => (o.tokenAddress || DEFAULT_SETTLEMENT_TOKEN.address).toLowerCase() !== activeToken.address.toLowerCase()
+  );
+  if (mismatched.length > 0) {
+    throw new Error(
+      `${mismatched.length} selected obligation(s) are not denominated in ${activeToken.symbol}. A settlement cycle can only net one currency; pick obligations in ${activeToken.symbol} or switch the settlement currency.`
+    );
+  }
 
   // Convert to netting inputs
   const nettingInputs: ObligationInput[] = selected.map((o) => ({
@@ -258,7 +275,7 @@ export function createCycleFromObligations(
 
   // Run pure deterministic netting algorithm
   const nettingResult = calculateNetting(nettingInputs, 10, 30, {
-    chainId: MEZO_TESTNET_CHAIN_ID,
+    chainId: MEZO_MAINNET_CHAIN_ID,
     tokenAddress: activeToken.address,
   });
 
@@ -278,6 +295,7 @@ export function createCycleFromObligations(
 
   const newCycle: SettlementCycle = {
     id: cycleId,
+    chainId: mode === 'live' ? MEZO_MAINNET_CHAIN_ID : undefined,
     groupId,
     cycleNumber,
     snapshotCommitment: nettingResult.canonicalCommitmentHash,

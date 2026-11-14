@@ -29,7 +29,7 @@ console.log('✔ Passed: Section lookup helper behaves correctly');
 // Test 4: Verify Mezo & MUSD authentic details are present in registry
 const liveProof = getSectionById('live-settlement-proof');
 assert.ok(liveProof, 'live-settlement-proof section must exist');
-assert.ok(liveProof.keywords.includes('mezo testnet'), 'live-settlement-proof must include mezo testnet keyword');
+assert.ok(liveProof.keywords.includes('historical testnet'), 'live-settlement-proof must be labeled as historical testnet evidence');
 
 const musdToken = getSectionById('musd-token');
 assert.ok(musdToken, 'musd-token section must exist');

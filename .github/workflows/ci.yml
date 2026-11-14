@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # Weekly: re-verify the token registry and RPC fallback against the live chain.
+    - cron: '17 6 * * 1'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: Typecheck, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Pushes and PRs must not depend on a public RPC being up. The scheduled job below runs the live checks.
+      SKIP_CHAIN_PROBE: ${{ github.event_name == 'schedule' && '0' || '1' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build
+        env:
+          # A build needs no real secrets. The values only have to be present and well-formed.
+          SESSION_SECRET: ci-build-secret-not-used-at-runtime-0123456789
+
+  contracts:
+    name: Solidity tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive # lib/forge-std
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci # OpenZeppelin is resolved from node_modules (see foundry.toml remappings)
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge test -vv
+        # The fork suite (real MUSD / mUSDC / mUSDT code) skips itself unless MEZO_MAINNET_FORK_URL is set.

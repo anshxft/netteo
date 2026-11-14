@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createPublicClient, http, webSocket, type Address } from 'viem';
-import { mezoTestnet, CONTRACT_ADDRESSES } from './config';
+import { createPublicClient, webSocket, type Address } from 'viem';
+import { mezoMainnet, kernelForToken, MEZO_MAINNET_WSS_RPC_URL } from './config';
+import { mezoTransport } from './transport';
 import { settlementKernelAbi } from './abi';
 
 export interface SettlementEventsCallbacks {
@@ -35,38 +36,40 @@ export interface SettlementEventsCallbacks {
 }
 
 /**
- * Reactive WebSocket event subscription for SettlementKernel events on Mezo Testnet.
+ * Reactive WebSocket event subscription for SettlementKernel events on Mezo Mainnet.
  * Capitalizes on CometBFT single-block finality (~1-2s blocks) for instant UI updates.
  * Automatically falls back to HTTP transport if WebSocket connection fails.
  */
 export function useSettlementEvents(
   targetCycleId?: string | null,
-  callbacks?: SettlementEventsCallbacks
+  callbacks?: SettlementEventsCallbacks,
+  /** Token whose kernel to watch. Each token has its own kernel, so this selects the contract. */
+  tokenAddress?: string | null
 ) {
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
 
   useEffect(() => {
-    const kernelAddress = CONTRACT_ADDRESSES.settlementKernel;
-    if (!kernelAddress || kernelAddress === '0x0000000000000000000000000000000000000000') {
+    const kernelAddress = kernelForToken(tokenAddress);
+    // No kernel for this token (undeployed, or not resolved yet): watch nothing rather than a default.
+    if (!kernelAddress) {
       return;
     }
 
-    const wssUrl = process.env.NEXT_PUBLIC_WSS_RPC_URL || 'wss://rpc-ws.test.mezo.org';
-    const httpUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.test.mezo.org';
+    const wssUrl = MEZO_MAINNET_WSS_RPC_URL;
 
     let client: ReturnType<typeof createPublicClient>;
     try {
       client = createPublicClient({
-        chain: mezoTestnet,
+        chain: mezoMainnet,
         transport: typeof window !== 'undefined' && 'WebSocket' in window
           ? webSocket(wssUrl, { timeout: 10_000 })
-          : http(httpUrl),
+          : mezoTransport(),
       });
     } catch {
       client = createPublicClient({
-        chain: mezoTestnet,
-        transport: http(httpUrl),
+        chain: mezoMainnet,
+        transport: mezoTransport(),
       });
     }
 
@@ -144,5 +147,5 @@ export function useSettlementEvents(
         // Cleanup guard
       }
     };
-  }, [targetCycleId]);
+  }, [targetCycleId, tokenAddress]);
 }

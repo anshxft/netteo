@@ -2,36 +2,58 @@
 
 import { Obligation, ObligationStatus, ProposeObligationInput } from './types';
 import { normalizeAddress } from '../settlement-cycles/netting';
+import { DEFAULT_SETTLEMENT_TOKEN, getTokenBySymbol, requireTokenByAddress } from '@/lib/chain/tokens';
 
 const STORAGE_KEY = 'netteo_obligations_v1';
-const BASE_DECIMALS = 18n;
 
-export function parseMusdToBaseUnits(amountStr: string): bigint {
+/**
+ * Parses a user-typed decimal amount into the token's own base units.
+ *
+ * `decimals` is mandatory: MUSD uses 18 while mUSDC and mUSDT use 6, so a fixed
+ * 18 would inflate every bridged-stablecoin amount by 10^12. Excess precision is
+ * rejected rather than truncated — silently dropping a digit changes what the user
+ * agreed to owe.
+ */
+export function parseAmountToBaseUnits(amountStr: string, decimals: number): bigint {
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 18) {
+    throw new Error('Invalid token decimals.');
+  }
+
   const clean = amountStr.trim();
-  if (!clean || !/^\d+(\.\d{1,18})?$/.test(clean)) {
-    throw new Error('Invalid MUSD amount. Must be a positive numeric value with up to 18 decimals.');
+  const pattern = decimals === 0 ? /^\d+$/ : new RegExp(`^\\d+(\\.\\d{1,${decimals}})?$`);
+  if (!clean || !pattern.test(clean)) {
+    throw new Error(
+      decimals === 0
+        ? 'Invalid amount. Must be a positive whole number.'
+        : `Invalid amount. Must be a positive number with at most ${decimals} decimal places.`
+    );
   }
 
   const [whole, frac = ''] = clean.split('.');
-  const paddedFrac = frac.padEnd(Number(BASE_DECIMALS), '0').slice(0, Number(BASE_DECIMALS));
-  const total = BigInt(whole) * 10n ** BASE_DECIMALS + BigInt(paddedFrac);
+  const total = BigInt(whole) * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, '0'));
   if (total <= 0n) {
     throw new Error('Obligation amount must be strictly greater than zero.');
   }
   return total;
 }
 
+/**
+ * Formats base units for display. When only a symbol is given, decimals are looked
+ * up from the verified token registry so display and parsing can never disagree.
+ */
 export function formatBaseUnitsToDisplay(
   amount: bigint,
-  symbol: string = 'MUSD',
-  decimals: number = 18
+  symbol: string = DEFAULT_SETTLEMENT_TOKEN.symbol,
+  decimals?: number
 ): string {
-  const dec = BigInt(decimals);
+  const dec = BigInt(decimals ?? getTokenBySymbol(symbol)?.decimals ?? DEFAULT_SETTLEMENT_TOKEN.decimals);
   const base = 10n ** dec;
-  const whole = amount / base;
-  const rem = amount % base;
+  const negative = amount < 0n;
+  const abs = negative ? -amount : amount;
+  const whole = abs / base;
+  const rem = abs % base;
   const fracStr = rem.toString().padStart(Number(dec), '0').slice(0, 2);
-  return `${whole.toLocaleString()}.${fracStr} ${symbol}`;
+  return `${negative ? '-' : ''}${whole.toLocaleString()}.${fracStr} ${symbol}`;
 }
 
 // PRD §2 Canonical initial obligations
@@ -44,6 +66,7 @@ export const CANONICAL_OBLIGATIONS: Obligation[] = [
     creditorAddress: '0x2222222222222222222222222222222222222222',
     amount: 100n * 10n ** 18n,
     amountDisplay: '100.00 MUSD',
+    tokenAddress: DEFAULT_SETTLEMENT_TOKEN.address,
     referenceLabel: 'Design sprint deliverables (Invoice #104)',
     status: 'Accepted',
     createdAt: '2026-10-20T10:15:00.000Z',
@@ -57,6 +80,7 @@ export const CANONICAL_OBLIGATIONS: Obligation[] = [
     creditorAddress: '0x3333333333333333333333333333333333333333',
     amount: 80n * 10n ** 18n,
     amountDisplay: '80.00 MUSD',
+    tokenAddress: DEFAULT_SETTLEMENT_TOKEN.address,
     referenceLabel: 'RPC infrastructure node maintenance',
     status: 'Accepted',
     createdAt: '2026-10-20T11:00:00.000Z',
@@ -70,6 +94,7 @@ export const CANONICAL_OBLIGATIONS: Obligation[] = [
     creditorAddress: '0x1111111111111111111111111111111111111111',
     amount: 20n * 10n ** 18n,
     amountDisplay: '20.00 MUSD',
+    tokenAddress: DEFAULT_SETTLEMENT_TOKEN.address,
     referenceLabel: 'Shared API subscription reimbursement',
     status: 'Accepted',
     createdAt: '2026-10-20T12:00:00.000Z',
@@ -139,6 +164,8 @@ export function loadObligations(mode?: 'demo' | 'live'): Obligation[] {
           item.id === 'ob-genesis-003' ? '00000000-0000-0000-0000-000000000013' : item.id,
       groupId: item.groupId === 'grp-genesis-001' ? '00000000-0000-0000-0000-000000000001' : item.groupId,
       amount: BigInt(item.amount),
+      // Records stored before multi-token support were all MUSD.
+      tokenAddress: item.tokenAddress || DEFAULT_SETTLEMENT_TOKEN.address,
     }));
   } catch {
     return activeMode === 'demo' ? CANONICAL_OBLIGATIONS : [];
@@ -176,7 +203,8 @@ export function proposeObligation(
     throw new Error('Reference label or invoice description is required.');
   }
 
-  const amountUnits = parseMusdToBaseUnits(input.amountMusd);
+  const token = requireTokenByAddress(input.tokenAddress ?? DEFAULT_SETTLEMENT_TOKEN.address);
+  const amountUnits = parseAmountToBaseUnits(input.amountMusd, token.decimals);
 
   const newId = typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -189,7 +217,8 @@ export function proposeObligation(
     debtorAddress: debtor,
     creditorAddress: creditor,
     amount: amountUnits,
-    amountDisplay: formatBaseUnitsToDisplay(amountUnits),
+    amountDisplay: formatBaseUnitsToDisplay(amountUnits, token.symbol, token.decimals),
+    tokenAddress: token.address,
     referenceLabel: label,
     status: 'Proposed',
     createdAt: new Date().toISOString(),

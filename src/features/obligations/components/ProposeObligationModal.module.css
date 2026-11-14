@@ -437,6 +437,19 @@
   background-color: var(--color-wine-subtle);
 }
 
+/* Selected currency chip. Declared after .presetChip so it wins at equal specificity, and carries
+   a checkmark so the selection is never communicated by colour alone. */
+.presetChipActive,
+.presetChipActive:hover {
+  border-color: var(--color-wine);
+  background-color: var(--color-wine);
+  color: #FFFFFF;
+}
+
+.presetChipActive::before {
+  content: '✓ ';
+}
+
 /* Settlement Preview Box */
 .settlementPreview {
   background-color: var(--color-sand);

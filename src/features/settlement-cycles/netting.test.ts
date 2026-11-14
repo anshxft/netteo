@@ -104,8 +104,10 @@ function runTests() {
   const resOrderA = calculateNetting([ob1, ob2, ob3]);
   const resOrderB = calculateNetting([ob3, ob1, ob2]);
   const resOrderC = calculateNetting([ob2, ob3, ob1]);
+  const resMainnet = calculateNetting([ob1, ob2, ob3], 10, 30, { chainId: 31612 });
   assert.strictEqual(resOrderA.canonicalCommitmentHash, resOrderB.canonicalCommitmentHash, 'Commitment must be order independent (A vs B)');
   assert.strictEqual(resOrderA.canonicalCommitmentHash, resOrderC.canonicalCommitmentHash, 'Commitment must be order independent (A vs C)');
+  assert.strictEqual(resOrderA.canonicalCommitmentHash, resMainnet.canonicalCommitmentHash, 'Default commitment chain must be Mezo Mainnet');
   assert.ok(resOrderA.canonicalCommitmentHash.startsWith('0x'), 'Commitment must be 0x-prefixed hex');
   assert.strictEqual(resOrderA.canonicalCommitmentHash.length, 66, 'Commitment must be 32 bytes (66 hex characters)');
   console.log('✔ Passed: Commitment order independence (shuffled arrays match)');

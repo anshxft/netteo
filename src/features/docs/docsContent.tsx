@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './DocsContentRenderer.module.css';
+import { CONTRACT_ADDRESSES, MEZO_MAINNET_MUSD } from '@/lib/chain/config';
 
 export interface SectionContentProps {
   sectionId: string;
@@ -12,7 +13,7 @@ export function SectionOverview() {
         <h2 className={styles.subHeading}>What is Netteo?</h2>
         <p className={styles.paragraph}>
           <strong>Netteo</strong> is an autonomous debt clearing protocol and multilateral obligation netting engine
-          engineered specifically for the <strong>Mezo Network (Bitcoin Layer 2 Economic Substrate, Chain ID 31611)</strong>.
+          engineered for the <strong>Mezo Mainnet (Chain ID 31612)</strong>.
           It solves circular and reciprocal payment debts among decentralized collectives, agency pods, and DAO working groups
           by calculating mathematically deterministic zero-sum net settlement positions and executing them atomically in{' '}
           <strong>MUSD</strong>.
@@ -207,7 +208,7 @@ export function SectionQuickstart() {
         <ul className={styles.bulletList}>
           <li><strong>Node.js:</strong> Version &gt;= 20.x LTS</li>
           <li><strong>Foundry:</strong> <code>forge</code> and <code>cast</code> installed for contract compilation</li>
-          <li><strong>Web3 Wallet:</strong> MetaMask or Rabby configured with Mezo Testnet (Chain ID 31611)</li>
+          <li><strong>Web3 Wallet:</strong> EVM wallet configured with Mezo Mainnet (Chain ID 31612)</li>
         </ul>
       </div>
 
@@ -240,14 +241,17 @@ npm install`}
             <span className={styles.codeLang}>ENV</span>
           </div>
           <pre className={styles.codeContent}>
-{`# Mezo Testnet Chain Parameters
-NEXT_PUBLIC_MEZO_CHAIN_ID=31611
-NEXT_PUBLIC_MEZO_RPC_URL="https://rpc.test.mezo.org"
-NEXT_PUBLIC_MEZO_EXPLORER_URL="https://explorer.test.mezo.org"
+{`# Mezo Mainnet Chain Parameters
+NEXT_PUBLIC_CHAIN_ID=31612
+NEXT_PUBLIC_MEZO_MAINNET_RPC_URL="https://mezo-mainnet.boar.network"
+NEXT_PUBLIC_MEZO_MAINNET_EXPLORER_URL="https://explorer.mezo.org"
 
-# Live Deployed Contract Addresses on Mezo Testnet
-NEXT_PUBLIC_SETTLEMENT_KERNEL_ADDRESS="0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5"
-NEXT_PUBLIC_MUSD_ADDRESS="0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503"
+# One SettlementKernel per token, created by script/Deploy.s.sol. 0x000...0 means not deployed.
+# Tokens are not configured here: Netteo settles only in its verified Mezo registry (MUSD, mUSDC, mUSDT).
+NEXT_PUBLIC_SETTLEMENT_KERNEL_FACTORY_ADDRESS="0x0000000000000000000000000000000000000000"
+NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD="0x0000000000000000000000000000000000000000"
+NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSDC="0x0000000000000000000000000000000000000000"
+NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSDT="0x0000000000000000000000000000000000000000"
 
 # Supabase Realtime & Persistence
 NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
@@ -319,7 +323,7 @@ export function SectionSystemArchitecture() {
           <div className={styles.archBox}>
             <div className={styles.archHeader}>3. Smart Contract Settlement Layer</div>
             <div className={styles.archDesc}>
-              Solidity 0.8.24 (via_ir = true), OpenZeppelin Contracts v5 (SafeERC20, ReentrancyGuard), deployed on Mezo Testnet (Chain ID 31611).
+              Solidity 0.8.24 (via_ir = true), OpenZeppelin Contracts v5 (SafeERC20, ReentrancyGuard), targeting Mezo Mainnet (Chain ID 31612). The mainnet kernel must be deployed before live settlements are enabled.
             </div>
           </div>
         </div>
@@ -328,7 +332,7 @@ export function SectionSystemArchitecture() {
       <div id="client-layer" className={styles.subBlock}>
         <h2 className={styles.subHeading}>Client Web3 Workspace (Viem & Wagmi)</h2>
         <p className={styles.paragraph}>
-          The client provides zero-friction dual modes: a <strong>Live Mezo Testnet Mode</strong> for executing real transactions
+          The client provides dual modes: a <strong>Live Mezo Mainnet Mode</strong> for executing transactions with real MUSD
           and a <strong>Demo Sandbox Mode</strong> for instant exploration without requiring a wallet connection.
         </p>
       </div>
@@ -336,7 +340,7 @@ export function SectionSystemArchitecture() {
       <div id="indexer-layer" className={styles.subBlock}>
         <h2 className={styles.subHeading}>State & Event Projection Indexer</h2>
         <p className={styles.paragraph}>
-          A deterministic indexer listens to Mezo Testnet block events (<code>CycleCreated</code>, <code>DepositReceived</code>, <code>SettlementExecuted</code>),
+          A deterministic indexer listens to Mezo Mainnet block events (<code>CycleCreated</code>, <code>DepositReceived</code>, <code>SettlementExecuted</code>),
           maintaining clean materialized query tables with complete historical auditability.
         </p>
       </div>
@@ -557,7 +561,7 @@ export function calculateSnapshotCommitment(
       <div id="parameter-sensitivity" className={styles.subBlock}>
         <h2 className={styles.subHeading}>Chain ID & Token Address Sensitivity</h2>
         <p className={styles.paragraph}>
-          Cross-chain replay attacks are prevented by including the Mezo Chain ID (<code>31611</code>) and the settlement token address
+          Cross-chain replay attacks are prevented by including the Mezo Chain ID (<code>31612</code>) and the settlement token address
           inside the commitment domain.
         </p>
       </div>
@@ -578,21 +582,21 @@ export function SectionMezoOverview() {
       </div>
 
       <div id="network-parameters" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Network Parameters (Chain ID 31611)</h2>
+        <h2 className={styles.subHeading}>Network Parameters (Chain ID 31612)</h2>
         <div className={styles.tableWrapper}>
           <table className={styles.specTable}>
             <tbody>
               <tr>
                 <td><strong>Network Name</strong></td>
-                <td>Mezo Testnet</td>
+                <td>Mezo Mainnet</td>
               </tr>
               <tr>
                 <td><strong>Chain ID</strong></td>
-                <td><code>31611</code> (Hex: <code>0x7B7B</code>)</td>
+                <td><code>31612</code> (Hex: <code>0x7B7C</code>)</td>
               </tr>
               <tr>
                 <td><strong>Currency Symbol</strong></td>
-                <td><code>BTC</code> / <code>tBTC</code> (18 decimals)</td>
+                <td><code>BTC</code> (18 decimals)</td>
               </tr>
               <tr>
                 <td><strong>Settlement Asset</strong></td>
@@ -600,11 +604,11 @@ export function SectionMezoOverview() {
               </tr>
               <tr>
                 <td><strong>RPC Endpoint</strong></td>
-                <td><code>https://rpc.test.mezo.org</code></td>
+                <td><code>https://mezo-mainnet.boar.network</code></td>
               </tr>
               <tr>
                 <td><strong>Block Explorer</strong></td>
-                <td><a href="https://explorer.test.mezo.org" target="_blank" rel="noreferrer" className={styles.link}>https://explorer.test.mezo.org</a></td>
+                <td><a href="https://explorer.mezo.org" target="_blank" rel="noreferrer" className={styles.link}>https://explorer.mezo.org</a></td>
               </tr>
             </tbody>
           </table>
@@ -614,7 +618,7 @@ export function SectionMezoOverview() {
       <div id="rpc-and-explorer" className={styles.subBlock}>
         <h2 className={styles.subHeading}>Official RPC & Block Explorer</h2>
         <p className={styles.paragraph}>
-          Transactions and state can be monitored live on the official Mezo Testnet Block Explorer.
+          Mainnet transactions and state can be monitored on the official Mezo Explorer.
         </p>
       </div>
     </div>
@@ -627,13 +631,13 @@ export function SectionMusdToken() {
       <div id="canonical-address" className={styles.subBlock}>
         <h2 className={styles.subHeading}>Official Mezo MUSD Token Address</h2>
         <p className={styles.paragraph}>
-          Netteo settles exclusively in the official canonical Mezo MUSD token deployed on Mezo Testnet:
+          Netteo settles exclusively in the official canonical Mezo Mainnet MUSD token:
         </p>
         <div className={styles.contractCard}>
           <div className={styles.contractLabel}>CANONICAL MEZO MUSD ADDRESS</div>
-          <div className={styles.contractValue}>0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503</div>
+          <div className={styles.contractValue}>{MEZO_MAINNET_MUSD}</div>
           <a
-            href="https://explorer.test.mezo.org/token/0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503"
+            href={`https://explorer.mezo.org/token/${MEZO_MAINNET_MUSD}`}
             target="_blank"
             rel="noreferrer"
             className={styles.explorerButton}
@@ -653,7 +657,7 @@ export function SectionMusdToken() {
       <div id="approval-contract" className={styles.subBlock}>
         <h2 className={styles.subHeading}>Spender Allowance Contract Safety</h2>
         <p className={styles.paragraph}>
-          Prior to funding a settlement cycle, net debtors grant an allowance to the SettlementKernel contract (<code>0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5</code>).
+          Prior to funding a settlement cycle, net debtors grant an allowance to the configured Mainnet SettlementKernel (<code>{CONTRACT_ADDRESSES.settlementKernel}</code>). Live approvals remain disabled until its on-chain MUSD binding is verified.
           The contract transfers only the exact required net debit amount via <code>transferFrom</code> during <code>deposit()</code>.
         </p>
       </div>
@@ -678,22 +682,22 @@ export function SectionDeployedContracts() {
             </thead>
             <tbody>
               <tr>
-                <td><strong>SettlementKernel (Live)</strong></td>
-                <td><code>0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5</code></td>
-                <td><span className={styles.activePill}>Verified Active</span></td>
-                <td><a href="https://explorer.test.mezo.org/address/0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5" target="_blank" rel="noreferrer" className={styles.link}>Explorer ↗</a></td>
+                <td><strong>SettlementKernel (Mainnet)</strong></td>
+                <td><code>{CONTRACT_ADDRESSES.settlementKernel === '0x0000000000000000000000000000000000000000' ? 'Pending deployment' : CONTRACT_ADDRESSES.settlementKernel}</code></td>
+                <td>{CONTRACT_ADDRESSES.settlementKernel === '0x0000000000000000000000000000000000000000' ? 'Pending deployment' : 'Configured; verify on explorer'}</td>
+                <td>{CONTRACT_ADDRESSES.settlementKernel === '0x0000000000000000000000000000000000000000' ? '—' : <a href={`https://explorer.mezo.org/address/${CONTRACT_ADDRESSES.settlementKernel}`} target="_blank" rel="noreferrer" className={styles.link}>Explorer ↗</a>}</td>
               </tr>
               <tr>
                 <td><strong>Canonical Mezo MUSD</strong></td>
-                <td><code>0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503</code></td>
+                <td><code>{MEZO_MAINNET_MUSD}</code></td>
                 <td><span className={styles.activePill}>Official Token</span></td>
-                <td><a href="https://explorer.test.mezo.org/token/0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503" target="_blank" rel="noreferrer" className={styles.link}>Explorer ↗</a></td>
+                <td><a href={`https://explorer.mezo.org/token/${MEZO_MAINNET_MUSD}`} target="_blank" rel="noreferrer" className={styles.link}>Explorer ↗</a></td>
               </tr>
               <tr>
-                <td><strong>Legacy SettlementKernel</strong></td>
+                <td><strong>Legacy Testnet SettlementKernel</strong></td>
                 <td><code>0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA</code></td>
                 <td><span className={styles.deprecatedPill}>Deprecated</span></td>
-                <td><a href="https://explorer.test.mezo.org/address/0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA" target="_blank" rel="noreferrer" className={styles.link}>Explorer ↗</a></td>
+                <td><a href="https://explorer.test.mezo.org/address/0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA" target="_blank" rel="noreferrer" className={styles.link}>Testnet Explorer ↗</a></td>
               </tr>
             </tbody>
           </table>
@@ -710,7 +714,7 @@ export function SectionDeployedContracts() {
       <div id="block-explorer-links" className={styles.subBlock}>
         <h2 className={styles.subHeading}>Mezo Explorer Direct Links</h2>
         <p className={styles.paragraph}>
-          All contracts can be audited directly on the Mezo Testnet Block Explorer.
+          The Mainnet MUSD token is listed on the Mezo Explorer. The Netteo SettlementKernel will appear after deployment.
         </p>
       </div>
     </div>
@@ -721,9 +725,9 @@ export function SectionLiveSettlementProof() {
   return (
     <div className={styles.sectionBody}>
       <div id="settlement-scenario" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Verified 3-Party Cycle Scenario</h2>
+        <h2 className={styles.subHeading}>Historical Testnet 3-Party Cycle</h2>
         <p className={styles.paragraph}>
-          A live multi-party settlement cycle was executed and completed directly on Mezo Testnet:
+          This recorded cycle completed on Mezo Testnet using testnet MUSD. It demonstrates the contract flow but is not a Mainnet transaction or proof of real-value settlement:
         </p>
         <ul className={styles.bulletList}>
           <li>Gross Volume: <strong>200 MUSD</strong></li>
@@ -775,7 +779,7 @@ export function SectionLiveSettlementProof() {
         <h2 className={styles.subHeading}>On-Chain Terminal State Verification</h2>
         <p className={styles.paragraph}>
           The cycle reached the terminal <code>Completed</code> state on-chain with zero stranded balances,
-          proving the collect-then-distribute invariant holds under real Mezo network conditions.
+          on Mezo Testnet. Mainnet settlement requires a separate deployment and acceptance transaction.
         </p>
       </div>
     </div>
@@ -786,10 +790,9 @@ export function SectionWorkspaceModes() {
   return (
     <div className={styles.sectionBody}>
       <div id="live-mezo-mode" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Live Mezo Testnet Mode</h2>
+        <h2 className={styles.subHeading}>Live Mezo Mainnet Mode</h2>
         <p className={styles.paragraph}>
-          Interacts directly with Mezo Testnet (Chain ID 31611). Requires connecting a Web3 wallet holding testnet BTC for gas
-          and MUSD for settlement deposits.
+          Interacts directly with Mezo Mainnet (Chain ID 31612). Requires a wallet holding BTC for gas and canonical Mainnet MUSD for deposits. Live settlement stays disabled until the Netteo Mainnet SettlementKernel is deployed and verified.
         </p>
       </div>
       <div id="demo-sandbox-mode" className={styles.subBlock}>
@@ -960,7 +963,7 @@ export function SectionAuditReceipts() {
       <div id="explorer-reconciliation" className={styles.subBlock}>
         <h2 className={styles.subHeading}>Block Explorer Proof Verification</h2>
         <p className={styles.paragraph}>
-          Every receipt links directly to the immutable event log on the Mezo Testnet Block Explorer.
+          Every receipt links directly to the immutable event log on the Mezo Mainnet Explorer.
         </p>
       </div>
     </div>
@@ -1118,7 +1121,7 @@ export function SectionIntegrationGuide() {
   return (
     <div className={styles.sectionBody}>
       <div id="viem-setup" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Mezo Testnet Viem Client Setup</h2>
+        <h2 className={styles.subHeading}>Mezo Mainnet Viem Client Setup</h2>
         <div className={styles.codeBlockWrapper}>
           <div className={styles.codeHeader}>
             <span>TYPESCRIPT / VIEM CLIENT SETUP</span>
@@ -1127,20 +1130,20 @@ export function SectionIntegrationGuide() {
           <pre className={styles.codeContent}>
 {`import { createPublicClient, http, defineChain } from 'viem';
 
-export const mezoTestnet = defineChain({
-  id: 31611,
-  name: 'Mezo Testnet',
+export const mezoMainnet = defineChain({
+  id: 31612,
+  name: 'Mezo Mainnet',
   nativeCurrency: { name: 'Bitcoin', symbol: 'BTC', decimals: 18 },
   rpcUrls: {
-    default: { http: ['https://rpc.test.mezo.org'] },
+    default: { http: ['https://mezo-mainnet.boar.network'] },
   },
   blockExplorers: {
-    default: { name: 'Mezo Explorer', url: 'https://explorer.test.mezo.org' },
+    default: { name: 'Mezo Explorer', url: 'https://explorer.mezo.org' },
   },
 });
 
 export const publicClient = createPublicClient({
-  chain: mezoTestnet,
+  chain: mezoMainnet,
   transport: http(),
 });`}
           </pre>
@@ -1155,13 +1158,14 @@ export const publicClient = createPublicClient({
             <span className={styles.codeLang}>TS</span>
           </div>
           <pre className={styles.codeContent}>
-{`const SETTLEMENT_KERNEL_ADDRESS = '0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5';
+{`// One kernel per token; this is the MUSD kernel (use _MUSDC / _MUSDT for the others).
+const SETTLEMENT_KERNEL_ADDRESS = process.env.NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD;
 
 // Check if cycle is 100% funded
 const isFunded = await publicClient.readContract({
   address: SETTLEMENT_KERNEL_ADDRESS,
   abi: settlementKernelAbi,
-  functionName: 'isCycleFunded',
+  functionName: 'isCycleFullyFunded',
   args: [cycleId],
 });`}
           </pre>
@@ -1189,11 +1193,11 @@ export function SectionCastCommands() {
             <span className={styles.codeLang}>BASH</span>
           </div>
           <pre className={styles.codeContent}>
-{`cast call 0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5 \\
+{`cast call "$NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD" \\
   "musdToken()(address)" \\
-  --rpc-url https://rpc.test.mezo.org
+  --rpc-url https://mezo-mainnet.boar.network
 
-# Returns: 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503 (Canonical Mezo MUSD)`}
+# Must return: 0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186 (Canonical Mainnet MUSD)`}
           </pre>
         </div>
       </div>
@@ -1206,9 +1210,9 @@ export function SectionCastCommands() {
             <span className={styles.codeLang}>BASH</span>
           </div>
           <pre className={styles.codeContent}>
-{`cast call 0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503 \\
+{`cast call 0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186 \\
   "decimals()(uint8)" \\
-  --rpc-url https://rpc.test.mezo.org
+  --rpc-url https://mezo-mainnet.boar.network
 
 # Returns: 18`}
           </pre>
@@ -1223,12 +1227,12 @@ export function SectionCastCommands() {
             <span className={styles.codeLang}>BASH</span>
           </div>
           <pre className={styles.codeContent}>
-{`cast call 0x3c5Efa1E7fb42ec5351d132bcAce83C8C4dbc3D5 \\
-  "isCycleFunded(bytes32)(bool)" \\
+{`cast call "$NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD" \\
+  "isCycleFullyFunded(bytes32)(bool)" \\
   0x156915a716581f2b7358b4561e75c90ae14f7404ed9aca9a30c5c4872a82ef4f \\
-  --rpc-url https://rpc.test.mezo.org
+  --rpc-url https://mezo-mainnet.boar.network
 
-# Returns: true`}
+# Use a Mainnet cycle ID returned by the deployed Netteo kernel.`}
           </pre>
         </div>
       </div>

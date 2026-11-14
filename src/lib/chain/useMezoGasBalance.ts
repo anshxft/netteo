@@ -2,9 +2,8 @@
 
 import { useAccount, useBalance } from 'wagmi';
 import { formatEther } from 'viem';
-import { MEZO_TESTNET_CHAIN_ID, isSupportedNetwork } from './config';
+import { MEZO_MAINNET_CHAIN_ID, isSupportedNetwork } from './config';
 
-export const MEZO_FAUCET_URL = 'https://faucet.test.mezo.org';
 export const MINIMUM_BTC_GAS_THRESHOLD = 100000000000000n; // 0.0001 BTC in base units
 
 export interface MezoGasBalanceResult {
@@ -13,13 +12,11 @@ export interface MezoGasBalanceResult {
   isZeroGas: boolean;
   isLowGas: boolean;
   isLoading: boolean;
-  faucetUrl: string;
   refetch: () => void;
 }
 
 /**
- * Hook to inspect connected user's native BTC gas balance on Mezo Testnet (Chain ID 31611).
- * Detects low or zero gas balance and provides official Mezo Faucet URL for recovery.
+ * Hook to inspect connected user's native BTC gas balance on Mezo Mainnet (Chain ID 31612).
  */
 export function useMezoGasBalance(): MezoGasBalanceResult {
   const { address, chainId, isConnected } = useAccount();
@@ -27,7 +24,7 @@ export function useMezoGasBalance(): MezoGasBalanceResult {
 
   const { data, isLoading, refetch } = useBalance({
     address,
-    chainId: MEZO_TESTNET_CHAIN_ID,
+    chainId: MEZO_MAINNET_CHAIN_ID,
     query: {
       enabled: isConnected && !!address && isCorrectNetwork,
       refetchInterval: 15000,
@@ -49,7 +46,6 @@ export function useMezoGasBalance(): MezoGasBalanceResult {
     isZeroGas,
     isLowGas,
     isLoading,
-    faucetUrl: MEZO_FAUCET_URL,
     refetch: () => {
       refetch();
     },

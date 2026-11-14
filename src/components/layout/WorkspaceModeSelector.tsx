@@ -66,7 +66,7 @@ export function WorkspaceModeSelector({ className, style }: WorkspaceModeSelecto
     setIsSwitching(true);
     setMode('live');
     setShowConfirmModal(false);
-    toast.success('Switched to Live Mode', 'Connected to Mezo Testnet. Obligations and settlements require on-chain execution.');
+    toast.success('Switched to Live Mode', 'Mezo Mainnet execution uses real MUSD and BTC gas.');
     setTimeout(() => setIsSwitching(false), 200);
   };
 
@@ -120,7 +120,7 @@ export function WorkspaceModeSelector({ className, style }: WorkspaceModeSelecto
           aria-checked={mode === 'live'}
           className={`${styles.segment} ${mode === 'live' ? styles.activeLive : ''}`}
           onClick={handleSelectLive}
-          title="Live Mode: Real Mezo Testnet execution. Requires a connected wallet to sign on-chain contracts and settle actual MUSD."
+          title="Live Mode: Mezo Mainnet execution uses real MUSD and BTC gas. Transactions cannot be undone."
           disabled={isSwitching}
         >
           <span className={styles.iconWrapper} aria-hidden="true">
@@ -160,7 +160,7 @@ export function WorkspaceModeSelector({ className, style }: WorkspaceModeSelecto
                 </h3>
                 <div className={styles.badgeMezo}>
                   <span className={styles.badgeDot} />
-                  <span>Mezo Testnet • Chain 31611</span>
+                  <span>Mezo Mainnet • Chain 31612</span>
                 </div>
               </div>
             </div>
@@ -168,7 +168,7 @@ export function WorkspaceModeSelector({ className, style }: WorkspaceModeSelecto
             {/* Content & Truthful explanation */}
             <div id="confirm-live-desc" className={styles.dialogBody}>
               <p style={{ margin: 0 }}>
-                In <strong>Live Mode</strong>, all obligation acceptances, partner groups, and settlement cycles interact directly with the <strong>Mezo Testnet smart contracts</strong>.
+                In <strong>Live Mode</strong>, settlement transactions use canonical MUSD on <strong>Mezo Mainnet</strong>. Confirmed transfers cannot be undone.
               </p>
               <p style={{ margin: 0 }}>
                 Transactions require cryptographic wallet signatures and on-chain MUSD execution that <strong>cannot be undone</strong>.

@@ -68,7 +68,7 @@ export function AppLayout({
         color: 'var(--color-ink)',
       }}
     >
-      {/* Network Guard: Displays wrong-network warning if chain != 31611 */}
+      {/* Network Guard: Displays wrong-network warning if chain != 31612 */}
       <NetworkGuard />
 
       {/* Offline Banner (Prototype Checklist §4) */}

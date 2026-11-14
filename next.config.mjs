@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@mezo-org/passport', '@mezo-org/orangekit', '@rainbow-me/rainbowkit'],
+  transpilePackages: ['@rainbow-me/rainbowkit'],
   async headers() {
     return [
       {

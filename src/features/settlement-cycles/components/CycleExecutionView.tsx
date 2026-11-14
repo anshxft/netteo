@@ -12,9 +12,8 @@ import {
   claimRefundFromCycle,
   saveCycles,
   loadCycles,
-  VERIFIED_MEZO_CYCLE,
 } from '../store';
-import { syncCycleToSupabase, syncCyclesFromSupabase } from '@/lib/db/syncService';
+import { syncCyclesFromSupabase, registerCycleWithServer } from '@/lib/db/syncService';
 import { formatBaseUnitsToDisplay, getParticipantDisplayName } from '@/features/obligations/store';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
@@ -31,15 +30,18 @@ import {
   Wallet,
   Zap,
 } from 'lucide-react';
-import { useMusdToken } from '@/lib/chain/useMusdToken';
+import { useSettlementToken } from '@/lib/chain/useSettlementToken';
+import { DEFAULT_SETTLEMENT_TOKEN, getTokenByAddress } from '@/lib/chain/tokens';
 import {
   useSettlementKernel,
   useAuthoritativeCycle,
+  useCycleKernelToken,
   CYCLE_STATE_LABELS,
   CycleStateOnChain,
   OnChainCycle,
+  CycleAmounts,
 } from '@/lib/chain/useSettlementKernel';
-import { CONTRACT_ADDRESSES, isSupportedNetwork } from '@/lib/chain/config';
+import { ZERO_ADDRESS, REFUND_GRACE_SECONDS, isSupportedNetwork, validateChainConfiguration, MEZO_MAINNET_EXPLORER_URL } from '@/lib/chain/config';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
 import { useSettlementEvents } from '@/lib/chain/useSettlementEvents';
 import { CdpAutoBorrowDrawer } from './CdpAutoBorrowDrawer';
@@ -49,27 +51,27 @@ export interface CycleExecutionViewProps {
   cycleId: string;
 }
 
-const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_URL || 'https://explorer.test.mezo.org';
+const EXPLORER_BASE = MEZO_MAINNET_EXPLORER_URL;
 
 function buildSyntheticCycle(
   cycleId: string,
   onChain: OnChainCycle,
-  parts?: { debtors: string[]; creditors: string[] },
-  projection?: any
+  _parts?: { debtors: string[]; creditors: string[] },
+  projection?: any,
+  amounts?: CycleAmounts
 ): SettlementCycle {
-  const debtors = parts?.debtors || [];
-  const creditors = parts?.creditors || [];
+  // Real per-wallet amounts from the contract. Until they have loaded, list nobody rather than invent figures:
+  // the old even split showed "A pays 40, B pays 40" for a cycle where A owes 70 and B owes 10, and showed every
+  // creditor receiving 0 before settlement.
+  const debtors = amounts?.debtors ?? [];
+  const creditors = amounts?.creditors ?? [];
   const deposits: Record<string, { required: bigint; funded: bigint }> = {};
   debtors.forEach((d) => {
-    const dLower = d.toLowerCase();
-    deposits[dLower] = {
-      required: onChain.netDebtTotal / (BigInt(debtors.length) || 1n),
-      funded: onChain.totalFunded >= onChain.netDebtTotal ? onChain.netDebtTotal / (BigInt(debtors.length) || 1n) : 0n,
-    };
+    deposits[d.address.toLowerCase()] = { required: d.required, funded: d.funded };
   });
   return {
     id: cycleId,
-    groupId: projection?.group_id || '00000000-0000-0000-0000-000000000001',
+    groupId: '', // unknown for a cycle seen only on-chain; never a placeholder group id
     cycleNumber: projection?.cycle_number || 1,
     snapshotCommitment: onChain.snapshotCommitment,
     algorithmVersion: onChain.algorithmVersion || 'netteo-v1.0-deterministic',
@@ -90,14 +92,8 @@ function buildSyntheticCycle(
       grossObligationTotal: onChain.grossObligationTotal,
       netFundingRequirement: onChain.netDebtTotal,
       positions: {},
-      debtors: debtors.map((d) => ({
-        address: d,
-        amount: onChain.netDebtTotal / (BigInt(debtors.length) || 1n),
-      })),
-      creditors: creditors.map((c) => ({
-        address: c,
-        amount: onChain.totalDistributed / (BigInt(creditors.length) || 1n),
-      })),
+      debtors: debtors.map((d) => ({ address: d.address, amount: d.required })),
+      creditors: creditors.map((c) => ({ address: c.address, amount: c.amount })),
       zeroPositions: [],
       allocations: [],
       canonicalCommitmentHash: onChain.snapshotCommitment,
@@ -111,9 +107,22 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   const { mode, resetCounter } = useWorkspace();
   const { toast } = useToast();
   const { address: userAddress, isConnected, chainId } = useAccount();
-  const musd = useMusdToken({ spenderAddress: CONTRACT_ADDRESSES.settlementKernel });
-  const kernel = useSettlementKernel();
-  const authoritative = useAuthoritativeCycle(cycleId);
+  const [cycle, setCycle] = useState<SettlementCycle | null>(null);
+
+  // Which currency (and so which kernel) this cycle settles in. A local record knows; a cycle
+  // opened from a shared link may exist only on-chain, so ask the chain. Until resolved we pass
+  // ZERO_ADDRESS, which is in no registry, so every chain hook stays disabled instead of
+  // falling back to MUSD.
+  const hexCycleId = (cycleId.startsWith('0x') ? cycleId : `0x${cycleId}`) as `0x${string}`;
+  const chainToken = useCycleKernelToken(mode === 'live' && !cycle ? hexCycleId : null);
+  const cycleToken = getTokenByAddress(
+    cycle ? cycle.tokenAddress || DEFAULT_SETTLEMENT_TOKEN.address : chainToken.token?.address
+  );
+  const tokenAddress = cycleToken?.address ?? ZERO_ADDRESS;
+
+  const settlement = useSettlementToken(tokenAddress);
+  const kernel = useSettlementKernel(tokenAddress);
+  const authoritative = useAuthoritativeCycle(cycleId, tokenAddress);
 
   // Reactive CometBFT WebSocket event stream for instant single-block UI updates
   useSettlementEvents(cycleId, {
@@ -138,13 +147,12 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
       refreshCycle();
     },
     onRefundClaimed: () => {
-      toast.info('Refund Claimed', 'Deposited MUSD returned to wallet.');
+      toast.info('Refund Claimed', `Deposited ${cycleToken?.symbol ?? 'tokens'} returned to wallet.`);
       authoritative.refetch();
       refreshCycle();
     },
-  });
+  }, tokenAddress);
 
-  const [cycle, setCycle] = useState<SettlementCycle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -160,7 +168,19 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   const isLiveContractReady =
     isConnected &&
     isSupportedNetwork(chainId) &&
-    CONTRACT_ADDRESSES.settlementKernel !== '0x0000000000000000000000000000000000000000';
+    !chainToken.ambiguous &&
+    !!cycleToken &&
+    validateChainConfiguration(chainId, tokenAddress).valid &&
+    kernel.isKernelVerified &&
+    settlement.isKernelVerified;
+
+  useEffect(() => {
+    if (chainToken.ambiguous) {
+      setErrorMsg(
+        'This cycle ID exists on more than one settlement contract, so Netteo cannot tell which currency it settles in. Actions are disabled.'
+      );
+    }
+  }, [chainToken.ambiguous]);
 
   const refreshCycle = () => {
     setIsLoading(true);
@@ -171,11 +191,6 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
       return;
     }
     if (mode === 'live') {
-      if (cycleId.toLowerCase() === VERIFIED_MEZO_CYCLE.id.toLowerCase()) {
-        setCycle(VERIFIED_MEZO_CYCLE);
-        setIsLoading(false);
-        return;
-      }
       syncCyclesFromSupabase()
         .then((remote) => {
           const remoteFound = remote?.find((c) => c.id.toLowerCase() === cycleId.toLowerCase());
@@ -217,7 +232,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             existing.txDepositHash = kernel.txHash;
             saveCycles(localCycles, 'live');
           }
-          setActionSuccess('Deposit confirmed on Mezo Testnet! On-chain state updated.');
+          setActionSuccess('Deposit confirmed on Mezo Mainnet! On-chain state updated.');
         } else if (activeTxAction === 'execute' && kernel.txHash) {
           const localCycles = loadCycles('live');
           const existing = localCycles.find((c) => c.id.toLowerCase() === cycleId.toLowerCase());
@@ -225,9 +240,9 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             existing.txSettlementHash = kernel.txHash;
             saveCycles(localCycles, 'live');
           }
-          setActionSuccess('Settlement successfully executed! Funds distributed atomically on Mezo Testnet.');
+          setActionSuccess('Settlement successfully executed! Funds distributed atomically on Mezo Mainnet.');
         } else if (activeTxAction === 'refund') {
-          setActionSuccess('Refund confirmed on Mezo Testnet.');
+          setActionSuccess('Refund confirmed on Mezo Mainnet.');
         }
         setActiveTxAction(null);
         setIsSubmitting(false);
@@ -240,19 +255,21 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     if (mode === 'demo') return cycle;
 
     let base = cycle;
-    if (!base && cycleId.toLowerCase() === VERIFIED_MEZO_CYCLE.id.toLowerCase()) {
-      base = VERIFIED_MEZO_CYCLE;
-    }
     if (!base && authoritative.cycle && authoritative.cycle.state !== CycleStateOnChain.NonExistent) {
       base = buildSyntheticCycle(
         cycleId,
         authoritative.cycle,
         authoritative.participants ?? undefined,
-        authoritative.projection
+        authoritative.projection,
+        authoritative.amounts ?? undefined
       );
     }
 
     if (!base) return null;
+
+    if (cycleToken) {
+      base = { ...base, tokenAddress: cycleToken.address, tokenSymbol: cycleToken.symbol };
+    }
 
     if (authoritative.cycle && authoritative.cycle.state !== CycleStateOnChain.NonExistent) {
       const onChain = authoritative.cycle;
@@ -281,7 +298,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     }
 
     return base;
-  }, [cycle, mode, authoritative.cycle, authoritative.participants, authoritative.debtorStatus, authoritative.projection, userAddress, cycleId]);
+  }, [cycle, mode, cycleToken, authoritative.cycle, authoritative.participants, authoritative.amounts, authoritative.debtorStatus, authoritative.projection, userAddress, cycleId]);
 
   const isViewLoading = isLoading && (!displayCycle && authoritative.isLoading);
 
@@ -313,12 +330,57 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     ? Number((displayCycle.totalFunded * 100n) / displayCycle.netDebtTotal)
     : 100;
 
-  // Handle MUSD Approval
+  // createCycle is open to anyone, so a cycle existing on-chain says nothing about who agreed to it: an attacker
+  // can create one that names you as the payer. Live deposits are only offered for cycles the server has checked
+  // against the group's accepted obligations.
+  const UNVERIFIED_MESSAGE =
+    'This settlement has not been verified against your group’s agreed payments, so deposits are disabled.';
+  const isUnverifiedLive = mode === 'live' && !displayCycle.registered;
+  const canVerify =
+    isUnverifiedLive &&
+    !!cycle &&
+    cycle.includedObligationIds.length > 0 &&
+    userAddress?.toLowerCase() === cycle.creatorAddress?.toLowerCase();
+
+  // A fully funded cycle that cannot pay out is refundable once the grace period after its deadline has passed.
+  const refundOpensAt = new Date(displayCycle.fundingDeadline.toString()).getTime() + REFUND_GRACE_SECONDS * 1000;
+  const isStuckRefundOpen = displayCycle.state === 'ReadyToSettle' && Date.now() > refundOpensAt;
+
+  const handleVerify = async () => {
+    if (!cycle) return;
+    setIsSubmitting(true);
+    setErrorMsg(null);
+    const result = await registerCycleWithServer({
+      cycleId,
+      tokenAddress: cycle.tokenAddress || tokenAddress,
+      groupId: cycle.groupId,
+      obligationIds: cycle.includedObligationIds,
+    });
+    if (result.ok) {
+      const stored = loadCycles('live');
+      const mine = stored.find((c) => c.id.toLowerCase() === cycleId.toLowerCase());
+      if (mine) {
+        mine.registered = true;
+        saveCycles(stored, 'live');
+      }
+      setActionSuccess('Settlement verified against your group. Deposits are now enabled.');
+      refreshCycle();
+    } else {
+      setErrorMsg(result.error || 'The server could not verify this settlement.');
+    }
+    setIsSubmitting(false);
+  };
+
+  // Handle token approval (exact amount, only to this cycle's own kernel)
   const handleApprove = async (amount: bigint) => {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      await musd.approve(CONTRACT_ADDRESSES.settlementKernel, amount);
+      if (isUnverifiedLive) throw new Error(UNVERIFIED_MESSAGE);
+      if (!settlement.kernelAddress) {
+        throw new Error(`No SettlementKernel is deployed for ${displayCycle.tokenSymbol || 'this token'}. Approval is disabled.`);
+      }
+      await settlement.approve(settlement.kernelAddress, amount);
     } catch (err: any) {
       setErrorMsg(err.message || 'Approval rejected.');
     } finally {
@@ -331,15 +393,20 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    // In Live Mode: strictly require on-chain transaction on Mezo Testnet (no simulated fallback)
+    // In Live Mode: strictly require on-chain transaction on Mezo Mainnet (no simulated fallback)
     if (mode === 'live') {
+      if (isUnverifiedLive) {
+        setErrorMsg(UNVERIFIED_MESSAGE);
+        setIsSubmitting(false);
+        return;
+      }
       if (!isLiveContractReady) {
-        setErrorMsg('Live deposits require a wallet connected to Mezo Testnet (Chain ID 31611). Switch to Demo Sandbox in the header to simulate.');
+        setErrorMsg('Live deposits require a wallet connected to Mezo Mainnet (Chain ID 31612). Switch to Demo Sandbox in the header to simulate.');
         setIsSubmitting(false);
         return;
       }
       if (userAddress?.toLowerCase() !== debtorAddr.toLowerCase()) {
-        setErrorMsg(`In Live Mode, only debtor ${debtorAddr.slice(0, 6)}...${debtorAddr.slice(-4)} can submit this deposit on Mezo Testnet. Switch connected wallet or switch to Demo Sandbox in the header.`);
+        setErrorMsg(`In Live Mode, only debtor ${debtorAddr.slice(0, 6)}...${debtorAddr.slice(-4)} can submit this deposit on Mezo Mainnet. Switch connected wallet or switch to Demo Sandbox in the header.`);
         setIsSubmitting(false);
         return;
       }
@@ -348,7 +415,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
         setActiveTxAction('deposit');
         await kernel.deposit(cycleId as `0x${string}`, remainingDue);
       } catch (err: any) {
-        setErrorMsg(err.message || 'Deposit on Mezo Testnet failed.');
+        setErrorMsg(err.message || 'Deposit on Mezo Mainnet failed.');
         setActiveTxAction(null);
         setIsSubmitting(false);
       }
@@ -359,7 +426,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     try {
       depositToCycle(cycleId, debtorAddr, remainingDue, 'demo');
       refreshCycle();
-      setActionSuccess(`[Demo Sandbox] Simulated deposit of ${formatBaseUnitsToDisplay(remainingDue)} for ${getParticipantDisplayName(debtorAddr, true)}.`);
+      setActionSuccess(`[Demo Sandbox] Simulated deposit of ${formatBaseUnitsToDisplay(remainingDue, displayCycle.tokenSymbol || 'MUSD')} for ${getParticipantDisplayName(debtorAddr, true)}.`);
       setTimeout(() => setActionSuccess(null), 3500);
     } catch (err: any) {
       setErrorMsg(err.message || 'Demo deposit transaction failed.');
@@ -376,7 +443,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     // In Live Mode: strictly call on-chain contract
     if (mode === 'live') {
       if (!isLiveContractReady) {
-        setErrorMsg('Executing live settlement requires your wallet connected to Mezo Testnet (Chain ID 31611).');
+        setErrorMsg('Executing live settlement requires your wallet connected to Mezo Mainnet (Chain ID 31612).');
         setIsSubmitting(false);
         return;
       }
@@ -413,7 +480,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     // In Live Mode: strictly call on-chain contract
     if (mode === 'live') {
       if (!isLiveContractReady) {
-        setErrorMsg('Claiming refund on Mezo Testnet requires a connected wallet.');
+        setErrorMsg('Claiming refund on Mezo Mainnet requires a connected wallet.');
         setIsSubmitting(false);
         return;
       }
@@ -457,7 +524,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
 
     if (mode === 'live') {
       if (!isLiveContractReady) {
-        setErrorMsg('Cancelling a cycle on Mezo Testnet requires a connected wallet.');
+        setErrorMsg('Cancelling a cycle on Mezo Mainnet requires a connected wallet.');
         setIsSubmitting(false);
         return;
       }
@@ -488,9 +555,9 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   };
 
   const isKernelPending = kernel.isPending;
-  const isMusdPending = musd.isPending;
-  const activeTxHash = kernel.txHash || musd.txHash;
-  const activeError = kernel.error || musd.error || errorMsg;
+  const isTokenPending = settlement.isPending;
+  const activeTxHash = kernel.txHash || settlement.txHash;
+  const activeError = kernel.error || settlement.error || errorMsg;
 
   return (
     <div>
@@ -558,7 +625,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                 border: '1px solid var(--color-border)',
               }}
             >
-              {mode === 'demo' ? 'Demo Sandbox' : 'Mezo Testnet'}
+              {mode === 'demo' ? 'Demo Sandbox' : 'Mezo Mainnet'}
             </span>
           </div>
           <p className={obStyles.subtitle}>
@@ -621,7 +688,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
         >
           <Icon icon={Clock} size="sm" color="var(--color-wine)" />
           <div>
-            <strong>On-Chain Financial Truth Active:</strong> SettlementKernel on Mezo Testnet confirmed the latest funds/state. Supabase indexer projection is syncing in the background.
+            <strong>On-Chain Financial Truth Active:</strong> SettlementKernel on Mezo Mainnet confirmed the latest funds/state. Supabase indexer projection is syncing in the background.
           </div>
         </div>
       )}
@@ -651,32 +718,32 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
       )}
 
       {/* Web3 Transaction Status Banner */}
-      {(isKernelPending || isMusdPending || activeTxHash || kernel.error || musd.error) && (
+      {(isKernelPending || isTokenPending || activeTxHash || kernel.error || settlement.error) && (
         <div style={{ marginBottom: 'var(--space-lg)' }}>
           <TransactionStatus
             state={
-              kernel.isConfirmed || musd.isConfirmed
+              kernel.isConfirmed || settlement.isConfirmed
                 ? 'confirmed'
-                : kernel.error || musd.error
+                : kernel.error || settlement.error
                 ? 'reverted'
                 : activeTxHash
                 ? 'pending'
                 : 'awaiting_signature'
             }
             hash={activeTxHash}
-            errorMessage={kernel.error || musd.error}
+            errorMessage={kernel.error || settlement.error}
             title={
               kernel.isConfirmed
                 ? 'On-Chain Transaction Confirmed!'
-                : musd.isConfirmed
-                ? 'MUSD Allowance Confirmed!'
+                : settlement.isConfirmed
+                ? `${displayCycle.tokenSymbol || 'Token'} Allowance Confirmed!`
                 : activeTxHash
-                ? 'Broadcasting to Mezo Testnet...'
+                ? 'Broadcasting to Mezo Mainnet...'
                 : 'Awaiting Wallet Signature...'
             }
             onDismiss={() => {
               kernel.resetWrite();
-              musd.resetWrite();
+              settlement.resetWrite();
               setIsSubmitting(false);
             }}
           />
@@ -698,11 +765,51 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
         </div>
       )}
 
-      {errorMsg && !kernel.error && !musd.error && (
+      {errorMsg && !kernel.error && !settlement.error && (
         <div className={obStyles.errorBanner} role="alert">
           <Icon icon={AlertTriangle} size="sm" color="var(--color-danger)" />
           <span>{errorMsg}</span>
         </div>
+      )}
+
+      {isUnverifiedLive && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: 'var(--color-warning-bg)',
+            border: '1px solid var(--color-warning-border)',
+            color: 'var(--color-warning)',
+            borderRadius: 'var(--radius-md)',
+            padding: 'var(--space-md) var(--space-lg)',
+            marginBottom: 'var(--space-lg)',
+            fontSize: '13px',
+            lineHeight: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 'var(--space-md)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span>
+            <strong>Not verified. Deposits are disabled.</strong> Anyone can create a settlement on-chain, so Netteo only
+            accepts deposits into settlements it has checked against your group&apos;s agreed payments. This one has not
+            been checked, so confirm with your group before sending anything to it.
+            {!canVerify && ' If you created it, open it from the browser you created it in and verify it there.'}
+          </span>
+          {canVerify && (
+            <Button variant="secondary" disabled={isOffline || isSubmitting} isLoading={isSubmitting} loadingText="Verifying..." onClick={handleVerify}>
+              Verify with my group
+            </Button>
+          )}
+        </div>
+      )}
+
+      {mode === 'live' && displayCycle.state === 'ReadyToSettle' && (
+        <p role="status" style={{ fontSize: '12px', color: 'var(--color-muted)', margin: '0 0 var(--space-md)' }}>
+          Fully funded. Anyone can settle it. If settlement cannot complete, deposits can be refunded after{' '}
+          {new Date(refundOpensAt).toLocaleString()}.
+        </p>
       )}
 
       {/* Funding Progress Bar (Verified-state progress design-addendum.md §8) */}
@@ -764,7 +871,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
           }}
         >
           <div style={{ fontSize: '11px', color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 'var(--space-xs)' }}>
-            Verified On-Chain Transactions (Mezo Testnet Chain 31611)
+            Verified On-Chain Transactions (Mezo Mainnet Chain 31612)
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-lg)', flexWrap: 'wrap', fontSize: '12px' }}>
             {displayCycle.txCreationHash && (
@@ -840,7 +947,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
               const remaining = deposit.required - deposit.funded;
               const isDebtorDone = deposit.funded >= deposit.required;
               const isCurrentUser = userAddress?.toLowerCase() === debtorAddr.toLowerCase();
-              const needsApproval = isCurrentUser && musd.allowance < remaining;
+              const needsApproval = isCurrentUser && settlement.allowance < remaining;
 
               return (
                 <div
@@ -877,8 +984,34 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
 
                   {displayCycle.state === 'Funding' && !isDebtorDone && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-                      {/* Mezo CDP Auto-Borrow trigger for net debtors (applicable for MUSD settlement) */}
-                      {(isCurrentUser || mode === 'demo') && (!displayCycle.tokenSymbol || displayCycle.tokenSymbol === 'MUSD') && (
+                      {/* Live mode: the CDP drawer is a local simulation with no contract call, so it must never
+                          appear next to real funds. Point to Mezo's own swap guide when the balance is short. */}
+                      {mode === 'live' && isCurrentUser && settlement.balance < remaining && (
+                        <div
+                          role="status"
+                          style={{
+                            padding: '8px 10px',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '11px',
+                            color: 'var(--color-ink)',
+                            marginBottom: 'var(--space-2xs)',
+                          }}
+                        >
+                          Your wallet holds less {displayCycle.tokenSymbol || 'MUSD'} than this deposit needs.{' '}
+                          <a
+                            href="https://mezo.org/docs/users/features/mezo-swap"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: 'var(--color-wine)', fontWeight: 600 }}
+                          >
+                            How to swap on Mezo
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Demo-only Mezo CDP simulation (applicable for MUSD settlement) */}
+                      {mode === 'demo' && (!displayCycle.tokenSymbol || displayCycle.tokenSymbol === 'MUSD') && (
                         <div
                           style={{
                             padding: '8px 10px',
@@ -924,18 +1057,18 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                       {needsApproval ? (
                         <Button
                           variant="secondary"
-                          disabled={isOffline || isSubmitting || isMusdPending}
-                          isLoading={isMusdPending}
-                          loadingText="Approving MUSD..."
+                          disabled={isOffline || isSubmitting || isTokenPending || isUnverifiedLive}
+                          isLoading={isTokenPending}
+                          loadingText={`Approving ${displayCycle.tokenSymbol || 'token'}...`}
                           onClick={() => handleApprove(remaining)}
                           style={{ width: '100%', minHeight: '36px', fontSize: '13px' }}
                         >
-                          Step 1: Approve MUSD Spending
+                          Step 1: Approve {displayCycle.tokenSymbol || 'Token'} Spending
                         </Button>
                       ) : (
                         <Button
                           variant="primary"
-                          disabled={isOffline || isSubmitting || isKernelPending}
+                          disabled={isOffline || isSubmitting || isKernelPending || isUnverifiedLive}
                           isLoading={isKernelPending}
                           loadingText="Depositing..."
                           onClick={() => handleDeposit(debtorAddr, remaining)}
@@ -951,7 +1084,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                     </div>
                   )}
 
-                  {(displayCycle.state === 'Expired' || displayCycle.state === 'Cancelled') && deposit.funded > 0n && (
+                  {(displayCycle.state === 'Expired' || displayCycle.state === 'Cancelled' || isStuckRefundOpen) && deposit.funded > 0n && (
                     <Button
                       variant="destructive"
                       disabled={isOffline || isSubmitting || isKernelPending}
@@ -1022,8 +1155,8 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
         </div>
       </div>
 
-      {/* Mezo CDP Auto-Borrow Drawer */}
-      {selectedDebtorForCdp && (
+      {/* Mezo CDP Auto-Borrow Drawer (simulation: Demo mode only) */}
+      {mode === 'demo' && selectedDebtorForCdp && (
         <CdpAutoBorrowDrawer
           isOpen={isCdpDrawerOpen}
           onClose={() => {
@@ -1031,7 +1164,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             setSelectedDebtorForCdp(null);
           }}
           requiredMusdAmount={selectedDebtorForCdp.required}
-          currentMusdBalance={musd.balance}
+          currentMusdBalance={settlement.balance}
           cycleId={cycleId}
           userAddress={selectedDebtorForCdp.address}
           mode={mode}

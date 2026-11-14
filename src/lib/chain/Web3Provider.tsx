@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RainbowKitProvider, lightTheme, darkTheme } from '@rainbow-me/rainbowkit';
 import '@rainbow-me/rainbowkit/styles.css';
 import { wagmiConfig } from './config';
+import { SessionBridge } from '@/lib/auth/SessionBridge';
 
 import { WorkspaceProvider } from '@/features/workspace/WorkspaceContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -29,6 +30,7 @@ function RainbowKitWithTheme({ children }: { children: React.ReactNode }) {
             })
       }
     >
+      <SessionBridge />
       <WorkspaceProvider>{children}</WorkspaceProvider>
     </RainbowKitProvider>
   );

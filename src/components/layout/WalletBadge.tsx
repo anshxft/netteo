@@ -5,7 +5,8 @@ import styles from './AppNav.module.css';
 import { Button } from '../common/Button';
 import { useMezoGasBalance } from '@/lib/chain/useMezoGasBalance';
 import { Icon } from '@/components/icons/Icon';
-import { Fuel, ExternalLink } from 'lucide-react';
+import { Fuel } from 'lucide-react';
+import { isSupportedNetwork } from '@/lib/chain/config';
 
 export interface WalletBadgeProps {
   address?: string | null;
@@ -17,7 +18,7 @@ export interface WalletBadgeProps {
 /**
  * Wallet status and connection badge.
  * Displays connected account checksum format, native BTC gas balance, and network state.
- * Truthful interface: Shows exact connection and gas status on Mezo Testnet (Chain ID 31611).
+ * Truthful interface: Shows exact connection and gas status on Mezo Mainnet (Chain ID 31612).
  */
 export function WalletBadge({
   address,
@@ -25,8 +26,8 @@ export function WalletBadge({
   onConnect,
   onDisconnect,
 }: WalletBadgeProps) {
-  const isCorrectNetwork = !chainId || chainId === 31611;
-  const { formatted: btcBalance, isZeroGas, isLowGas, faucetUrl } = useMezoGasBalance();
+  const isCorrectNetwork = !chainId || isSupportedNetwork(chainId);
+  const { formatted: btcBalance, isZeroGas, isLowGas } = useMezoGasBalance();
 
   if (!address) {
     return (
@@ -75,11 +76,8 @@ export function WalletBadge({
 
       {/* Native BTC Gas Balance Pill */}
       {isCorrectNetwork && (
-        <a
-          href={faucetUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={isZeroGas ? 'Zero BTC gas balance! Click to request testnet BTC from Mezo Faucet.' : `Native gas balance: ${btcBalance}. Click to visit Mezo Faucet.`}
+        <div
+          title={isZeroGas ? 'Add BTC to this wallet to pay Mezo Mainnet gas.' : `Native gas balance: ${btcBalance}.`}
           style={{
             textDecoration: 'none',
             display: 'inline-flex',
@@ -99,13 +97,13 @@ export function WalletBadge({
             color: isZeroGas
               ? 'var(--color-warning)'
               : 'var(--color-ink)',
-            transition: 'opacity var(--motion-fast)',
           }}
         >
           <Icon icon={Fuel} size="sm" color={isZeroGas ? 'var(--color-warning)' : 'var(--color-wine)'} />
           <span>{btcBalance}</span>
-          {isZeroGas && <span style={{ fontSize: '11px', textDecoration: 'underline' }}>Faucet</span>}
-        </a>
+          {isZeroGas && <span style={{ fontSize: '11px' }}>Gas needed</span>}
+          {!isZeroGas && isLowGas && <span style={{ fontSize: '11px' }}>Low</span>}
+        </div>
       )}
 
       {onDisconnect && (

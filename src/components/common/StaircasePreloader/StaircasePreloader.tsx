@@ -55,7 +55,7 @@ export interface StaircasePreloaderProps {
 const DEFAULT_MILESTONES = [
   'INITIALIZING MULTILATERAL LEDGER...',
   'CALIBRATING ZERO-SUM NETTING MATRICES...',
-  'SYNCHRONIZING MEZO RPC (CHAIN 31611)...',
+  'SYNCHRONIZING MEZO MAINNET RPC (CHAIN 31612)...',
   'ATOMIC CLEARING ENGINE VERIFIED.',
 ];
 
@@ -451,7 +451,7 @@ export function StaircasePreloader({
         <div className={styles.metaFooter}>
           <div className={styles.metaItem}>
             <span>CHAIN:</span>
-            <strong style={{ color: 'var(--color-ink)' }}>31611</strong>
+            <strong style={{ color: 'var(--color-ink)' }}>31612</strong>
           </div>
           <div className={styles.metaItem}>
             <span>ASSET:</span>

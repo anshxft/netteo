@@ -5,7 +5,10 @@ import Link from 'next/link';
 import styles from './ProposeObligationModal.module.css';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
-import { proposeObligation, parseMusdToBaseUnits } from '../store';
+import { proposeObligation, parseAmountToBaseUnits } from '../store';
+import { formatUnits } from 'viem';
+import { DEFAULT_SETTLEMENT_TOKEN, SUPPORTED_SETTLEMENT_TOKENS, requireTokenByAddress } from '@/lib/chain/tokens';
+import { kernelForToken } from '@/lib/chain/config';
 import { saveUnsyncedProposal, syncGroupsFromSupabase } from '@/lib/db/syncService';
 import { loadGroups, saveGroups, CANONICAL_GROUP } from '@/features/groups/store';
 import { Group } from '@/features/groups/types';
@@ -52,6 +55,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [debtorAddress, setDebtorAddress] = useState('');
   const [creditorAddress, setCreditorAddress] = useState('');
+  const [tokenAddress, setTokenAddress] = useState<string>(DEFAULT_SETTLEMENT_TOKEN.address);
   const [amountMusd, setAmountMusd] = useState('');
   const [referenceLabel, setReferenceLabel] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -144,8 +148,19 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
 
   const isValidAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr.trim());
 
-  const numAmount = parseFloat(amountMusd);
-  const isAmountValid = !isNaN(numAmount) && numAmount > 0;
+  const token = requireTokenByAddress(tokenAddress);
+  // Validate with the same parser that produces the stored value, so what the form accepts
+  // and what is saved can never disagree (parseFloat accepted 1.1234567 for a 6-decimal token).
+  let parsedUnits: bigint | null = null;
+  let amountError: string | null = null;
+  if (amountMusd.trim() !== '') {
+    try {
+      parsedUnits = parseAmountToBaseUnits(amountMusd, token.decimals);
+    } catch (e: any) {
+      amountError = e.message;
+    }
+  }
+  const isAmountValid = parsedUnits !== null;
 
   const isFormReady =
     Boolean(groupId) &&
@@ -191,7 +206,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
       return;
     }
     if (!isAmountValid) {
-      setErrorMsg('Please enter a valid positive payment amount.');
+      setErrorMsg(amountError || 'Please enter a valid positive payment amount.');
       return;
     }
 
@@ -205,7 +220,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
           throw new Error('Please connect your Web3 wallet to sign and propose this obligation on Mezo.');
         }
 
-        const amountUnits = parseMusdToBaseUnits(amountMusd).toString();
+        const amountUnits = parseAmountToBaseUnits(amountMusd, token.decimals).toString();
         const nonce = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `nonce-${Date.now()}`;
         const timestamp = Date.now();
 
@@ -215,6 +230,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
           debtorAddress: cleanDebtor,
           creditorAddress: cleanCreditor,
           amountUnits,
+          tokenAddress: token.address,
           referenceLabel: cleanRef,
           nonce,
           timestamp,
@@ -232,6 +248,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
               debtorAddress: cleanDebtor,
               creditorAddress: cleanCreditor,
               amountUnits,
+              tokenAddress: token.address,
               referenceLabel: cleanRef,
               signerAddress: userAddress,
               signature,
@@ -258,6 +275,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
               debtorAddress: cleanDebtor,
               creditorAddress: cleanCreditor,
               amountUnits,
+              tokenAddress: token.address,
               referenceLabel: cleanRef,
               signerAddress: userAddress,
               signature,
@@ -277,6 +295,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
             debtorAddress: cleanDebtor,
             creditorAddress: cleanCreditor,
             amountMusd,
+            tokenAddress: token.address,
             referenceLabel: cleanRef,
           },
           userAddress,
@@ -290,6 +309,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
             debtorAddress: cleanDebtor,
             creditorAddress: cleanCreditor,
             amountMusd,
+            tokenAddress: token.address,
             referenceLabel: cleanRef,
           },
           cleanDebtor,
@@ -311,7 +331,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
       } else {
         toast.success(
           'Payment claim recorded',
-          `Payment of ${amountMusd} MUSD proposed to group ledger.`
+          `Payment of ${amountMusd} ${token.symbol} proposed to group ledger.`
         );
       }
       onCreated();
@@ -336,7 +356,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
         <div className={styles.headerMeta}>
           <div className={styles.categoryBadge}>
             <Icon icon={ObligationIcon} size="sm" color="var(--color-wine)" />
-            <span>MUSD Obligation Claim</span>
+            <span>{token.symbol} Obligation Claim</span>
           </div>
           <button
             type="button"
@@ -354,7 +374,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
           Record New Payment
         </h2>
         <p className={styles.modalSubtitle}>
-          Propose a bilateral payment within your group. Mutual obligations are netted and settled atomically in MUSD on Mezo.
+          Propose a bilateral payment within your group. Mutual obligations are netted and settled atomically in a Mezo stablecoin of your choice.
         </p>
 
         {/* Offline Warning Banner */}
@@ -594,10 +614,44 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
             )}
           </div>
 
-          {/* Amount (MUSD) */}
+          {/* Settlement currency: one per obligation, a cycle nets a single currency */}
+          <div className={styles.fieldGroup}>
+            <span className={styles.fieldLabel} id="token-picker-label">
+              <span>Currency *</span>
+            </span>
+            <div className={styles.presetsRow} role="radiogroup" aria-labelledby="token-picker-label">
+              {SUPPORTED_SETTLEMENT_TOKENS.map((t) => {
+                const selected = t.address.toLowerCase() === token.address.toLowerCase();
+                return (
+                  <button
+                    key={t.address}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={`${styles.presetChip} ${selected ? styles.presetChipActive : ''}`}
+                    title={`${t.name} · ${t.decimals} decimals`}
+                    onClick={() => {
+                      setTokenAddress(t.address);
+                      setErrorMsg(null);
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    {t.symbol}
+                  </button>
+                );
+              })}
+            </div>
+            {mode === 'live' && !kernelForToken(token.address) && (
+              <p className={styles.previewNote} role="status">
+                No {token.symbol} settlement contract is deployed on Mezo Mainnet yet. You can record this claim now, but it cannot be settled until one is.
+              </p>
+            )}
+          </div>
+
+          {/* Amount */}
           <div className={styles.fieldGroup}>
             <label htmlFor="musd-amount-input" className={styles.fieldLabel}>
-              <span>Amount (MUSD) *</span>
+              <span>Amount ({token.symbol}) *</span>
             </label>
             <div className={styles.amountContainer}>
               <input
@@ -608,7 +662,8 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
                 placeholder="0.00"
                 value={amountMusd}
                 onChange={(e) => {
-                  // Allow numbers and single decimal point
+                  // Allow numbers and one decimal point; precision is validated against the
+                  // selected token's decimals (6 for mUSDC/mUSDT, 18 for MUSD) on every change.
                   const val = e.target.value;
                   if (/^\d*\.?\d*$/.test(val)) {
                     setAmountMusd(val);
@@ -618,8 +673,14 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
                 required
                 disabled={isSubmitting}
               />
-              <span className={styles.musdBadge}>MUSD</span>
+              <span className={styles.musdBadge}>{token.symbol}</span>
             </div>
+            {amountError && (
+              <div className={styles.inlineWarning} role="alert">
+                <Icon icon={AlertCircle} size="sm" color="var(--color-danger)" />
+                <span>{amountError}</span>
+              </div>
+            )}
             {/* Quick Presets */}
             <div className={styles.presetsRow}>
               {AMOUNT_PRESETS.map((preset) => (
@@ -674,7 +735,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
                   {creditorAddress.toLowerCase() === userAddress?.toLowerCase() ? 'You' : formatShortAddress(creditorAddress)}
                 </span>
                 <span className={styles.previewAmount}>
-                  {numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MUSD
+                  {formatUnits(parsedUnits as bigint, token.decimals)} {token.symbol}
                 </span>
               </div>
               <p className={styles.previewNote}>

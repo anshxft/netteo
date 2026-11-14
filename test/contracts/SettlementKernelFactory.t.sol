@@ -95,7 +95,8 @@ contract SettlementKernelFactoryTest is Test {
         tbtc.approve(tbtcKernelAddr, type(uint256).max);
 
         // Build cycle input for tBTC settlement
-        bytes32 cycleId = keccak256("tbtc-cycle-001");
+        bytes32 salt = keccak256("tbtc-cycle-001");
+        bytes32 cycleId = keccak256(abi.encode(creator, salt));
         address[] memory debtors = new address[](1);
         debtors[0] = debtor;
         uint256[] memory debitAmounts = new uint256[](1);
@@ -107,7 +108,7 @@ contract SettlementKernelFactoryTest is Test {
         creditAmounts[0] = 1 * BASE;
 
         SettlementKernel.CycleInput memory input = SettlementKernel.CycleInput({
-            cycleId: cycleId,
+            cycleId: salt,
             snapshotCommitment: keccak256("tbtc-snapshot-hash"),
             algorithmVersion: "netteo-v1.0-deterministic",
             grossObligationTotal: 2 * BASE,

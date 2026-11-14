@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import styles from './GroupsView.module.css';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
-import { addParticipantToGroup, removeParticipantFromGroup } from '../store';
-import { syncGroupToSupabase } from '@/lib/db/syncService';
+import { addParticipantToGroup, removeParticipantFromGroup, getActiveWorkspaceMode } from '../store';
+import { updateGroupParticipantsOnServer } from '@/lib/db/syncService';
 import { UserPlus, Trash2, Copy, Check } from 'lucide-react';
 
 export interface ParticipantTableProps {
@@ -36,10 +36,15 @@ export function ParticipantTable({
     setIsSubmitting(true);
 
     try {
-      const updated = addParticipantToGroup(groupId, newAddress);
-      syncGroupToSupabase(updated, updated.participants[0] || '0x1111111111111111111111111111111111111111').catch((err) => {
-        console.warn('[Sync] Supabase group update deferred:', err);
-      });
+      const updated = addParticipantToGroup(groupId, newAddress); // validates and updates the local copy
+      if (getActiveWorkspaceMode() === 'live') {
+        // The server decides who may change members (group admin only). If it refuses, undo the local change.
+        const serverError = await updateGroupParticipantsOnServer(groupId, updated.participants);
+        if (serverError) {
+          removeParticipantFromGroup(groupId, newAddress);
+          throw new Error(serverError);
+        }
+      }
       setNewAddress(''); // Only clear upon success (Input preservation principle UX.md §7)
       onUpdate();
     } catch (err: any) {
@@ -50,13 +55,23 @@ export function ParticipantTable({
     }
   };
 
-  const handleRemove = (addr: string) => {
+  const handleRemove = async (addr: string) => {
     if (confirm(`Remove participant ${addr.slice(0, 6)}...${addr.slice(-4)} from group?`)) {
+      setErrorMsg(null);
       try {
-        removeParticipantFromGroup(groupId, addr);
+        const updated = removeParticipantFromGroup(groupId, addr);
+        if (getActiveWorkspaceMode() === 'live') {
+          // Refused by the server (not an admin, or the member still has open obligations): put them back locally.
+          const serverError = await updateGroupParticipantsOnServer(groupId, updated.participants);
+          if (serverError) {
+            addParticipantToGroup(groupId, addr);
+            throw new Error(serverError);
+          }
+        }
         onUpdate();
       } catch (err: any) {
         setErrorMsg(err.message || 'Unable to remove participant.');
+        onUpdate();
       }
     }
   };

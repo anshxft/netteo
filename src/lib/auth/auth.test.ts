@@ -132,6 +132,7 @@ async function runAuthTests() {
       debtorAddress: debtor.address,
       creditorAddress: proposer.address,
       amountUnits: validAmount,
+      tokenAddress: '0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186',
       referenceLabel: 'API dev work',
       nonce,
       timestamp,
@@ -145,6 +146,7 @@ async function runAuthTests() {
       debtorAddress: debtor.address,
       creditorAddress: proposer.address,
       amountUnits: tamperedAmount,
+      tokenAddress: '0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186',
       referenceLabel: 'API dev work',
       nonce,
       timestamp,
@@ -153,6 +155,41 @@ async function runAuthTests() {
     const isTamperedAmountValid = await verifyChallengeSignature(tamperedProposalMsg, sig, proposer.address);
     assert.equal(isTamperedAmountValid, false, 'Signature over tampered amount must fail');
     console.log('✔ Passed: Tampered amount in base units fails cryptographic verification');
+  }
+
+  // Test 6b: Swapping the token must invalidate the signature.
+  // 1,000,000 base units is 0.000000000001 MUSD but 1 mUSDC. If the token were not
+  // signed, a relayed request could silently re-denominate what the debtor agreed to.
+  {
+    const nonce = 'nonce-prop-token-' + Date.now();
+    const timestamp = Date.now();
+    const base = {
+      action: 'propose' as const,
+      groupId: '00000000-0000-0000-0000-000000000001',
+      debtorAddress: debtor.address,
+      creditorAddress: proposer.address,
+      amountUnits: '1000000',
+      referenceLabel: 'API dev work',
+      nonce,
+      timestamp,
+    };
+    const musdMsg = buildProposeObligationMessage({ ...base, tokenAddress: '0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186' });
+    const musdcMsg = buildProposeObligationMessage({ ...base, tokenAddress: '0x04671C72Aab5AC02A03c1098314b1BB6B560c197' });
+
+    assert.notEqual(musdMsg, musdcMsg, 'challenge text must differ when only the token differs');
+
+    const sig = await proposer.signMessage({ message: musdcMsg });
+    assert.equal(await verifyChallengeSignature(musdcMsg, sig, proposer.address), true);
+    assert.equal(
+      await verifyChallengeSignature(musdMsg, sig, proposer.address),
+      false,
+      'Signature over an mUSDC proposal must not verify as an MUSD proposal'
+    );
+
+    // Address casing in the token field must not change the signed text.
+    const lower = buildProposeObligationMessage({ ...base, tokenAddress: '0x04671c72aab5ac02a03c1098314b1bb6b560c197' });
+    assert.equal(lower, musdcMsg, 'token address casing must be normalised in the challenge');
+    console.log('✔ Passed: Swapped settlement token fails cryptographic verification');
   }
 
   // Test 7: Group creation authorization challenge

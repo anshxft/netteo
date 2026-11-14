@@ -1,4 +1,5 @@
-// Auto-generated typed ABI for SettlementKernel
+// Auto-generated typed ABI for SettlementKernel (v2). Regenerate with:
+//   forge inspect SettlementKernel abi --json
 export const settlementKernelAbi = [
   {
     "type": "constructor",
@@ -65,6 +66,19 @@ export const settlementKernelAbi = [
   },
   {
     "type": "function",
+    "name": "REFUND_GRACE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "cancelCycle",
     "inputs": [
       {
@@ -88,6 +102,30 @@ export const settlementKernelAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "computeCycleId",
+    "inputs": [
+      {
+        "name": "creator",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "salt",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "pure"
   },
   {
     "type": "function",
@@ -866,6 +904,27 @@ export const settlementKernelAbi = [
   },
   {
     "type": "error",
+    "name": "RefundNotYetOpen",
+    "inputs": [
+      {
+        "name": "cycleId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "opensAt",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "currentTimestamp",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "SafeERC20FailedOperation",
     "inputs": [
       {
@@ -920,6 +979,22 @@ export const settlementKernelAbi = [
   },
   {
     "type": "error",
+    "name": "UnexpectedTransferAmount",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "received",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ZeroAddressParticipant",
     "inputs": []
   },
@@ -927,5 +1002,51 @@ export const settlementKernelAbi = [
     "type": "error",
     "name": "ZeroAddressToken",
     "inputs": []
+  }
+] as const;
+
+/**
+ * SettlementKernelFactory — the on-chain registry mapping each settlement token to
+ * its kernel. Read-only here: kernels are created once at deploy time by the
+ * Foundry script, never from the browser.
+ */
+export const settlementKernelFactoryAbi = [
+  {
+    "type": "function",
+    "name": "getKernel",
+    "inputs": [{ "name": "token", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "kernels",
+    "inputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getSupportedTokens",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address[]", "internalType": "address[]" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getSupportedTokenCount",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "KernelDeployed",
+    "inputs": [
+      { "name": "token", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "kernel", "type": "address", "indexed": true, "internalType": "address" },
+      { "name": "creator", "type": "address", "indexed": true, "internalType": "address" }
+    ],
+    "anonymous": false
   }
 ] as const;

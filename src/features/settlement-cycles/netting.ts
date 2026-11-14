@@ -13,6 +13,7 @@
  */
 
 import { keccak256, encodeAbiParameters, parseAbiParameters, stringToBytes } from 'viem';
+import { MEZO_MAINNET_CHAIN_ID } from '@/lib/chain/config';
 
 export interface NettingContext {
   chainId?: number;
@@ -260,7 +261,7 @@ export function computeCanonicalCommitment(
   allocations: AllocationTransfer[],
   context?: NettingContext
 ): `0x${string}` {
-  const chainId = BigInt(context?.chainId ?? 31611);
+  const chainId = BigInt(context?.chainId ?? MEZO_MAINNET_CHAIN_ID);
   const token = (context?.tokenAddress && /^0x[a-fA-F0-9]{40}$/.test(context.tokenAddress))
     ? (context.tokenAddress.toLowerCase() as `0x${string}`)
     : ('0x0000000000000000000000000000000000000000' as `0x${string}`);

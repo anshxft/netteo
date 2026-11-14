@@ -4,6 +4,11 @@ out = "out/contracts"
 libs = ["lib", "node_modules"]
 test = "test/contracts"
 solc_version = "0.8.24"
+# Mezo's docs recommend london, but OpenZeppelin 5.6 (used by the test mock tokens via ERC20Permit) needs the
+# MCOPY opcode, so london cannot compile this tree. Pinned to cancun so a Foundry upgrade cannot change the
+# bytecode silently. The deployed contracts are checked to use only PUSH0 beyond london (proven to run on Mezo
+# Mainnet), and no MCOPY, TLOAD, TSTORE or BLOB opcodes: see "Opcode check" in DEPLOYMENTS.md.
+evm_version = "cancun"
 optimizer = true
 optimizer_runs = 200
 via_ir = true

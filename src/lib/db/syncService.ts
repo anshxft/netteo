@@ -1,333 +1,166 @@
-import { supabase } from './supabase';
 import { Group } from '@/features/groups/types';
 import { Obligation, ObligationStatus } from '@/features/obligations/types';
 import { SettlementCycle } from '@/features/settlement-cycles/types';
+import { MEZO_MAINNET_CHAIN_ID } from '@/lib/chain/config';
+import { DEFAULT_SETTLEMENT_TOKEN, getTokenByAddress } from '@/lib/chain/tokens';
+import { formatBaseUnitsToDisplay } from '@/features/obligations/store';
+import { buildProposeObligationMessage } from '@/lib/auth/challenge';
+import { authedFetch, signWithWallet } from '@/lib/auth/clientSession';
 
 /**
- * Service to sync off-chain entities (Groups, Group Members, Obligations, Settlement Cycles)
- * directly with Supabase Postgres tables when available.
+ * Keeps the app's local copy in step with the shared ledger.
+ *
+ * Everything goes through the API. The browser has no direct database access: the public key can neither read
+ * nor write the private tables (see schema.sql). Reads need a wallet session (one signature, see clientSession.ts)
+ * and return only that wallet's data; writes carry their own signature or session and are checked server-side.
+ *
+ * The "...FromSupabase" names are kept so callers do not change; they now call the API.
  * Conforms to architecture.md §7 & §9 and PrD.md Journey A & B.
  */
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function ensureUuid(id?: string, fallback: string = '00000000-0000-0000-0000-000000000001'): string {
-  if (!id) return fallback;
-  return UUID_REGEX.test(id) ? id : fallback;
+async function readJson(path: string): Promise<any | null> {
+  try {
+    const res = await authedFetch(path);
+    if (!res || !res.ok) return null; // no session, signed out, or server error: callers fall back to local data
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
-// --- Groups Sync ---
+// --- Groups ---
 
 export async function syncGroupsFromSupabase(): Promise<Group[] | null> {
-  if (!supabase) return null;
-  try {
-    await flushUnsyncedGroups();
-
-    const { data: groupsData, error: groupsError } = await supabase
-      .from('groups')
-      .select('id, name, description, creator_address, created_at')
-      .order('created_at', { ascending: true });
-
-    if (groupsError || !groupsData || groupsData.length === 0) return null;
-
-    const groupIds = groupsData.map((g) => g.id);
-    const { data: membersData } = await supabase
-      .from('group_members')
-      .select('group_id, wallet_address')
-      .in('group_id', groupIds);
-
-    const membersByGroup: Record<string, string[]> = {};
-    if (membersData) {
-      for (const m of membersData) {
-        if (!membersByGroup[m.group_id]) membersByGroup[m.group_id] = [];
-        membersByGroup[m.group_id].push(m.wallet_address);
-      }
-    }
-
-    return groupsData.map((g) => ({
-      id: g.id,
-      name: g.name,
-      description: g.description || '',
-      participantLimit: 10,
-      participants: membersByGroup[g.id] || [g.creator_address],
-      createdAt: g.created_at,
-      status: 'active',
-    }));
-  } catch (err) {
-    console.warn('[Supabase] Failed to fetch groups from database:', err);
-    return null;
-  }
+  const data = await readJson('/api/groups');
+  return data && Array.isArray(data.groups) ? (data.groups as Group[]) : null;
 }
 
-export async function syncGroupToSupabase(group: Group, creatorAddress: string): Promise<boolean> {
-  if (!supabase) return false;
+/** Replace a group's members (group admin only; the server enforces it). Returns an error message on failure. */
+export async function updateGroupParticipantsOnServer(groupId: string, participants: string[]): Promise<string | null> {
   try {
-    const validId = ensureUuid(group.id);
-    const { error: groupError } = await supabase.from('groups').upsert({
-      id: validId,
-      name: group.name,
-      description: group.description,
-      creator_address: creatorAddress.toLowerCase(),
+    const res = await authedFetch('/api/groups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_participants', groupId, participants }),
     });
-
-    if (groupError) {
-      console.warn('[Supabase] Group insert warning:', groupError.message);
-      return false;
-    }
-
-    // Insert members
-    const memberRows = group.participants.map((addr) => ({
-      group_id: validId,
-      wallet_address: addr.toLowerCase(),
-      role: addr.toLowerCase() === creatorAddress.toLowerCase() ? 'admin' : 'member',
-    }));
-
-    await supabase.from('group_members').upsert(memberRows, { onConflict: 'group_id,wallet_address' });
-    return true;
-  } catch (err) {
-    console.warn('[Supabase] Failed to persist group to database:', err);
-    return false;
-  }
-}
-
-export async function flushUnsyncedGroups(): Promise<number> {
-  if (typeof window === 'undefined' || !supabase) return 0;
-  try {
-    const raw = localStorage.getItem('netteo_live_groups_v1');
-    if (!raw) return 0;
-    const localGroups: Group[] = JSON.parse(raw);
-    if (!Array.isArray(localGroups) || localGroups.length === 0) return 0;
-
-    const { data: remoteGroups, error } = await supabase.from('groups').select('id');
-    if (error) return 0;
-    const remoteIdSet = new Set((remoteGroups || []).map((g) => g.id));
-
-    let migrated = 0;
-    for (const group of localGroups) {
-      if (!remoteIdSet.has(group.id)) {
-        const creator = group.participants[0] || '0x0000000000000000000000000000000000000000';
-        const ok = await syncGroupToSupabase(group, creator);
-        if (ok) migrated++;
-      }
-    }
-    return migrated;
+    if (!res) return 'Sign in with your wallet to change group members.';
+    if (res.ok) return null;
+    const body = await res.json().catch(() => ({}));
+    return body.error || 'The server rejected this change.';
   } catch {
-    return 0;
+    return 'Network error. Try again.';
   }
 }
 
-// --- Obligations Sync ---
+// --- Obligations ---
 
+function toObligation(row: any): Obligation | null {
+  // Rows written before multi-token support have no token and were all MUSD.
+  const token = getTokenByAddress(row.token_address || DEFAULT_SETTLEMENT_TOKEN.address);
+  if (!token) {
+    // Never guess: an unknown token would be shown and netted with the wrong decimals.
+    console.warn('[Sync] Skipping obligation with unrecognised settlement token.');
+    return null;
+  }
+  const amount = BigInt(row.amount_units); // text from the API, so no digits are lost
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    proposerAddress: row.proposer_address,
+    debtorAddress: row.debtor_address,
+    creditorAddress: row.creditor_address,
+    amount,
+    amountDisplay: formatBaseUnitsToDisplay(amount, token.symbol, token.decimals),
+    tokenAddress: token.address,
+    referenceLabel: row.reference_label,
+    dueAt: row.due_at || undefined,
+    status: (String(row.status).charAt(0).toUpperCase() + String(row.status).slice(1)) as ObligationStatus,
+    documentReference: row.document_reference || undefined,
+    createdAt: row.created_at,
+    acceptedAt: row.accepted_at || undefined,
+    disputedAt: row.disputed_at || undefined,
+  };
+}
+
+/** Obligations in this wallet's groups. An empty list is a real answer; null means "could not load". */
 export async function syncObligationsFromSupabase(): Promise<Obligation[] | null> {
-  if (!supabase) return null;
-  try {
-    const { data, error } = await supabase
-      .from('obligations')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error || !data || data.length === 0) return null;
-
-    return data.map((o) => ({
-      id: o.id,
-      groupId: o.group_id,
-      proposerAddress: o.proposer_address,
-      debtorAddress: o.debtor_address,
-      creditorAddress: o.creditor_address,
-      amount: BigInt(o.amount_units),
-      amountDisplay: `${(BigInt(o.amount_units) / 10n ** 18n).toString()} MUSD`,
-      referenceLabel: o.reference_label,
-      dueAt: o.due_at || undefined,
-      status: (o.status.charAt(0).toUpperCase() + o.status.slice(1)) as ObligationStatus,
-      documentReference: o.document_reference || undefined,
-      createdAt: o.created_at,
-      acceptedAt: o.accepted_at || undefined,
-      disputedAt: o.disputed_at || undefined,
-    }));
-  } catch (err) {
-    console.warn('[Supabase] Failed to fetch obligations from database:', err);
-    return null;
-  }
+  const data = await readJson('/api/obligations');
+  if (!data || !Array.isArray(data.obligations)) return null;
+  return data.obligations.map(toObligation).filter((o: Obligation | null): o is Obligation => o !== null);
 }
 
-export async function syncObligationToSupabase(
-  obligation: Obligation,
-  groupId: string = '00000000-0000-0000-0000-000000000001'
-): Promise<boolean> {
-  if (!supabase) return false;
-  try {
-    const validGroupId = ensureUuid(groupId);
-    const validId = ensureUuid(obligation.id, undefined);
+// --- Settlement cycles ---
 
-    const { error } = await supabase.from('obligations').upsert({
-      id: validId,
-      group_id: validGroupId,
-      proposer_address: obligation.proposerAddress.toLowerCase(),
-      debtor_address: obligation.debtorAddress.toLowerCase(),
-      creditor_address: obligation.creditorAddress.toLowerCase(),
-      amount_units: obligation.amount.toString(),
-      reference_label: obligation.referenceLabel,
-      due_at: obligation.dueAt || null,
-      status: obligation.status.toLowerCase(),
-      document_reference: obligation.documentReference || null,
+/** Registers an on-chain cycle with its group. The server only accepts it if the chain matches the group's obligations. */
+export async function registerCycleWithServer(input: {
+  cycleId: string;
+  tokenAddress: string;
+  groupId: string;
+  obligationIds: string[];
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await authedFetch('/api/cycles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
     });
-
-    if (error) {
-      console.warn('[Supabase] Obligation insert warning:', error.message);
-      saveUnsyncedProposal({
-        id: validId || obligation.id,
-        groupId: validGroupId,
-        debtorAddress: obligation.debtorAddress,
-        creditorAddress: obligation.creditorAddress,
-        amountUnits: obligation.amount.toString(),
-        referenceLabel: obligation.referenceLabel,
-        signerAddress: obligation.proposerAddress,
-        queuedAt: new Date().toISOString(),
-      });
-      return false;
-    }
-    removeUnsyncedProposal(obligation.id);
-    return true;
-  } catch (err) {
-    console.warn('[Supabase] Failed to save obligation to database:', err);
-    saveUnsyncedProposal({
-      id: obligation.id,
-      groupId,
-      debtorAddress: obligation.debtorAddress,
-      creditorAddress: obligation.creditorAddress,
-      amountUnits: obligation.amount.toString(),
-      referenceLabel: obligation.referenceLabel,
-      signerAddress: obligation.proposerAddress,
-      queuedAt: new Date().toISOString(),
-    });
-    return false;
+    if (!res) return { ok: false, error: 'Sign in with your wallet to register this settlement.' };
+    if (res.ok) return { ok: true };
+    const body = await res.json().catch(() => ({}));
+    return { ok: false, error: body.error || 'The server could not verify this settlement.' };
+  } catch {
+    return { ok: false, error: 'Network error while registering the settlement.' };
   }
 }
 
-export async function syncObligationStatusToSupabase(
-  obligationId: string,
-  newStatus: ObligationStatus
-): Promise<boolean> {
-  if (!supabase) return false;
-  try {
-    const validId = ensureUuid(obligationId);
-    const updates: Record<string, any> = {
-      status: newStatus.toLowerCase(),
-      updated_at: new Date().toISOString(),
-    };
-    if (newStatus === 'Accepted') updates.accepted_at = new Date().toISOString();
-    if (newStatus === 'Disputed') updates.disputed_at = new Date().toISOString();
-
-    const { error } = await supabase
-      .from('obligations')
-      .update(updates)
-      .eq('id', validId);
-
-    return !error;
-  } catch (err) {
-    console.warn('[Supabase] Failed to update obligation status:', err);
-    return false;
-  }
-}
-
-// --- Settlement Cycles Sync ---
-
-export async function syncCycleToSupabase(cycle: SettlementCycle): Promise<boolean> {
-  if (!supabase) return false;
-  try {
-    const validGroupId = ensureUuid(cycle.groupId);
-    const participantCount = Object.keys(cycle.nettingResult?.positions || {}).length || 2;
-    const obligationCount = cycle.includedObligationIds?.length || 1;
-
-    const { error } = await supabase.from('cycles').upsert({
-      cycle_id: cycle.id,
-      group_id: validGroupId,
-      snapshot_commitment: cycle.snapshotCommitment,
-      algorithm_version: cycle.algorithmVersion || '1.0.0',
-      participant_count: participantCount,
-      obligation_count: obligationCount,
-      gross_obligation_total: cycle.grossObligationTotal.toString(),
-      net_debtor_total: cycle.netDebtTotal.toString(),
-      funding_deadline: cycle.fundingDeadline,
-      state: cycle.state,
-      creator_address: (cycle.creatorAddress || '0x0000000000000000000000000000000000000000').toLowerCase(),
-      created_at: cycle.createdAt,
-      funded_at: cycle.state === 'ReadyToSettle' || cycle.state === 'Completed' ? cycle.completedAt || new Date().toISOString() : null,
-      settled_at: cycle.state === 'Completed' ? cycle.completedAt || new Date().toISOString() : null,
-    });
-
-    if (error) {
-      console.warn('[Supabase] Cycle upsert warning:', error.message);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.warn('[Supabase] Failed to persist cycle to database:', err);
-    return false;
-  }
-}
-
+/** Registered cycles for this wallet's groups. Every cycle returned has passed the server's on-chain check. */
 export async function syncCyclesFromSupabase(): Promise<SettlementCycle[] | null> {
-  if (!supabase) return null;
-  try {
-    const { data: dbCycles, error } = await supabase
-      .from('cycles')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const data = await readJson('/api/cycles');
+  if (!data || !Array.isArray(data.cycles)) return null;
 
-    if (error || !dbCycles || dbCycles.length === 0) return null;
-
-    // Read cycle projections for updated total_funded and state if available
-    const { data: projections } = await supabase
-      .from('cycle_projection')
-      .select('*');
-
-    const projMap: Record<string, any> = {};
-    if (projections) {
-      for (const p of projections) {
-        projMap[p.cycle_id.toLowerCase()] = p;
-      }
-    }
-
-    return dbCycles.map((c, index) => {
-      const proj = projMap[c.cycle_id.toLowerCase()];
-      return {
-        id: c.cycle_id,
-        groupId: c.group_id,
-        cycleNumber: index + 1,
-        snapshotCommitment: c.snapshot_commitment,
-        algorithmVersion: c.algorithm_version || 'netteo-v1.0-deterministic',
+  const cycles: SettlementCycle[] = [];
+  data.cycles.forEach((c: any, index: number) => {
+    const token = getTokenByAddress(c.token_address || DEFAULT_SETTLEMENT_TOKEN.address);
+    if (!token) return;
+    const p = c.projection;
+    cycles.push({
+      id: c.cycle_id,
+      chainId: MEZO_MAINNET_CHAIN_ID,
+      groupId: c.group_id,
+      cycleNumber: data.cycles.length - index,
+      snapshotCommitment: c.snapshot_commitment,
+      algorithmVersion: c.algorithm_version || 'netteo-v1.0-deterministic',
+      grossObligationTotal: BigInt(c.gross_obligation_total || '0'),
+      netDebtTotal: BigInt(c.net_debtor_total || '0'),
+      totalFunded: BigInt(p?.total_funded || '0'),
+      totalDistributed: BigInt(p?.total_distributed || '0'),
+      totalRefunded: BigInt(p?.total_refunded || '0'),
+      fundingDeadline: c.funding_deadline || new Date().toISOString(),
+      state: (p?.state || c.state || 'Funding') as SettlementCycle['state'],
+      creatorAddress: c.creator_address,
+      createdAt: c.created_at,
+      completedAt: c.settled_at || undefined,
+      includedObligationIds: c.obligation_ids || [],
+      nettingResult: {
+        positions: {},
+        creditors: [],
+        debtors: [],
+        allocations: [],
         grossObligationTotal: BigInt(c.gross_obligation_total || '0'),
-        netDebtTotal: BigInt(c.net_debtor_total || '0'),
-        totalFunded: proj ? BigInt(proj.total_funded || '0') : 0n,
-        totalDistributed: proj ? BigInt(proj.total_distributed || '0') : 0n,
-        totalRefunded: proj ? BigInt(proj.total_refunded || '0') : 0n,
-        fundingDeadline: c.funding_deadline || new Date().toISOString(),
-        state: (proj?.state || c.state || 'Funding') as any,
-        creatorAddress: c.creator_address,
-        createdAt: c.created_at,
-        completedAt: c.settled_at || null,
-        includedObligationIds: [],
-        nettingResult: {
-          positions: {},
-          creditors: [],
-          debtors: [],
-          allocations: [],
-          grossObligationTotal: BigInt(c.gross_obligation_total || '0'),
-          netFundingRequirement: BigInt(c.net_debtor_total || '0'),
-          participantCount: c.participant_count || 2,
-          obligationCount: c.obligation_count || 1,
-          zeroPositions: [],
-          algorithmVersion: c.algorithm_version || 'netteo-v1.0-deterministic',
-          canonicalCommitmentHash: c.snapshot_commitment,
-        },
-        deposits: {},
-      };
+        netFundingRequirement: BigInt(c.net_debtor_total || '0'),
+        participantCount: c.participant_count || 2,
+        obligationCount: c.obligation_count || 1,
+        zeroPositions: [],
+        algorithmVersion: c.algorithm_version || 'netteo-v1.0-deterministic',
+        canonicalCommitmentHash: c.snapshot_commitment,
+      },
+      deposits: {},
+      tokenAddress: token.address,
+      tokenSymbol: token.symbol,
+      registered: true,
     });
-  } catch (err) {
-    console.warn('[Supabase] Failed to fetch cycles from database:', err);
-    return null;
-  }
+  });
+  return cycles;
 }
 
 // --- Offline Queue & Background Sync ---
@@ -338,15 +171,22 @@ export interface UnsyncedProposal {
   debtorAddress: string;
   creditorAddress: string;
   amountUnits: string;
+  /** Must match what was signed. Absent only on items queued before multi-token support (all MUSD). */
+  tokenAddress?: string;
   referenceLabel: string;
   signerAddress?: string;
   signature?: string;
   nonce?: string;
   timestamp?: number;
   queuedAt: string;
+  /** Set when the server permanently refused this item (for example the group no longer exists). Not retried. */
+  failedReason?: string;
 }
 
 export const UNSYNCED_PROPOSALS_STORAGE_KEY = 'netteo_unsynced_proposals';
+
+/** The server rejects signatures older than 5 minutes, so anything older than this is signed again before sending. */
+const SIGNATURE_FRESH_MS = 4 * 60 * 1000;
 
 export function getUnsyncedProposals(): UnsyncedProposal[] {
   if (typeof window === 'undefined') return [];
@@ -380,56 +220,72 @@ export function removeUnsyncedProposal(id: string): void {
   }
 }
 
+/** A queued proposal ready to send: its own signature while still fresh, otherwise signed again by the wallet. */
+async function withFreshSignature(item: UnsyncedProposal): Promise<UnsyncedProposal | null> {
+  const fresh = item.signature && item.signerAddress && item.timestamp && Date.now() - item.timestamp < SIGNATURE_FRESH_MS;
+  if (fresh) return item;
+  if (!item.signerAddress) return null;
+
+  const nonce = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `nonce-${Date.now()}`;
+  const timestamp = Date.now();
+  const token = getTokenByAddress(item.tokenAddress || DEFAULT_SETTLEMENT_TOKEN.address);
+  if (!token) return null;
+
+  const signature = await signWithWallet(
+    item.signerAddress,
+    buildProposeObligationMessage({
+      action: 'propose',
+      groupId: item.groupId,
+      debtorAddress: item.debtorAddress,
+      creditorAddress: item.creditorAddress,
+      amountUnits: item.amountUnits,
+      tokenAddress: token.address,
+      referenceLabel: item.referenceLabel,
+      nonce,
+      timestamp,
+    })
+  );
+  return signature ? { ...item, signature, nonce, timestamp, tokenAddress: token.address } : null;
+}
+
 export async function flushUnsyncedProposals(): Promise<number> {
   const queue = getUnsyncedProposals();
   if (queue.length === 0) return 0;
 
   let flushed = 0;
   for (const item of queue) {
+    if (item.failedReason) continue;
     try {
-      if (item.signature && item.signerAddress) {
-        const res = await fetch('/api/obligations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'propose',
-            groupId: item.groupId,
-            debtorAddress: item.debtorAddress,
-            creditorAddress: item.creditorAddress,
-            amountUnits: item.amountUnits,
-            referenceLabel: item.referenceLabel,
-            signerAddress: item.signerAddress,
-            signature: item.signature,
-            nonce: item.nonce,
-            timestamp: item.timestamp,
-          }),
-        });
+      const ready = await withFreshSignature(item);
+      if (!ready) continue; // wallet not connected or the prompt was declined: keep it queued
 
-        if (res.ok) {
-          removeUnsyncedProposal(item.id);
-          flushed++;
-          continue;
-        }
+      const res = await fetch('/api/obligations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'propose',
+          groupId: ready.groupId,
+          debtorAddress: ready.debtorAddress,
+          creditorAddress: ready.creditorAddress,
+          amountUnits: ready.amountUnits,
+          tokenAddress: ready.tokenAddress,
+          referenceLabel: ready.referenceLabel,
+          signerAddress: ready.signerAddress,
+          signature: ready.signature,
+          nonce: ready.nonce,
+          timestamp: ready.timestamp,
+        }),
+      });
+
+      if (res.ok) {
+        removeUnsyncedProposal(item.id);
+        flushed++;
+      } else if ([400, 403, 404, 409].includes(res.status)) {
+        // Retrying cannot help (bad group, not a member, ...). Keep the item, stop retrying, remember why.
+        const body = await res.json().catch(() => ({}));
+        saveUnsyncedProposal({ ...item, failedReason: body.error || `Rejected (${res.status})` });
       }
-
-      // Fallback direct Supabase insert if signed API was bypassed or unavailable
-      if (supabase) {
-        const { error } = await supabase.from('obligations').upsert({
-          id: ensureUuid(item.id, undefined),
-          group_id: ensureUuid(item.groupId),
-          proposer_address: (item.signerAddress || item.creditorAddress).toLowerCase(),
-          debtor_address: item.debtorAddress.toLowerCase(),
-          creditor_address: item.creditorAddress.toLowerCase(),
-          amount_units: item.amountUnits,
-          reference_label: item.referenceLabel,
-          status: 'proposed',
-        });
-
-        if (!error) {
-          removeUnsyncedProposal(item.id);
-          flushed++;
-        }
-      }
+      // 401/5xx/network: leave it queued and try again later.
     } catch (err) {
       console.warn(`[SyncService] Retry sync failed for proposal ${item.id}:`, err);
     }
@@ -441,7 +297,6 @@ export async function flushUnsyncedProposals(): Promise<number> {
 // Auto-register background flush when coming back online
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
-    flushUnsyncedGroups();
     flushUnsyncedProposals().then((count) => {
       if (count > 0) {
         window.dispatchEvent(new CustomEvent('netteo_proposals_synced', { detail: { count } }));
@@ -449,5 +304,3 @@ if (typeof window !== 'undefined') {
     });
   });
 }
-
-

@@ -4,22 +4,23 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
-import { keccak256, toHex, type Address } from 'viem';
+import { type Address } from 'viem';
+import { computeCycleId, randomSalt } from '@/lib/chain/cycleId';
 import styles from './NettingGraph.module.css';
 import obStyles from '@/features/obligations/components/ObligationsView.module.css';
 import { loadObligations, formatBaseUnitsToDisplay } from '@/features/obligations/store';
 import { Obligation } from '@/features/obligations/types';
 import { calculateNetting, ObligationInput, NettingResult } from '../netting';
 import { createCycleFromObligations, saveCycles, loadCycles } from '../store';
-import { syncCycleToSupabase } from '@/lib/db/syncService';
+import { registerCycleWithServer } from '@/lib/db/syncService';
 import { NettingGraph } from './NettingGraph';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { CycleIcon, SnapshotIcon } from '@/components/icons/netteo';
 import { ArrowLeft, Check, AlertCircle, RefreshCw, Send } from 'lucide-react';
 import { useSettlementKernel, CycleInput } from '@/lib/chain/useSettlementKernel';
-import { CONTRACT_ADDRESSES, isSupportedNetwork, MEZO_TESTNET_CHAIN_ID } from '@/lib/chain/config';
-import { SUPPORTED_SETTLEMENT_TOKENS, getTokenByAddress } from '@/lib/chain/tokens';
+import { isSupportedNetwork, kernelForToken, MEZO_MAINNET_CHAIN_ID, validateChainConfiguration } from '@/lib/chain/config';
+import { DEFAULT_SETTLEMENT_TOKEN, SUPPORTED_SETTLEMENT_TOKENS, requireTokenByAddress } from '@/lib/chain/tokens';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { useToast } from '@/components/ui/Toast/ToastContext';
@@ -29,7 +30,10 @@ export function CycleAssemblyView() {
   const { mode, resetCounter } = useWorkspace();
   const { toast } = useToast();
   const { isConnected, chainId, address: userAddress } = useAccount();
-  const { createCycle, isPending: isTxPending, isConfirming, isConfirmed, txHash, error: txError, resetWrite } = useSettlementKernel();
+  const [selectedTokenAddress, setSelectedTokenAddress] = useState<string>(DEFAULT_SETTLEMENT_TOKEN.address);
+  const selectedToken = requireTokenByAddress(selectedTokenAddress);
+  const selectedKernel = kernelForToken(selectedToken.address);
+  const { createCycle, isPending: isTxPending, isConfirming, isConfirmed, txHash, error: txError, resetWrite, isKernelVerified } = useSettlementKernel(selectedToken.address);
 
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -38,19 +42,19 @@ export function CycleAssemblyView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [pendingCycleId, setPendingCycleId] = useState<`0x${string}` | null>(null);
-  const [selectedTokenAddress, setSelectedTokenAddress] = useState<string>(CONTRACT_ADDRESSES.musd);
 
   const isLiveContractReady =
     isConnected &&
     isSupportedNetwork(chainId) &&
-    CONTRACT_ADDRESSES.settlementKernel !== '0x0000000000000000000000000000000000000000';
+    validateChainConfiguration(chainId, selectedToken.address).valid &&
+    !!selectedKernel &&
+    isKernelVerified;
 
   useEffect(() => {
     try {
       const all = loadObligations(mode);
       const accepted = all.filter((o) => o.status === 'Accepted');
       setObligations(accepted);
-      setSelectedIds(accepted.map((o) => o.id));
     } catch {
       setError('Failed to load eligible obligations.');
     } finally {
@@ -62,6 +66,17 @@ export function CycleAssemblyView() {
     }
   }, [mode, resetCounter]);
 
+  // A cycle nets exactly one currency (1 MUSD = 10^18 base units, 1 mUSDC = 10^6), so the
+  // selectable set is always the accepted obligations in the chosen currency.
+  const sameToken = (o: Obligation) =>
+    (o.tokenAddress || DEFAULT_SETTLEMENT_TOKEN.address).toLowerCase() === selectedToken.address.toLowerCase();
+  const tokenObligations = obligations.filter(sameToken);
+
+  useEffect(() => {
+    setSelectedIds(obligations.filter(sameToken).map((o) => o.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [obligations, selectedToken.address]);
+
   // When on-chain cycle creation confirms
   useEffect(() => {
     if (isConfirmed && pendingCycleId && nettingResult) {
@@ -69,16 +84,33 @@ export function CycleAssemblyView() {
         const cycle = createCycleFromObligations(
           selectedObligations[0]?.groupId || '00000000-0000-0000-0000-000000000001',
           selectedIds,
-          userAddress || undefined
+          userAddress || undefined,
+          'live',
+          selectedToken.address
         );
         cycle.id = pendingCycleId;
         cycle.txCreationHash = txHash;
         const existing = loadCycles().filter((c) => c.id !== cycle.id);
         saveCycles([cycle, ...existing]);
 
-        // Background sync to Supabase
-        syncCycleToSupabase(cycle).catch((err) => {
-          console.warn('[Sync] Supabase cycle sync deferred:', err);
+        // Ask the server to check the on-chain cycle against this group's accepted obligations. Only registered
+        // cycles can be funded in the app. If this fails, the cycle page offers a retry.
+        registerCycleWithServer({
+          cycleId: pendingCycleId,
+          tokenAddress: selectedToken.address,
+          groupId: cycle.groupId,
+          obligationIds: selectedIds,
+        }).then((result) => {
+          if (!result.ok) {
+            toast.warning('Settlement not registered yet', result.error || 'Open the settlement and retry verification.');
+            return;
+          }
+          const stored = loadCycles('live');
+          const mine = stored.find((c) => c.id === pendingCycleId);
+          if (mine) {
+            mine.registered = true;
+            saveCycles(stored, 'live');
+          }
         });
 
         setTimeout(() => {
@@ -97,14 +129,14 @@ export function CycleAssemblyView() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === obligations.length) {
+    if (selectedIds.length === tokenObligations.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(obligations.map((o) => o.id));
+      setSelectedIds(tokenObligations.map((o) => o.id));
     }
   };
 
-  const selectedObligations = obligations.filter((o) => selectedIds.includes(o.id));
+  const selectedObligations = tokenObligations.filter((o) => selectedIds.includes(o.id));
 
   // Compute unique participants across selected obligations
   const distinctParticipants = useMemo(() => {
@@ -133,7 +165,7 @@ export function CycleAssemblyView() {
   if (selectedObligations.length > 0 && !isParticipantLimitExceeded) {
     try {
       nettingResult = calculateNetting(nettingInputs, 10, 30, {
-        chainId: chainId || MEZO_TESTNET_CHAIN_ID,
+        chainId: chainId || MEZO_MAINNET_CHAIN_ID,
         tokenAddress: selectedTokenAddress,
       });
     } catch (err: any) {
@@ -151,27 +183,36 @@ export function CycleAssemblyView() {
     setIsSubmitting(true);
     setError(null);
 
-    // In Live Mode: strictly require live contract on Mezo Testnet (fail-closed, no fake simulation)
+    // In Live Mode: strictly require the verified mainnet contract (fail-closed, no fake simulation)
     if (mode === 'live') {
       if (!isLiveContractReady) {
         setError(
           !isConnected
-            ? 'Live cycle creation requires a connected wallet. Please connect your wallet to Mezo Testnet (Chain ID 31611) or switch to Demo Sandbox in the header.'
+            ? 'Live cycle creation requires a connected wallet. Please connect your wallet to Mezo Mainnet (Chain ID 31612) or switch to Demo Sandbox in the header.'
             : !isSupportedNetwork(chainId)
-            ? `Please switch your wallet to Mezo Testnet (Chain ID ${MEZO_TESTNET_CHAIN_ID}).`
-            : 'SettlementKernel contract address is not configured.'
+            ? `Please switch your wallet to Mezo Mainnet (Chain ID ${MEZO_MAINNET_CHAIN_ID}).`
+            : `The ${selectedToken.symbol} SettlementKernel is not deployed or verified on Mezo Mainnet yet.`
         );
         setIsSubmitting(false);
         return;
       }
 
       try {
-        const randSeed = Math.floor(Math.random() * 1000000000);
-        const generatedCycleId = keccak256(toHex(`netteo-cycle-${Date.now()}-${randSeed}`)) as `0x${string}`;
-        setPendingCycleId(generatedCycleId);
+        // One settlement covers one group: the server registers a cycle against a single group, and a cycle
+        // that cannot be registered cannot be funded.
+        if (new Set(selectedObligations.map((o) => o.groupId)).size > 1) {
+          throw new Error('A settlement covers one group at a time. Select payments from a single group.');
+        }
+
+        if (!userAddress) throw new Error('Connect your wallet to create this settlement.');
+
+        // The contract stores keccak256(creator, salt), so nobody can pre-create the id we are about to use. We send
+        // a random salt (secure randomness, not Math.random) and track, register and fund the derived id.
+        const salt = randomSalt();
+        setPendingCycleId(computeCycleId(userAddress, salt));
 
         const cycleInput: CycleInput = {
-          cycleId: generatedCycleId,
+          cycleId: salt,
           snapshotCommitment: nettingResult.canonicalCommitmentHash as `0x${string}`,
           algorithmVersion: 'netteo-v1.0-deterministic',
           grossObligationTotal: nettingResult.grossObligationTotal,
@@ -182,7 +223,7 @@ export function CycleAssemblyView() {
           creditAmounts: nettingResult.creditors.map((c) => c.amount),
         };
 
-        toast.info('Submitting Transaction', 'Broadcasting cycle snapshot to Mezo Testnet...');
+        toast.info('Submitting Transaction', 'Broadcasting cycle snapshot to Mezo Mainnet...');
         await createCycle(cycleInput);
       } catch (err: any) {
         toast.error('Cycle Freeze Failed', err.message || 'On-chain cycle creation failed.');
@@ -266,11 +307,25 @@ export function CycleAssemblyView() {
             </span>
             <div style={{ display: 'flex', gap: '6px' }}>
               {SUPPORTED_SETTLEMENT_TOKENS.map((token) => {
-                const isSelected = selectedTokenAddress.toLowerCase() === token.address.toLowerCase();
+                const isSelected = selectedToken.address.toLowerCase() === token.address.toLowerCase();
+                // Live mode can only settle where a kernel is deployed; show the rest, disabled, so
+                // the supported-token list is honest rather than silently shorter.
+                const notDeployed = mode === 'live' && !kernelForToken(token.address);
+                const count = obligations.filter(
+                  (o) => (o.tokenAddress || DEFAULT_SETTLEMENT_TOKEN.address).toLowerCase() === token.address.toLowerCase()
+                ).length;
                 return (
                   <button
                     key={token.address}
                     type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    disabled={notDeployed}
+                    title={
+                      notDeployed
+                        ? `${token.symbol} settlement contract is not deployed on Mezo Mainnet yet`
+                        : `${token.name} \u00b7 ${token.decimals} decimals`
+                    }
                     onClick={() => setSelectedTokenAddress(token.address)}
                     style={{
                       padding: '4px 10px',
@@ -278,7 +333,8 @@ export function CycleAssemblyView() {
                       fontSize: '12px',
                       fontFamily: 'inherit',
                       fontWeight: isSelected ? 600 : 400,
-                      cursor: 'pointer',
+                      cursor: notDeployed ? 'not-allowed' : 'pointer',
+                      opacity: notDeployed ? 0.5 : 1,
                       border: isSelected ? '1px solid var(--color-wine)' : '1px solid var(--color-border)',
                       background: isSelected ? 'rgba(127, 1, 31, 0.08)' : 'var(--color-surface)',
                       color: isSelected ? 'var(--color-wine)' : 'var(--color-ink)',
@@ -286,6 +342,7 @@ export function CycleAssemblyView() {
                     }}
                   >
                     {token.symbol}
+                    {count > 0 ? ` (${count})` : ''}
                   </button>
                 );
               })}
@@ -318,11 +375,11 @@ export function CycleAssemblyView() {
             </span>
           ) : isLiveContractReady ? (
             <span style={{ fontSize: '11px', color: 'var(--color-success)', fontWeight: 500 }}>
-              &bull; Connected to Mezo Testnet ({CONTRACT_ADDRESSES.settlementKernel.slice(0, 6)}...{CONTRACT_ADDRESSES.settlementKernel.slice(-4)})
+              &bull; {selectedToken.symbol} kernel on Mezo Mainnet ({selectedKernel?.slice(0, 6)}...{selectedKernel?.slice(-4)})
             </span>
           ) : (
             <span style={{ fontSize: '11px', color: 'var(--color-danger)', fontWeight: 500 }}>
-              &bull; Wallet/Kernel not connected to Mezo Testnet
+              &bull; {selectedKernel ? 'Wallet not connected to Mezo Mainnet' : `${selectedToken.symbol} kernel not deployed yet`}
             </span>
           )}
         </div>
@@ -345,9 +402,9 @@ export function CycleAssemblyView() {
             errorMessage={txError}
             title={
               isConfirmed
-                ? 'Settlement Created on Mezo Testnet!'
+                ? 'Settlement Created on Mezo Mainnet!'
                 : txHash
-                ? 'Broadcasting Settlement to Mezo Testnet...'
+                ? 'Broadcasting Settlement to Mezo Mainnet...'
                 : 'Awaiting Signature to Lock Settlement...'
             }
             onDismiss={() => {
@@ -450,7 +507,7 @@ export function CycleAssemblyView() {
             Approved Payments to Include
           </h3>
           <Button variant="tertiary" onClick={handleSelectAll} style={{ minHeight: '30px', fontSize: '12px' }}>
-            {selectedIds.length === obligations.length ? 'Deselect All' : 'Select All'}
+            {selectedIds.length === tokenObligations.length && tokenObligations.length > 0 ? 'Deselect All' : 'Select All'}
           </Button>
         </div>
 
@@ -467,7 +524,15 @@ export function CycleAssemblyView() {
               </tr>
             </thead>
             <tbody>
-              {obligations.map((ob) => {
+              {tokenObligations.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', color: 'var(--color-muted)', padding: 'var(--space-lg)' }}>
+                    No approved {selectedToken.symbol} payments. A settlement nets one currency at a time, so pick
+                    another currency above ({obligations.length} approved payment{obligations.length === 1 ? '' : 's'} in total).
+                  </td>
+                </tr>
+              )}
+              {tokenObligations.map((ob) => {
                 const isChecked = selectedIds.includes(ob.id);
                 return (
                   <tr

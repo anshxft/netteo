@@ -23,7 +23,7 @@ export function LandingFooter() {
             </p>
             <div className={styles.networkStatus}>
               <span className={styles.statusDot} />
-              <span>Mezo Testnet (Chain ID 31611)</span>
+              <span>Mezo Mainnet (Chain ID 31612)</span>
             </div>
           </div>
 
@@ -80,7 +80,7 @@ export function LandingFooter() {
                 Mezo Network ↗
               </a>
               <a
-                href="https://explorer.test.mezo.org"
+                href="https://explorer.mezo.org"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={styles.colLink}

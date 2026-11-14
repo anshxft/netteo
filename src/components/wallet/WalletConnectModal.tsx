@@ -60,7 +60,7 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
               Connect Wallet
             </h2>
             <span style={{ fontSize: '12px', color: 'var(--color-wine)', fontWeight: 600 }}>
-              Mezo Testnet (Chain ID 31611) &bull; Native BTC Gas
+              Mezo Mainnet (Chain ID 31612) &bull; Native BTC Gas
             </span>
           </div>
           <Button

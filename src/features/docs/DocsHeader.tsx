@@ -40,7 +40,7 @@ export function DocsHeader({ onOpenSearch, mobileMenuOpen, onToggleMobileMenu }:
         {/* Center: Live Protocol Indicator */}
         <div className={styles.centerStatus}>
           <span className={styles.pulseDot} />
-          <span className={styles.statusText}>SPECIFICATION // MEZO TESTNET PROTOCOL (31611)</span>
+          <span className={styles.statusText}>SPECIFICATION // MEZO MAINNET PROTOCOL (31612)</span>
         </div>
 
         {/* Right: Search, GitHub, Explorer, Theme, App Button */}
@@ -71,12 +71,12 @@ export function DocsHeader({ onOpenSearch, mobileMenuOpen, onToggleMobileMenu }:
           </a>
 
           <a
-            href="https://explorer.test.mezo.org"
+            href="https://explorer.mezo.org"
             target="_blank"
             rel="noopener noreferrer"
             className={styles.iconLink}
-            aria-label="Mezo Testnet Explorer"
-            title="Mezo Testnet Explorer"
+            aria-label="Mezo Mainnet Explorer"
+            title="Mezo Mainnet Explorer"
           >
             <span className={styles.desktopOnlyText}>Explorer</span>
             <Icon icon={ExternalLink} size="sm" />

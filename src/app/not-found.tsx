@@ -72,7 +72,7 @@ export default function NotFound() {
             marginBottom: 'var(--space-2xl)',
           }}
         >
-          The settlement cycle, obligation, or desk address you requested does not exist or has been moved to an archived settlement batch on Mezo Testnet.
+          The settlement cycle, obligation, or desk address you requested does not exist or has been moved to an archived settlement batch on Mezo Mainnet.
         </p>
 
         <div

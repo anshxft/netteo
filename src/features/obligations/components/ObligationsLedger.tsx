@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import styles from './ObligationsView.module.css';
 import { Obligation, ObligationStatus } from '../types';
 import { updateObligationStatus, getParticipantDisplayName } from '../store';
-import { syncObligationStatusToSupabase } from '@/lib/db/syncService';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { useAccount, useSignMessage } from 'wagmi';
 import { buildObligationActionMessage } from '@/lib/auth/challenge';

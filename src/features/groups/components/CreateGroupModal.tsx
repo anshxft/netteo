@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import styles from './GroupsView.module.css';
 import { Button } from '@/components/common/Button';
 import { createGroup } from '../store';
-import { syncGroupToSupabase } from '@/lib/db/syncService';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { useAccount, useSignMessage } from 'wagmi';
 import { buildCreateGroupMessage } from '@/lib/auth/challenge';

@@ -29,5 +29,10 @@ export function getServiceRoleClient(): SupabaseClient | null {
       persistSession: false,
       autoRefreshToken: false,
     },
+    global: {
+      // Without a timeout an unreachable or slow database holds every request open (7-14 seconds seen when the
+      // host did not resolve) and ties up serverless capacity. Fail fast and let the caller retry.
+      fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(8000) }),
+    },
   });
 }

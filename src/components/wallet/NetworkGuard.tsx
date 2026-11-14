@@ -1,21 +1,39 @@
 'use client';
 
 import React from 'react';
-import { useAccount, useSwitchChain } from 'wagmi';
-import { MEZO_TESTNET_CHAIN_ID, isSupportedNetwork } from '@/lib/chain/config';
+import { useAccount, useSwitchChain, useReadContracts } from 'wagmi';
+import { MEZO_MAINNET_CHAIN_ID, isSupportedNetwork, validateChainConfiguration, kernelForToken, liveSettlementTokens } from '@/lib/chain/config';
 import { useMezoGasBalance } from '@/lib/chain/useMezoGasBalance';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
-import { AlertTriangle, RefreshCw, Fuel, ExternalLink } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Fuel } from 'lucide-react';
+import { settlementKernelAbi } from '@/lib/chain/abi';
 
 export function NetworkGuard() {
   const { isConnected, chainId } = useAccount();
   const { switchChain, isPending } = useSwitchChain();
-  const { isZeroGas, isLowGas, formatted, faucetUrl } = useMezoGasBalance();
+  const { isZeroGas, formatted } = useMezoGasBalance();
+  // Every deployed kernel must prove, on-chain, that it is bound to the token we think it is.
+  const deployedTokens = liveSettlementTokens();
+  const { data: bindings, isLoading: isCheckingKernel } = useReadContracts({
+    contracts: deployedTokens.map((t) => ({
+      address: kernelForToken(t.address)!,
+      abi: settlementKernelAbi,
+      functionName: 'musdToken' as const,
+      chainId: MEZO_MAINNET_CHAIN_ID,
+    })),
+    allowFailure: true,
+    query: { enabled: isSupportedNetwork(chainId) && deployedTokens.length > 0 },
+  });
+  const unverifiedTokens = deployedTokens.filter(
+    (t, i) => String(bindings?.[i]?.result ?? '').toLowerCase() !== t.address.toLowerCase()
+  );
 
   if (!isConnected) {
     return null;
   }
+
+  const chainConfiguration = deployedTokens.length > 0 ? { valid: true as const } : validateChainConfiguration(chainId);
 
   // 1. Wrong Network Guard
   if (!isSupportedNetwork(chainId)) {
@@ -40,7 +58,7 @@ export function NetworkGuard() {
           <Icon icon={AlertTriangle} size="sm" color="var(--color-danger)" />
           <span>
             <strong>Wrong Network:</strong> You are connected to Chain ID {chainId || 'Unknown'}.
-            Netteo settlements execute exclusively on Mezo Testnet (Chain ID {MEZO_TESTNET_CHAIN_ID}).
+            Netteo settlements execute exclusively on Mezo Mainnet (Chain ID {MEZO_MAINNET_CHAIN_ID}).
           </span>
         </div>
 
@@ -49,12 +67,30 @@ export function NetworkGuard() {
           disabled={isPending}
           isLoading={isPending}
           loadingText="Switching..."
-          onClick={() => switchChain({ chainId: MEZO_TESTNET_CHAIN_ID })}
+          onClick={() => switchChain({ chainId: MEZO_MAINNET_CHAIN_ID })}
           style={{ minHeight: '30px', padding: '0 var(--space-sm)', fontSize: '12px' }}
         >
           <Icon icon={RefreshCw} size="sm" />
-          Switch to Mezo Testnet
+          Switch to Mezo Mainnet
         </Button>
+      </aside>
+    );
+  }
+
+  if (!chainConfiguration.valid) {
+    return (
+      <aside role="alert" style={{ backgroundColor: 'var(--color-warning-bg)', borderBottom: '1px solid var(--color-warning-border)', color: 'var(--color-warning)', padding: 'var(--space-xs) var(--space-xl)', fontSize: '13px' }}>
+        <strong>Mainnet settlement unavailable:</strong> {chainConfiguration.error}
+      </aside>
+    );
+  }
+
+  if (isCheckingKernel || unverifiedTokens.length > 0) {
+    return (
+      <aside role="alert" style={{ backgroundColor: 'var(--color-warning-bg)', borderBottom: '1px solid var(--color-warning-border)', color: 'var(--color-warning)', padding: 'var(--space-xs) var(--space-xl)', fontSize: '13px' }}>
+        <strong>Mainnet settlement unavailable:</strong> {isCheckingKernel
+          ? 'Verifying SettlementKernel token bindings…'
+          : `The ${unverifiedTokens.map((t) => t.symbol).join(', ')} SettlementKernel is missing or is not bound to its canonical Mezo token. Transactions are disabled.`}
       </aside>
     );
   }
@@ -81,31 +117,9 @@ export function NetworkGuard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
           <Icon icon={Fuel} size="sm" color="var(--color-warning)" />
           <span>
-            <strong>Zero Gas Balance:</strong> Your wallet has 0.00 BTC for gas fees on Mezo Testnet. You need testnet BTC to submit on-chain settlements.
+            <strong>BTC required for gas:</strong> Your wallet has {formatted} on Mezo Mainnet. Add BTC before submitting a settlement.
           </span>
         </div>
-
-        <a
-          href={faucetUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ textDecoration: 'none' }}
-        >
-          <Button
-            variant="secondary"
-            style={{
-              minHeight: '30px',
-              padding: '0 var(--space-sm)',
-              fontSize: '12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <Icon icon={ExternalLink} size="sm" />
-            <span>Get Testnet BTC (Faucet)</span>
-          </Button>
-        </a>
       </aside>
     );
   }

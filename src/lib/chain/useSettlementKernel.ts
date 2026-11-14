@@ -1,11 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { type Address, type Hash } from 'viem';
 import { settlementKernelAbi } from './abi';
-import { CONTRACT_ADDRESSES, isSupportedNetwork } from './config';
-import { sanitizeWeb3Error } from './useMusdToken';
+import {
+  MEZO_MAINNET_CHAIN_ID,
+  MEZO_MAINNET_MUSD,
+  isDeployed,
+  isSupportedNetwork,
+  kernelForToken,
+  validateChainConfiguration,
+} from './config';
+import { SUPPORTED_SETTLEMENT_TOKENS, getTokenByAddress, type TokenMetadata } from './tokens';
+import { sanitizeWeb3Error } from './useSettlementToken';
 import { supabase } from '../db/supabase';
 
 export interface CycleInput {
@@ -44,13 +52,56 @@ export interface OnChainCycle {
 }
 
 /**
- * Hook to read on-chain cycle status and details
+ * Every read below is scoped to the kernel that settles `tokenAddress`. A cycle id
+ * only has meaning inside its own kernel, so reading it against the wrong kernel
+ * would return NonExistent rather than wrong numbers — but pass the token anyway.
  */
-export function useCycleOnChain(cycleId?: `0x${string}` | null) {
+function useKernelAddress(tokenAddress?: string | null) {
   const { chainId } = useAccount();
-  const contractAddress = CONTRACT_ADDRESSES.settlementKernel;
-  const isCorrectNetwork = isSupportedNetwork(chainId);
-  const isEnabled = !!cycleId && isCorrectNetwork && contractAddress !== '0x0000000000000000000000000000000000000000';
+  const kernel = kernelForToken(tokenAddress ?? MEZO_MAINNET_MUSD);
+  return {
+    kernel,
+    isEnabled: isSupportedNetwork(chainId) && isDeployed(kernel),
+  };
+}
+
+/**
+ * Finds which kernel holds a cycle, and therefore which currency it settles in.
+ *
+ * A cycleId is caller-chosen and only unique within one kernel, and a cycle opened from a
+ * shared link may have no local record naming its token. Probing every deployed kernel
+ * and requiring exactly one hit means we never read or write a cycle against the wrong
+ * asset. If the id exists on several kernels it is `ambiguous` and callers must refuse to act.
+ */
+export function useCycleKernelToken(cycleId?: `0x${string}` | null) {
+  const { chainId } = useAccount();
+  const candidates = SUPPORTED_SETTLEMENT_TOKENS.map((token) => ({ token, kernel: kernelForToken(token.address) })).filter(
+    (c): c is { token: TokenMetadata; kernel: `0x${string}` } => c.kernel !== null
+  );
+
+  const { data, isLoading } = useReadContracts({
+    contracts: candidates.map((c) => ({
+      address: c.kernel,
+      abi: settlementKernelAbi,
+      functionName: 'getCycle' as const,
+      args: [cycleId as `0x${string}`] as const,
+      chainId: MEZO_MAINNET_CHAIN_ID,
+    })),
+    allowFailure: true,
+    query: { enabled: !!cycleId && isSupportedNetwork(chainId) && candidates.length > 0 },
+  });
+
+  // getCycle reverts CycleNotFound for an unknown id, so a successful call means it exists here.
+  const matches = candidates.filter((_, i) => data?.[i]?.status === 'success');
+  return {
+    token: matches.length === 1 ? matches[0].token : undefined,
+    ambiguous: matches.length > 1,
+    isLoading,
+  };
+}
+
+export function useCycleOnChain(cycleId?: `0x${string}` | null, tokenAddress?: string | null) {
+  const { kernel, isEnabled } = useKernelAddress(tokenAddress);
 
   const {
     data: cycleData,
@@ -58,11 +109,11 @@ export function useCycleOnChain(cycleId?: `0x${string}` | null) {
     refetch,
     error,
   } = useReadContract({
-    address: contractAddress,
+    address: kernel ?? undefined,
     abi: settlementKernelAbi,
     functionName: 'getCycle',
     args: cycleId ? [cycleId] : undefined,
-    query: { enabled: isEnabled },
+    query: { enabled: !!cycleId && isEnabled },
   });
 
   return {
@@ -86,87 +137,120 @@ export function useCycleOnChain(cycleId?: `0x${string}` | null) {
   };
 }
 
-/**
- * Hook to read participant debtor status for a cycle
- */
-export function useDebtorStatusOnChain(cycleId?: `0x${string}` | null, debtor?: Address | null) {
-  const { chainId } = useAccount();
-  const contractAddress = CONTRACT_ADDRESSES.settlementKernel;
-  const isCorrectNetwork = isSupportedNetwork(chainId);
-  const isEnabled = !!cycleId && !!debtor && isCorrectNetwork && contractAddress !== '0x0000000000000000000000000000000000000000';
+export function useDebtorStatusOnChain(
+  cycleId?: `0x${string}` | null,
+  debtor?: Address | null,
+  tokenAddress?: string | null
+) {
+  const { kernel, isEnabled } = useKernelAddress(tokenAddress);
 
   const { data, isLoading, refetch } = useReadContract({
-    address: contractAddress,
+    address: kernel ?? undefined,
     abi: settlementKernelAbi,
     functionName: 'getDebtorStatus',
     args: cycleId && debtor ? [cycleId, debtor] : undefined,
-    query: { enabled: isEnabled },
+    query: { enabled: !!cycleId && !!debtor && isEnabled },
   });
 
   return {
-    status: data
-      ? {
-          required: data[0],
-          funded: data[1],
-          isFullyFunded: data[2],
-        }
-      : null,
+    status: data ? { required: data[0], funded: data[1], isFullyFunded: data[2] } : null,
     isLoading,
     refetch,
   };
 }
 
-/**
- * Hook to read participant lists (debtors, creditors) for a cycle
- */
-export function useCycleParticipantsOnChain(cycleId?: `0x${string}` | null) {
-  const { chainId } = useAccount();
-  const contractAddress = CONTRACT_ADDRESSES.settlementKernel;
-  const isCorrectNetwork = isSupportedNetwork(chainId);
-  const isEnabled = !!cycleId && isCorrectNetwork && contractAddress !== '0x0000000000000000000000000000000000000000';
+export function useCycleParticipantsOnChain(cycleId?: `0x${string}` | null, tokenAddress?: string | null) {
+  const { kernel, isEnabled } = useKernelAddress(tokenAddress);
 
   const { data, isLoading, refetch } = useReadContract({
-    address: contractAddress,
+    address: kernel ?? undefined,
     abi: settlementKernelAbi,
     functionName: 'getCycleParticipants',
     args: cycleId ? [cycleId] : undefined,
-    query: { enabled: isEnabled },
+    query: { enabled: !!cycleId && isEnabled },
   });
 
   return {
     participants: data
-      ? {
-          debtors: data[0] as Address[],
-          creditors: data[1] as Address[],
-        }
+      ? { debtors: data[0] as Address[], creditors: data[1] as Address[] }
       : null,
     isLoading,
     refetch,
   };
 }
 
-/**
- * Hook to read creditor payout amount for a cycle
- */
-export function useCreditorPayoutOnChain(cycleId?: `0x${string}` | null, creditor?: Address | null) {
-  const { chainId } = useAccount();
-  const contractAddress = CONTRACT_ADDRESSES.settlementKernel;
-  const isCorrectNetwork = isSupportedNetwork(chainId);
-  const isEnabled = !!cycleId && !!creditor && isCorrectNetwork && contractAddress !== '0x0000000000000000000000000000000000000000';
+export function useCreditorPayoutOnChain(
+  cycleId?: `0x${string}` | null,
+  creditor?: Address | null,
+  tokenAddress?: string | null
+) {
+  const { kernel, isEnabled } = useKernelAddress(tokenAddress);
 
   const { data, isLoading, refetch } = useReadContract({
-    address: contractAddress,
+    address: kernel ?? undefined,
     abi: settlementKernelAbi,
     functionName: 'getCreditorPayout',
     args: cycleId && creditor ? [cycleId, creditor] : undefined,
-    query: { enabled: isEnabled },
+    query: { enabled: !!cycleId && !!creditor && isEnabled },
   });
 
-  return {
-    payout: (data as bigint | undefined) ?? null,
-    isLoading,
-    refetch,
-  };
+  return { payout: (data as bigint | undefined) ?? null, isLoading, refetch };
+}
+
+export interface CycleAmounts {
+  debtors: { address: Address; required: bigint; funded: bigint }[];
+  creditors: { address: Address; amount: bigint }[];
+}
+
+/**
+ * Every debtor's real required and funded amount, and every creditor's real payout, read from the contract in one
+ * batch (at most 10 reads). The cycle page uses this instead of guessing: splitting the net total evenly shows the
+ * wrong number whenever debtors owe different amounts. Returns null until ALL reads succeed, so a partial or
+ * failed read can never be shown as if it were the full picture.
+ */
+export function useCycleAmountsOnChain(
+  cycleId?: `0x${string}` | null,
+  participants?: { debtors: Address[]; creditors: Address[] } | null,
+  tokenAddress?: string | null
+) {
+  const { kernel, isEnabled } = useKernelAddress(tokenAddress);
+  const debtors = participants?.debtors ?? [];
+  const creditors = participants?.creditors ?? [];
+
+  const { data, isLoading, refetch } = useReadContracts({
+    contracts: [
+      ...debtors.map((debtor) => ({
+        address: kernel as Address,
+        abi: settlementKernelAbi,
+        functionName: 'getDebtorStatus' as const,
+        args: [cycleId as `0x${string}`, debtor] as const,
+        chainId: MEZO_MAINNET_CHAIN_ID,
+      })),
+      ...creditors.map((creditor) => ({
+        address: kernel as Address,
+        abi: settlementKernelAbi,
+        functionName: 'getCreditorPayout' as const,
+        args: [cycleId as `0x${string}`, creditor] as const,
+        chainId: MEZO_MAINNET_CHAIN_ID,
+      })),
+    ] as any,
+    allowFailure: true,
+    query: { enabled: !!cycleId && !!kernel && isEnabled && !!participants && debtors.length + creditors.length > 0 },
+  });
+
+  let amounts: CycleAmounts | null = null;
+  const results = data as { status: string; result?: unknown }[] | undefined;
+  if (results && results.length === debtors.length + creditors.length && results.every((r) => r.status === 'success')) {
+    amounts = {
+      debtors: debtors.map((address, i) => {
+        const [required, funded] = results[i].result as readonly [bigint, bigint, boolean];
+        return { address, required, funded };
+      }),
+      creditors: creditors.map((address, i) => ({ address, amount: results[debtors.length + i].result as bigint })),
+    };
+  }
+
+  return { amounts, isLoading, refetch };
 }
 
 export const CYCLE_STATE_LABELS: Record<CycleStateOnChain, string> = {
@@ -181,45 +265,58 @@ export const CYCLE_STATE_LABELS: Record<CycleStateOnChain, string> = {
 
 /**
  * Unified authoritative cycle reader for Live Mezo mode.
- * Combines on-chain contract state as the sole financial truth with Supabase
- * read-model comparison to detect and surface indexer-lag.
+ * On-chain contract state is the sole financial truth; the Supabase read model is
+ * compared against it only to surface indexer lag.
  */
-export function useAuthoritativeCycle(cycleId?: string | null) {
+export function useAuthoritativeCycle(cycleId?: string | null, tokenAddress?: string | null) {
   const { address: userAddress } = useAccount();
   const hexCycleId = cycleId
     ? ((cycleId.startsWith('0x') ? cycleId : `0x${cycleId}`) as `0x${string}`)
     : null;
 
-  const { cycle, isLoading: isCycleLoading, refetch: refetchCycle } = useCycleOnChain(hexCycleId);
-  const { participants, isLoading: isPartsLoading, refetch: refetchParts } = useCycleParticipantsOnChain(hexCycleId);
+  const { cycle, isLoading: isCycleLoading, refetch: refetchCycle } = useCycleOnChain(hexCycleId, tokenAddress);
+  const { participants, isLoading: isPartsLoading, refetch: refetchParts } = useCycleParticipantsOnChain(
+    hexCycleId,
+    tokenAddress
+  );
   const { status: debtorStatus, isLoading: isDebtorLoading, refetch: refetchDebtor } = useDebtorStatusOnChain(
     hexCycleId,
-    userAddress
+    userAddress,
+    tokenAddress
   );
   const { payout: creditorPayout, isLoading: isCreditorLoading, refetch: refetchCreditor } = useCreditorPayoutOnChain(
     hexCycleId,
-    userAddress
+    userAddress,
+    tokenAddress
   );
+
+  const { amounts, isLoading: isAmountsLoading, refetch: refetchAmounts } = useCycleAmountsOnChain(hexCycleId, participants, tokenAddress);
 
   const [projection, setProjection] = useState<any | null>(null);
   const [isProjectionLoading, setIsProjectionLoading] = useState(false);
 
+  // A cycle id is only unique within its kernel (one kernel per token), so the projection is looked up by both.
+  // Looking it up by id alone fails with .single() as soon as the same id exists on two kernels.
+  const kernelKey = kernelForToken(tokenAddress ?? MEZO_MAINNET_MUSD)?.toLowerCase() ?? null;
+
   const fetchProjection = useCallback(async () => {
-    if (!supabase || !hexCycleId) return;
+    if (!supabase || !hexCycleId || !kernelKey) return;
     try {
       setIsProjectionLoading(true);
+      // Amounts are cast to text: NUMERIC arrives as a JSON number and loses digits above 2^53 (about 0.009 MUSD).
       const { data } = await supabase
         .from('cycle_projection')
-        .select('*')
+        .select('kernel_address, cycle_id, total_funded::text, total_distributed::text, total_refunded::text, state')
+        .eq('kernel_address', kernelKey)
         .eq('cycle_id', hexCycleId)
-        .single();
+        .maybeSingle();
       setProjection(data || null);
     } catch {
       // Non-blocking projection read
     } finally {
       setIsProjectionLoading(false);
     }
-  }, [hexCycleId]);
+  }, [hexCycleId, kernelKey]);
 
   useEffect(() => {
     fetchProjection();
@@ -231,19 +328,19 @@ export function useAuthoritativeCycle(cycleId?: string | null) {
       refetchParts(),
       refetchDebtor(),
       refetchCreditor(),
+      refetchAmounts(),
       fetchProjection(),
     ]);
   };
 
-  // Compute indexer lag: on-chain contract state is ahead of indexed Supabase projections
+  // Indexer lag: on-chain state is ahead of the indexed Supabase projection.
   let indexerLag = false;
   if (cycle && cycle.state !== CycleStateOnChain.NonExistent) {
     if (!projection) {
       indexerLag = true;
     } else {
-      const onChainFunded = cycle.totalFunded;
       const projFunded = BigInt(projection.total_funded || '0');
-      if (onChainFunded > projFunded) {
+      if (cycle.totalFunded > projFunded) {
         indexerLag = true;
       }
       if (cycle.state === CycleStateOnChain.Completed && projection.state !== 'Completed') {
@@ -255,7 +352,6 @@ export function useAuthoritativeCycle(cycleId?: string | null) {
     }
   }
 
-  // Derive connected user role
   let userRole: 'debtor' | 'creditor' | 'creator' | 'observer' = 'observer';
   const normUser = userAddress?.toLowerCase();
   if (normUser) {
@@ -275,24 +371,37 @@ export function useAuthoritativeCycle(cycleId?: string | null) {
     participants,
     debtorStatus,
     creditorPayout,
+    amounts,
     userRole,
     projection,
     indexerLag,
-    isLoading: isCycleLoading || isPartsLoading || isDebtorLoading || isCreditorLoading,
+    isLoading: isCycleLoading || isPartsLoading || isDebtorLoading || isCreditorLoading || isAmountsLoading,
     isProjectionLoading,
     refetch: refetchAll,
   };
 }
 
 /**
- * Primary hook for settlement kernel write operations
- * Provides: createCycle, deposit, executeSettlement, claimRefund.
- * Enforces single-flight lock, receipt tracking, and truthful confirmation state.
+ * Write operations against the kernel that settles `tokenAddress`.
+ * Enforces single-flight, receipt tracking and truthful confirmation state.
  */
-export function useSettlementKernel() {
+export function useSettlementKernel(tokenAddress?: string | null) {
   const { chainId, isConnected } = useAccount();
-  const contractAddress = CONTRACT_ADDRESSES.settlementKernel;
+
+  const token = getTokenByAddress(tokenAddress ?? MEZO_MAINNET_MUSD);
+  const contractAddress = kernelForToken(token?.address);
   const isCorrectNetwork = isSupportedNetwork(chainId);
+
+  const { data: kernelToken } = useReadContract({
+    address: contractAddress ?? undefined,
+    abi: settlementKernelAbi,
+    functionName: 'musdToken',
+    chainId: MEZO_MAINNET_CHAIN_ID,
+    query: { enabled: isCorrectNetwork && isDeployed(contractAddress), staleTime: Infinity },
+  });
+
+  const isKernelVerified =
+    !!token && !!contractAddress && kernelToken?.toLowerCase() === token.address.toLowerCase();
 
   const {
     data: txHash,
@@ -306,39 +415,44 @@ export function useSettlementKernel() {
     isLoading: isConfirming,
     isSuccess: isConfirmed,
     error: receiptError,
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
+  } = useWaitForTransactionReceipt({ hash: txHash });
 
-  const checkNetwork = () => {
+  /** Fails closed: refuses to write unless the deployed kernel proves its token binding. */
+  const requireWritableKernel = (): `0x${string}` => {
     if (!isConnected) throw new Error('Please connect your Web3 wallet first.');
     if (!isCorrectNetwork) {
-      throw new Error('Please switch to Mezo Testnet (Chain ID 31611) to submit transactions.');
+      throw new Error(`Please switch to Mezo Mainnet (Chain ID ${MEZO_MAINNET_CHAIN_ID}) to submit transactions.`);
     }
-    if (contractAddress === '0x0000000000000000000000000000000000000000') {
-      throw new Error('SettlementKernel contract address is not configured.');
+    const configuration = validateChainConfiguration(chainId, token?.address ?? tokenAddress);
+    if (!configuration.valid || !contractAddress) {
+      throw new Error(configuration.error || 'Mainnet settlement configuration is invalid.');
     }
+    if (!kernelToken) {
+      throw new Error('Could not verify the SettlementKernel token binding. Wait for verification and try again.');
+    }
+    if (!isKernelVerified) {
+      throw new Error(
+        `The SettlementKernel at ${contractAddress} is not bound to ${token?.symbol ?? 'the selected token'}. Transactions are disabled.`
+      );
+    }
+    return contractAddress;
   };
 
-  const createCycle = async (input: CycleInput) => {
-    checkNetwork();
-    return writeContract({
-      address: contractAddress,
+  const createCycle = async (input: CycleInput) =>
+    writeContract({
+      address: requireWritableKernel(),
       abi: settlementKernelAbi,
       functionName: 'createCycle',
       args: [input],
     });
-  };
 
-  const deposit = async (cycleId: `0x${string}`, amount: bigint) => {
-    checkNetwork();
-    return writeContract({
-      address: contractAddress,
+  const deposit = async (cycleId: `0x${string}`, amount: bigint) =>
+    writeContract({
+      address: requireWritableKernel(),
       abi: settlementKernelAbi,
       functionName: 'deposit',
       args: [cycleId, amount],
     });
-  };
 
   const depositWithPermit = async (
     cycleId: `0x${string}`,
@@ -348,50 +462,48 @@ export function useSettlementKernel() {
     r: `0x${string}`,
     s: `0x${string}`
   ) => {
-    checkNetwork();
+    const kernel = requireWritableKernel();
+    if (!token?.supportsPermit) {
+      throw new Error(`${token?.symbol ?? 'This token'} does not support permit. Use approve and deposit instead.`);
+    }
     return writeContract({
-      address: contractAddress,
+      address: kernel,
       abi: settlementKernelAbi,
       functionName: 'depositWithPermit',
       args: [cycleId, amount, deadline, v, r, s],
     });
   };
 
-  const cancelCycle = async (cycleId: `0x${string}`) => {
-    checkNetwork();
-    return writeContract({
-      address: contractAddress,
+  const cancelCycle = async (cycleId: `0x${string}`) =>
+    writeContract({
+      address: requireWritableKernel(),
       abi: settlementKernelAbi,
       functionName: 'cancelCycle',
       args: [cycleId],
     });
-  };
 
-  const executeSettlement = async (cycleId: `0x${string}`) => {
-    checkNetwork();
-    return writeContract({
-      address: contractAddress,
+  const executeSettlement = async (cycleId: `0x${string}`) =>
+    writeContract({
+      address: requireWritableKernel(),
       abi: settlementKernelAbi,
       functionName: 'executeSettlement',
       args: [cycleId],
     });
-  };
 
-  const claimRefund = async (cycleId: `0x${string}`) => {
-    checkNetwork();
-    return writeContract({
-      address: contractAddress,
+  const claimRefund = async (cycleId: `0x${string}`) =>
+    writeContract({
+      address: requireWritableKernel(),
       abi: settlementKernelAbi,
       functionName: 'claimRefund',
       args: [cycleId],
     });
-  };
 
   const rawError = writeError || receiptError;
-  const errorMessage = rawError ? sanitizeWeb3Error(rawError) : null;
 
   return {
-    contractAddress,
+    token,
+    contractAddress: contractAddress ?? undefined,
+    isKernelVerified,
     createCycle,
     deposit,
     depositWithPermit,
@@ -403,7 +515,7 @@ export function useSettlementKernel() {
     isConfirming,
     isConfirmed,
     isPending: isWritePending || isConfirming,
-    error: errorMessage,
+    error: rawError ? sanitizeWeb3Error(rawError, token?.symbol) : null,
     resetWrite,
   };
 }
