@@ -31,6 +31,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useSettlementToken } from '@/lib/chain/useSettlementToken';
+import { FundingSourcesPanel, NettingBenefitNote, SavePayoutPanel } from './FundingSources';
 import { DEFAULT_SETTLEMENT_TOKEN, getTokenByAddress } from '@/lib/chain/tokens';
 import {
   useSettlementKernel,
@@ -336,6 +337,8 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   const UNVERIFIED_MESSAGE =
     'This settlement has not been verified against your group’s agreed payments, so deposits are disabled.';
   const isUnverifiedLive = mode === 'live' && !displayCycle.registered;
+  // Savings and borrowing are MUSD-only Mezo products, so they are offered only for MUSD cycles.
+  const isMusdCycle = (displayCycle.tokenSymbol || 'MUSD') === 'MUSD';
   const canVerify =
     isUnverifiedLive &&
     !!cycle &&
@@ -629,7 +632,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             </span>
           </div>
           <p className={obStyles.subtitle}>
-            Settlement ID: <code style={{ fontSize: '13px' }}>{displayCycle.id}</code>
+            Settlement ID: <code style={{ fontSize: '13px', overflowWrap: 'anywhere' }}>{displayCycle.id}</code>
           </p>
         </div>
 
@@ -857,6 +860,14 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             <strong>Collect-then-distribute invariant:</strong> 100% of net debtor deposits are required before creditor distribution unlocks.
           </span>
         </div>
+
+        <div style={{ marginTop: 'var(--space-md)' }}>
+          <NettingBenefitNote
+            gross={displayCycle.grossObligationTotal}
+            net={displayCycle.netDebtTotal}
+            symbol={displayCycle.tokenSymbol || 'MUSD'}
+          />
+        </div>
       </div>
 
       {/* On-Chain Verification Block */}
@@ -924,7 +935,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))',
           gap: 'var(--space-xl)',
           marginBottom: 'var(--space-2xl)',
         }}
@@ -986,7 +997,16 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
                       {/* Live mode: the CDP drawer is a local simulation with no contract call, so it must never
                           appear next to real funds. Point to Mezo's own swap guide when the balance is short. */}
-                      {mode === 'live' && isCurrentUser && settlement.balance < remaining && (
+                      {mode === 'live' && isCurrentUser && userAddress && settlement.balance < remaining && isMusdCycle && (
+                        <FundingSourcesPanel
+                          owner={userAddress as `0x${string}`}
+                          shortfall={remaining - settlement.balance}
+                          disabled={isOffline || isSubmitting || !isLiveContractReady}
+                          onFunded={() => settlement.refetchBalance()}
+                        />
+                      )}
+
+                      {mode === 'live' && isCurrentUser && settlement.balance < remaining && !isMusdCycle && (
                         <div
                           role="status"
                           style={{
@@ -1149,6 +1169,22 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                 <div style={{ fontSize: '13px', color: 'var(--color-success)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                   Receives: {formatBaseUnitsToDisplay(creditor.amount, displayCycle.tokenSymbol || 'MUSD')}
                 </div>
+
+                {mode === 'live' &&
+                  isMusdCycle &&
+                  displayCycle.state === 'Completed' &&
+                  userAddress &&
+                  userAddress.toLowerCase() === creditor.address.toLowerCase() && (
+                    <div style={{ marginTop: 'var(--space-md)' }}>
+                      <SavePayoutPanel
+                        owner={userAddress as `0x${string}`}
+                        payout={creditor.amount}
+                        walletBalance={settlement.balance}
+                        disabled={isOffline || !isLiveContractReady}
+                        onDone={() => settlement.refetchBalance()}
+                      />
+                    </div>
+                  )}
               </div>
             ))}
           </div>

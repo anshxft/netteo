@@ -181,7 +181,7 @@ export default function CyclesPage() {
                         {formatStateLabel(c.state)}
                       </span>
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--color-muted)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--color-muted)', fontFamily: 'var(--font-mono, monospace)', overflowWrap: 'anywhere' }}>
                       ID: {c.id}
                     </div>
                   </div>

@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
   schedule:
     # Weekly: re-verify the token registry and RPC fallback against the live chain.
     - cron: '17 6 * * 1'
@@ -52,3 +53,23 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
       - run: forge test -vv
         # The fork suite (real MUSD / mUSDC / mUSDT code) skips itself unless MEZO_MAINNET_FORK_URL is set.
+
+  mezo-integration:
+    name: Mezo borrowing and savings on a mainnet fork
+    # Weekly and on demand: it needs a live RPC, so pushes and PRs do not depend on it.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Fork Mezo Mainnet and run the integration test
+        run: |
+          anvil --fork-url https://mezo-mainnet.boar.network --port 8547 --silent &
+          for i in $(seq 1 40); do cast chain-id --rpc-url http://127.0.0.1:8547 >/dev/null 2>&1 && break; sleep 3; done
+          MEZO_MAINNET_FORK_URL=http://127.0.0.1:8547 npx tsx src/lib/mezo/fork.test.ts

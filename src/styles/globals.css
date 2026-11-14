@@ -143,3 +143,13 @@ a {
     transform: none !important;
   }
 }
+
+/* Hashes and addresses are 42-66 characters with no break opportunities. Let them wrap instead of widening the page. */
+code {
+  overflow-wrap: anywhere;
+}
+
+/* A code block keeps its own scroll; it must not wrap mid-line. */
+pre code {
+  overflow-wrap: normal;
+}

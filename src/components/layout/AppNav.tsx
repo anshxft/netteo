@@ -66,6 +66,11 @@ const NAV_CATEGORIES: NavCategory[] = [
         desc: 'Group approved payments and calculate net transfers.',
         href: '/cycles/new',
       },
+      {
+        title: 'Funding Check',
+        desc: 'See how a wallet can fund a settlement from Mezo Savings or a loan against Bitcoin.',
+        href: '/funding',
+      },
     ],
   },
   {
