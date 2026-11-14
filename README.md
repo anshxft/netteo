@@ -14,6 +14,22 @@
 
 ---
 
+## Mezo integration
+
+Netteo settles in canonical MUSD and plugs into Mezo's own products so a debtor can fund a deposit without selling Bitcoin. All of it lives in [`src/lib/mezo`](src/lib/mezo) and is read live from Mezo Mainnet.
+
+| Mezo component | What Netteo does | Verified |
+|---|---|---|
+| MUSD, mUSDC, mUSDT | Settlement assets, one kernel per token | Real cycles on mainnet ([DEPLOYMENTS.md](DEPLOYMENTS.md)) |
+| MUSD Savings Vault (sMUSD) | Withdraw to fund a deposit, save a payout, claim yield | **Real mainnet round trip** (3 transactions) |
+| BorrowerOperations, TroveManager, HintHelpers, SortedTroves, PriceFeed | Borrow the missing amount against an existing Bitcoin loan, behind a 150% safety floor (Mezo liquidates at 110%) | Real contracts on a mainnet fork (`fork.test.ts`); live reads in `protocol.test.ts` |
+
+Try it without a wallet at `/funding`: pick one of the real Bitcoin-backed loans on Mezo and see what it could fund. Submission answers for the Mezo Buildathon are in [docs/SUBMISSION.md](docs/SUBMISSION.md).
+
+Borrowing is verified on a fork, not executed on mainnet by the team: a new Mezo loan needs at least 1,800 MUSD of debt. MEZO and Mezo Passport are not integrated.
+
+---
+
 ## Try it in two minutes
 
 1. **See real evidence first.** The landing page's **Evidence** section links to two real three-party cycles settled in MUSD on Mezo Mainnet, with explorer links for each transaction. The same hashes are in [DEPLOYMENTS.md](DEPLOYMENTS.md).
