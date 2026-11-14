@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './ObligationsView.module.css';
 import { Obligation, ObligationStatus } from '../types';
 import { updateObligationStatus, getParticipantDisplayName } from '../store';
@@ -9,7 +9,7 @@ import { useAccount, useSignMessage } from 'wagmi';
 import { buildObligationActionMessage } from '@/lib/auth/challenge';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
-import { Check, X, Ban, Copy } from 'lucide-react';
+import { Check, X, Ban, Copy, Link2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast/ToastContext';
 
 export interface ObligationsLedgerProps {
@@ -40,6 +40,18 @@ export function ObligationsLedger({
   const [actionError, setActionError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  // A shared link (?claim=<id>) opens the ledger on that claim, so a debtor lands on what they were asked to approve.
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const claim = new URLSearchParams(window.location.search).get('claim');
+    if (claim) setHighlightId(claim);
+  }, []);
+
+  useEffect(() => {
+    if (!highlightId) return;
+    document.getElementById(`claim-${highlightId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [highlightId, obligations.length]);
 
   const filtered = activeFilter === 'All'
     ? obligations
@@ -180,6 +192,17 @@ export function ObligationsLedger({
     setTimeout(() => setCopiedId(null), 1500);
   };
 
+  const claimLink = (id: string) => `${window.location.origin}/obligations?claim=${id}`;
+
+  /** Who may respond to a proposed claim: the debtor accepts or disputes; the proposer or creditor may withdraw it. */
+  const canActOn = (ob: Obligation) => {
+    const me = userAddress?.toLowerCase();
+    return {
+      debtor: !!me && me === ob.debtorAddress.toLowerCase(),
+      party: !!me && (me === ob.proposerAddress.toLowerCase() || me === ob.creditorAddress.toLowerCase()),
+    };
+  };
+
   const getStatusBadgeClass = (status: ObligationStatus) => {
     switch (status) {
       case 'Accepted':
@@ -264,7 +287,12 @@ export function ObligationsLedger({
               </thead>
               <tbody>
                 {filtered.map((ob) => (
-                  <tr key={ob.id}>
+                  <tr
+                    key={ob.id}
+                    id={`claim-${ob.id}`}
+                    style={highlightId === ob.id ? { outline: '2px solid var(--color-wine)', outlineOffset: '-2px', backgroundColor: 'var(--color-wine-subtle)' } : undefined}
+                    aria-current={highlightId === ob.id ? 'true' : undefined}
+                  >
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span className={styles.addressCode} style={{ fontSize: '11px' }}>
@@ -317,8 +345,14 @@ export function ObligationsLedger({
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      {ob.status === 'Proposed' && (
-                        <div style={{ display: 'inline-flex', gap: 'var(--space-2xs)' }}>
+                      {ob.status === 'Proposed' && mode === 'live' && !canActOn(ob).debtor && !canActOn(ob).party && (
+                        <span style={{ fontSize: '12px', color: 'var(--color-muted)' }}>
+                          {isConnected ? 'Waiting for the debtor' : 'Connect a wallet to respond'}
+                        </span>
+                      )}
+                      {ob.status === 'Proposed' && (mode === 'demo' || canActOn(ob).debtor || canActOn(ob).party) && (
+                        <div style={{ display: 'inline-flex', gap: 'var(--space-2xs)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {(mode === 'demo' || canActOn(ob).debtor) && (<>
                           <Button
                             variant="primary"
                             disabled={isOffline || isAuthorizing}
@@ -339,6 +373,8 @@ export function ObligationsLedger({
                             <Icon icon={X} size="sm" color="var(--color-danger)" />
                             Dispute
                           </Button>
+                          </>)}
+                          {(mode === 'demo' || canActOn(ob).party) && (
                           <Button
                             variant="tertiary"
                             disabled={isOffline || isAuthorizing}
@@ -347,6 +383,16 @@ export function ObligationsLedger({
                             title="Cancel payment claim"
                           >
                             Cancel
+                          </Button>
+                          )}
+                          <Button
+                            variant="tertiary"
+                            onClick={() => handleCopy(claimLink(ob.id), `link-${ob.id}`)}
+                            style={{ minHeight: '30px', padding: '0 6px', fontSize: '11px', color: 'var(--color-wine)' }}
+                            title="Copy a link that opens this claim for the debtor"
+                          >
+                            <Icon icon={copiedId === `link-${ob.id}` ? Check : Link2} size="sm" />
+                            {copiedId === `link-${ob.id}` ? 'Link copied' : 'Copy link'}
                           </Button>
                         </div>
                       )}

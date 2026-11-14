@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { changeObligationStatus, listObligations, proposeObligation } from '@/lib/api/obligations';
 import { guarded, readJson, requireDb, requireWallet } from '@/lib/api/route';
+import { rateLimited } from '@/lib/api/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 /** GET /api/obligations: only obligations in the signed-in wallet's own groups (or naming it). */
 export async function GET(req: NextRequest) {
+  const slow = rateLimited(req, 'read');
+  if (slow) return slow;
   const auth = requireWallet(req);
   if ('response' in auth) return auth.response;
   const database = requireDb();
@@ -21,6 +24,8 @@ export async function GET(req: NextRequest) {
  * - withdraw: the proposer or creditor, on a proposed claim
  */
 export async function POST(req: NextRequest) {
+  const slow = rateLimited(req, 'write');
+  if (slow) return slow;
   const database = requireDb();
   if ('response' in database) return database.response;
 

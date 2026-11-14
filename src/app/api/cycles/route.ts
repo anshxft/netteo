@@ -2,12 +2,15 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { listCycles, registerCycle } from '@/lib/api/cycles';
 import { viemChainReader } from '@/lib/api/chainReader';
 import { guarded, readJson, requireDb, requireWallet } from '@/lib/api/route';
+import { rateLimited } from '@/lib/api/rateLimit';
 import { maybeRunIndexer } from '@/lib/indexer/trigger';
 
 export const dynamic = 'force-dynamic';
 
 /** GET /api/cycles: registered cycles for the signed-in wallet's groups. Also queues a throttled index run. */
 export async function GET(req: NextRequest) {
+  const slow = rateLimited(req, 'read');
+  if (slow) return slow;
   const auth = requireWallet(req);
   if ('response' in auth) return auth.response;
   const database = requireDb();
@@ -23,6 +26,8 @@ export async function GET(req: NextRequest) {
  * per-wallet amounts match the group's accepted obligations, and that the signed-in wallet created it.
  */
 export async function POST(req: NextRequest) {
+  const slow = rateLimited(req, 'write');
+  if (slow) return slow;
   const auth = requireWallet(req);
   if ('response' in auth) return auth.response;
   const database = requireDb();

@@ -12,6 +12,7 @@ import { NetteoLogoMark } from '@/components/common/NetteoLogo';
 const NAV_LINKS = [
   { label: 'How It Works', href: '#how-it-works' },
   { label: 'Netting Solver', href: '#simulator' },
+  { label: 'Mezo', href: '#mezo' },
   { label: 'Architecture', href: '#architecture' },
   { label: 'Docs', href: '/docs' },
   { label: 'Evidence', href: '#evidence' },

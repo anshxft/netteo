@@ -94,6 +94,20 @@ cast call $K "getCycle(bytes32)(bytes32,string,uint256,uint256,uint256,uint256,u
 cast call 0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186 "balanceOf(address)(uint256)" $K --rpc-url $RPC
 ```
 
+## Mezo Savings Vault integration, verified on mainnet (2026-11-14)
+
+Netteo lets a debtor withdraw from the MUSD Savings Vault to fund a deposit, and lets a creditor save a payout in it. The same code path was run for real on Mezo Mainnet with 0.01 MUSD from the deployer wallet. The vault is `0xb4D498029af77680cD1eF828b967f010d06C51CC` (a proxy; it reports `musdToken()` = canonical MUSD).
+
+| Step | Block | Gas used | Transaction |
+|---|---|---|---|
+| approve(vault, 0.01 MUSD) | 13224433 | 46,382 | [`0x465b2b86…5cd4a4`](https://explorer.mezo.org/tx/0x465b2b8693049f1fd96eab277a7c5f57d9c00f1fe67967c4887ae0ee6b5cd4a4) |
+| deposit(0.01 MUSD) | 13224435 | 211,184 | [`0x582f2266…506091`](https://explorer.mezo.org/tx/0x582f2266b8408fb3126ef58e7f08bbe7021d8a0b006ab697685ea1c30d506091) |
+| withdraw(0.01 MUSD) | 13224437 | 106,577 | [`0x2006cdd6…9ba15c`](https://explorer.mezo.org/tx/0x2006cdd63fde64e2b0778522569431305dac09c1627a81d038e9bb4e9d9ba15c) |
+
+Read back from the chain: after the deposit the wallet held exactly 0.01 sMUSD (minted 1:1) and 0.01 MUSD less; after the withdrawal the sMUSD was 0 and the MUSD balance was back to its starting value, to the wei. Gas for all three: 0.00000047 BTC. Cumulative fees for everything in this record: 0.0000194 BTC.
+
+**Borrowing against Bitcoin is not executed on mainnet by the team.** A new Mezo loan needs at least 1,800 MUSD of debt plus a 200 MUSD deposit, far more than the test wallet holds. That path was instead run against real mainnet contract state on a local fork (`src/lib/mezo/fork.test.ts`): the actual BorrowerOperations, TroveManager, HintHelpers, SortedTroves and Savings Vault code, using Netteo's own hint builder and borrow plan, on a real trove. Only the price oracle (not plain EVM code) is replaced by the live price. Reads, by contrast, run against live mainnet in the app and in `protocol.test.ts`.
+
 ## App and API checked end to end
 
 Against the live Supabase project and Mezo Mainnet RPC, using throwaway wallets (test rows deleted afterwards): 44 checks passed. Covered: wallet sign-in, replay and stale-signature refusal, signed group and obligation creation, tampered-signature refusal, accept / dispute / withdraw rules, per-wallet read scoping (a stranger sees nothing), indexer secret check, indexing of the real cycle above, and cycle registration. Cycle registration was run against a local fork of mainnet (so no extra gas): a cycle whose commitment differs from the group's accepted obligations is refused, and one that matches is registered. That run found a database column that was too narrow (`algorithm_version`); fixed by `migrations/004_widen_algorithm_version.sql`.

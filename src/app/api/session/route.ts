@@ -3,6 +3,7 @@ import { isAddress } from 'viem';
 import { buildSessionMessage, isChallengeFresh, validateAndConsumeNonce, verifyChallengeSignature } from '@/lib/auth/challenge';
 import { createSessionToken, isSessionConfigured } from '@/lib/auth/session';
 import { readJson, requireDb } from '@/lib/api/route';
+import { rateLimited } from '@/lib/api/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,8 @@ export const dynamic = 'force-dynamic';
  * settlements for an hour. No funds move and no gas is spent.
  */
 export async function POST(req: NextRequest) {
+  const slow = rateLimited(req, 'session');
+  if (slow) return slow;
   if (!isSessionConfigured()) {
     console.error('[API session] SESSION_SECRET is missing or shorter than 32 characters.');
     return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });

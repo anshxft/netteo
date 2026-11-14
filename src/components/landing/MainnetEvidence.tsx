@@ -44,6 +44,12 @@ const CYCLES: Cycle[] = [
   },
 ];
 
+const SAVINGS_TXS = [
+  { name: 'approve', hash: '0x465b2b8693049f1fd96eab277a7c5f57d9c00f1fe67967c4887ae0ee6b5cd4a4' },
+  { name: 'deposit', hash: '0x582f2266b8408fb3126ef58e7f08bbe7021d8a0b006ab697685ea1c30d506091' },
+  { name: 'withdraw', hash: '0x2006cdd63fde64e2b0778522569431305dac09c1627a81d038e9bb4e9d9ba15c' },
+];
+
 const short = (hex: string) => `${hex.slice(0, 10)}…${hex.slice(-6)}`;
 
 export function MainnetEvidence() {
@@ -55,7 +61,7 @@ export function MainnetEvidence() {
           Real MUSD settled on Mezo Mainnet
         </h2>
         <p className={styles.subtitle}>
-          Two three-party cycles, three claims each, settled as one deposit and two payouts. Open any transaction to check it yourself.
+          Two three-party cycles settled in MUSD, and a real round trip through Mezo's Savings Vault. Open any transaction to check it yourself.
         </p>
       </div>
 
@@ -106,6 +112,25 @@ export function MainnetEvidence() {
           </article>
         ))}
       </div>
+
+      <article className={styles.wide}>
+        <h3 className={styles.cardTitle}>Mezo Savings Vault, round trip with real MUSD</h3>
+        <p className={styles.cardNote}>
+          0.01 MUSD approved, deposited (minted exactly 0.01 sMUSD) and withdrawn (every wei returned). Netteo uses this path to fund a deposit from savings or to save a payout.
+        </p>
+        <ul className={styles.links}>
+          {SAVINGS_TXS.map((t) => (
+            <li key={t.hash}>
+              <a href={`${MEZO_MAINNET_EXPLORER_URL}/tx/${t.hash}`} target="_blank" rel="noopener noreferrer">
+                <span>{t.name}</span>
+                <code>{short(t.hash)}</code>
+                <Icon icon={ExternalLink} size="sm" />
+                <span className={styles.srOnly}>(opens the Mezo explorer in a new tab)</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </article>
 
       <p className={styles.disclosure}>
         Small amounts on purpose, run with wallets controlled by the team. The contracts have not been independently audited.

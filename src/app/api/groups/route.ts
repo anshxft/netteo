@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createGroup, listGroups, updateGroupParticipants } from '@/lib/api/groups';
 import { guarded, readJson, requireDb, requireWallet } from '@/lib/api/route';
+import { rateLimited } from '@/lib/api/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 /** GET /api/groups: the groups the signed-in wallet created or belongs to. Nothing else is returned. */
 export async function GET(req: NextRequest) {
+  const slow = rateLimited(req, 'read');
+  if (slow) return slow;
   const auth = requireWallet(req);
   if ('response' in auth) return auth.response;
   const database = requireDb();
@@ -19,6 +22,8 @@ export async function GET(req: NextRequest) {
  * - update_participants: needs a session; only the group's creator or an admin may change members.
  */
 export async function POST(req: NextRequest) {
+  const slow = rateLimited(req, 'write');
+  if (slow) return slow;
   const database = requireDb();
   if ('response' in database) return database.response;
 

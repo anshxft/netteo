@@ -6,6 +6,7 @@ import { LandingNavbar } from '@/components/landing/LandingNavbar';
 import { LandingHero } from '@/components/landing/LandingHero';
 import { MainnetEvidence } from '@/components/landing/MainnetEvidence';
 import { HowItWorks } from '@/components/landing/HowItWorks';
+import { MezoFunding } from '@/components/landing/MezoFunding';
 import { FeatureBento } from '@/components/landing/FeatureBento';
 import { FaqAccordion } from '@/components/landing/FaqAccordion';
 import { CtaBand } from '@/components/landing/CtaBand';
@@ -76,6 +77,9 @@ export default function LandingPage() {
 
         {/* 4. How It Works: 2x2 grid of soft rounded cards with mini UI previews */}
         <HowItWorks />
+
+        {/* 4b. Why Mezo: fund from Savings or your BTC loan, then save what you receive */}
+        <MezoFunding />
 
         {/* 5. Feature/Benefit Bento: Large Netting Simulator + 3 Companion Cards */}
         <FeatureBento />
