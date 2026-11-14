@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import { readFileSync } from 'node:fs';
 import { DOC_GROUPS, ALL_SECTIONS, getSectionById } from './docsData';
 
 console.log('Running Documentation Data Integrity Tests...');
@@ -26,14 +27,43 @@ for (const section of ALL_SECTIONS) {
 assert.strictEqual(getSectionById('non-existent-id'), undefined);
 console.log('✔ Passed: Section lookup helper behaves correctly');
 
-// Test 4: Verify Mezo & MUSD authentic details are present in registry
-const liveProof = getSectionById('live-settlement-proof');
-assert.ok(liveProof, 'live-settlement-proof section must exist');
-assert.ok(liveProof.keywords.includes('historical testnet'), 'live-settlement-proof must be labeled as historical testnet evidence');
+// Test 4: The Mezo and mainnet sections the docs promise are present
+for (const id of ['musd-token', 'deployed-contracts', 'mainnet-evidence', 'funding-sources', 'mezo-contracts', 'security-model']) {
+  assert.ok(getSectionById(id), `section ${id} must exist`);
+}
+assert.ok(getSectionById('musd-token')!.keywords.includes('canonical'), 'musd-token must include canonical keyword');
+console.log('✔ Passed: Mezo, mainnet and security sections are present');
 
-const musdToken = getSectionById('musd-token');
-assert.ok(musdToken, 'musd-token section must exist');
-assert.ok(musdToken.keywords.includes('canonical'), 'musd-token must include canonical keyword');
+// Test 5: Every subsection listed in the sidebar has a matching anchor in the rendered content, so the table of
+// contents never links to nothing. The content file declares each anchor as <Block id="...">.
+const content = readFileSync(new URL('./docsContent.tsx', import.meta.url), 'utf8');
+const anchors = new Set([...content.matchAll(/<Block id="([^"]+)"/g)].map((m) => m[1]));
+for (const section of ALL_SECTIONS) {
+  for (const sub of section.subsections) {
+    assert.ok(anchors.has(sub.id), `${section.id}: subsection "${sub.id}" has no <Block id> in docsContent.tsx`);
+  }
+}
+for (const section of ALL_SECTIONS) {
+  assert.ok(content.includes(`case '${section.id}':`), `${section.id} is not routed in DocsContentRenderer`);
+}
+console.log('✔ Passed: Every sidebar subsection has an anchor and every section is routed');
 
-console.log('✔ Passed: Authentic Mezo & MUSD technical sections verified');
+// Test 6: The docs describe mainnet only. These stayed in the old docs after they stopped being true.
+const banned = [
+  { pattern: /explorer\.test\.mezo|faucet\.test\.mezo|testnet\.mezo/i, why: 'testnet links' },
+  { pattern: /Legacy Testnet|Historical Testnet/i, why: 'testnet deployment sections' },
+  { pattern: /Pending deployment/i, why: 'the kernel is deployed' },
+  { pattern: /tBTC|Mezo CDP|CDP/i, why: 'a simulated borrow flow is not a Mezo integration' },
+  { pattern: /Supabase Realtime|WebSocket/i, why: 'not used' },
+  { pattern: /EIP-712 (Intent|signed)/i, why: 'approvals are EIP-191 wallet signatures' },
+  { pattern: /merkle/i, why: 'the commitment is a keccak256 hash, not a Merkle tree' },
+  { pattern: /audited (smart|solidity)/i, why: 'the contracts are not independently audited' },
+];
+const dataFile = readFileSync(new URL('./docsData.ts', import.meta.url), 'utf8');
+for (const { pattern, why } of banned) {
+  assert.ok(!pattern.test(content), `docsContent.tsx must not mention ${pattern} (${why})`);
+  assert.ok(!pattern.test(dataFile), `docsData.ts must not mention ${pattern} (${why})`);
+}
+console.log('✔ Passed: No testnet, simulated or unbacked claims remain in the docs');
+
 console.log('\nAll Documentation Data Integrity Tests Passed Successfully!');

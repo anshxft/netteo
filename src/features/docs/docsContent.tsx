@@ -1,143 +1,195 @@
 import React from 'react';
 import styles from './DocsContentRenderer.module.css';
-import { CONTRACT_ADDRESSES, MEZO_MAINNET_MUSD } from '@/lib/chain/config';
+import { MEZO_MAINNET_EXPLORER_URL } from '@/lib/chain/config';
+import { CANONICAL_MEZO_TOKENS } from '@/lib/chain/tokens';
+import { MEZO_PROTOCOL } from '@/lib/mezo/protocol';
+import { SAVINGS_ROUND_TRIP, SETTLED_CYCLES, V1_DEPLOYMENT, V2_DEPLOYMENT } from '@/lib/chain/deployments';
 
 export interface SectionContentProps {
   sectionId: string;
 }
 
+/* ---------------------------------------------------------------------------------------------- */
+/* Small building blocks. Every section is made of these, so the markup stays uniform.            */
+/* ---------------------------------------------------------------------------------------------- */
+
+function Block({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <div id={id} className={styles.subBlock}>
+      <h2 className={styles.subHeading}>{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+const P = ({ children }: { children: React.ReactNode }) => <p className={styles.paragraph}>{children}</p>;
+
+function Bullets({ items }: { items: React.ReactNode[] }) {
+  return (
+    <ul className={styles.bulletList}>
+      {items.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+
+function Callout({ pill, title, children }: { pill: string; title: string; children: React.ReactNode }) {
+  return (
+    <div className={styles.calloutCard}>
+      <div className={styles.calloutTitle}>
+        <span className={styles.calloutPill}>{pill}</span>
+        <span>{title}</span>
+      </div>
+      <p className={styles.calloutText}>{children}</p>
+    </div>
+  );
+}
+
+function Code({ title, lang, children }: { title: string; lang: string; children: string }) {
+  return (
+    <div className={styles.codeBlockWrapper}>
+      <div className={styles.codeHeader}>
+        <span>{title}</span>
+        <span className={styles.codeLang}>{lang}</span>
+      </div>
+      <pre className={styles.codeContent}>{children}</pre>
+    </div>
+  );
+}
+
+function Table({ head, rows }: { head: string[]; rows: React.ReactNode[][] }) {
+  return (
+    <div className={styles.tableWrapper}>
+      <table className={styles.specTable}>
+        <thead>
+          <tr>
+            {head.map((h) => (
+              <th key={h}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              {row.map((cell, j) => (
+                <td key={j}>{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Ext({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className={styles.link}>
+      {children}
+    </a>
+  );
+}
+
+const addr = (a: string) => <code>{a}</code>;
+const addressLink = (a: string, label?: string) => <Ext href={`${MEZO_MAINNET_EXPLORER_URL}/address/${a}`}>{label ?? `${a.slice(0, 8)}…${a.slice(-6)}`} ↗</Ext>;
+const txLink = (hash: string) => <Ext href={`${MEZO_MAINNET_EXPLORER_URL}/tx/${hash}`}>{`${hash.slice(0, 10)}…${hash.slice(-6)}`} ↗</Ext>;
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Getting started                                                                                */
+/* ---------------------------------------------------------------------------------------------- */
+
 export function SectionOverview() {
   return (
     <div className={styles.sectionBody}>
-      <div id="what-is-netteo" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>What is Netteo?</h2>
-        <p className={styles.paragraph}>
-          <strong>Netteo</strong> is an autonomous debt clearing protocol and multilateral obligation netting engine
-          engineered for the <strong>Mezo Mainnet (Chain ID 31612)</strong>.
-          It solves circular and reciprocal payment debts among decentralized collectives, agency pods, and DAO working groups
-          by calculating mathematically deterministic zero-sum net settlement positions and executing them atomically in{' '}
-          <strong>MUSD</strong>.
-        </p>
-        <p className={styles.paragraph}>
-          Instead of requiring every contributor, vendor, or project partner to fund, sign, and execute dozens of independent
-          invoices back-and-forth, Netteo records approved bilateral claims, simplifies the debt graph into a single net debtor
-          and net creditor vector, locks net debtor funds in a settlement contract with no admin keys, and distributes funds atomically in one click.
-        </p>
+      <Block id="what-is-netteo" title="What is Netteo?">
+        <P>
+          <strong>Netteo</strong> helps a group settle what its members owe each other. People record payment claims, each debtor approves
+          the claims against them with a wallet signature, and Netteo cancels the circular parts. Only the <em>net</em> amounts are
+          deposited, and the contract pays the creditors in one transaction. It runs on <strong>Mezo Mainnet (chain ID 31612)</strong> and
+          settles in <strong>MUSD</strong> (and mUSDC or mUSDT).
+        </P>
+        <P>
+          It is built for people who live off Bitcoin on Mezo. A debtor who is short on MUSD can cover their deposit from the MUSD Savings Vault
+          or by borrowing against Bitcoin they have already locked in a Mezo loan, instead of selling it. Someone who is paid out can put the MUSD
+          straight into the Savings Vault.
+        </P>
+        <Callout pill="Core idea" title="Net first, then fund the rest">
+          Cancelling debts before anyone pays means less MUSD has to be found, so less has to be sold or borrowed.
+        </Callout>
+      </Block>
 
-        <div className={styles.calloutCard}>
-          <div className={styles.calloutTitle}>
-            <span className={styles.calloutPill}>Core Tenet</span>
-            <span>Agreement Before Arithmetic</span>
-          </div>
-          <p className={styles.calloutText}>
-            Netting is a settlement optimization, not a unilateral deduction. A payment claim in Netteo cannot enter a settlement
-            cycle or modify a debtor&apos;s net position until the debtor has explicitly reviewed and accepted it. Disputed or unacknowledged
-            claims are excluded from the cycle, never silently netted.
-          </p>
-        </div>
-      </div>
-
-      <div id="product-promise" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Product Promise: Many Obligations, One Net Settlement</h2>
-        <p className={styles.paragraph}>
-          Web3 service collectives incur high operational friction: shared infrastructure hosting, designer milestones, developer reimbursements,
-          and grant distributions. Settling each invoice independently creates:
-        </p>
-        <ul className={styles.bulletList}>
-          <li>
-            <strong>Severe Capital Lockup:</strong> Capital must be deposited and transferred multiple times even when mutual debts offset.
-          </li>
-          <li>
-            <strong>Avoidable Transaction Overhead:</strong> Excessive network gas fees and repetitive wallet signature requests.
-          </li>
-          <li>
-            <strong>Reconciliation Chaos:</strong> Fragmented transaction records spread across separate wallets and off-chain spreadsheets.
-          </li>
-        </ul>
-        <p className={styles.paragraph}>
-          Netteo collapses this complexity into a single verifiable on-chain settlement. In the three-party example, $200 of claims
-          needs only $80 of deposits. How much a real group saves depends on how circular its debts are, and it is not a guaranteed fee saving.
-        </p>
-      </div>
-
-      <div id="the-problem" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>The Reciprocal Debt Problem in Web3</h2>
-        <p className={styles.paragraph}>
-          Consider a typical three-way working group scenario:
-        </p>
+      <Block id="the-problem" title="The problem: circular debts">
+        <P>A working group often owes itself money in loops. Paying every claim on its own means every debtor must find the full amount first.</P>
         <div className={styles.comparisonGrid}>
           <div className={styles.comparisonCard}>
-            <div className={styles.comparisonHeader}>Traditional Gross Settlement</div>
+            <div className={styles.comparisonHeader}>Paying each claim separately</div>
             <ul className={styles.cardList}>
-              <li>Contributor A pays Contributor B: <strong>100 MUSD</strong></li>
-              <li>Contributor B pays Contributor C: <strong>80 MUSD</strong></li>
-              <li>Contributor C pays Contributor A: <strong>20 MUSD</strong></li>
-              <li className={styles.highlightRow}>Total Capital Required: <strong>200 MUSD</strong></li>
-              <li className={styles.highlightRow}>Total Transfers Required: <strong>3 Transactions</strong></li>
+              <li>A pays B: <strong>100 MUSD</strong></li>
+              <li>B pays C: <strong>80 MUSD</strong></li>
+              <li>C pays A: <strong>20 MUSD</strong></li>
+              <li className={styles.highlightRow}>Money to find up front: <strong>200 MUSD</strong></li>
+              <li className={styles.highlightRow}>Transfers: <strong>3</strong></li>
             </ul>
           </div>
           <div className={`${styles.comparisonCard} ${styles.comparisonCardActive}`}>
-            <div className={styles.comparisonHeader}>Netteo Multilateral Netting</div>
+            <div className={styles.comparisonHeader}>Netted by Netteo</div>
             <ul className={styles.cardList}>
-              <li>Contributor A pays: <strong>80 MUSD net</strong></li>
-              <li>Contributor B receives: <strong>20 MUSD net</strong></li>
-              <li>Contributor C receives: <strong>60 MUSD net</strong></li>
-              <li className={styles.highlightSuccess}>Total Capital Required: <strong>80 MUSD (60% Savings)</strong></li>
-              <li className={styles.highlightSuccess}>Total Transfers Required: <strong>1 Atomic Settlement</strong></li>
+              <li>A deposits: <strong>80 MUSD</strong></li>
+              <li>B receives: <strong>20 MUSD</strong></li>
+              <li>C receives: <strong>60 MUSD</strong></li>
+              <li className={styles.highlightSuccess}>Money to find up front: <strong>80 MUSD</strong></li>
+              <li className={styles.highlightSuccess}>One deposit, one payout transaction</li>
             </ul>
           </div>
         </div>
-      </div>
+      </Block>
 
-      <div id="target-users" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Who is Netteo For?</h2>
+      <Block id="how-it-works" title="How it works">
+        <Table
+          head={['Step', 'What happens', 'Where it lives']}
+          rows={[
+            ['1. Claim', 'Someone records that a member owes another member an amount.', 'Private database'],
+            ['2. Approve', 'The debtor approves or disputes it by signing with their wallet. Disputed claims are never netted.', 'Private database'],
+            ['3. Net', 'The group picks approved claims in one token. Netteo previews each person’s net position.', 'Browser, deterministic'],
+            ['4. Create', 'The cycle is created on-chain with the net amounts. The server checks it matches the approved claims before deposits are allowed.', 'SettlementKernel'],
+            ['5. Fund', 'Each debtor deposits their net amount from their wallet, the Savings Vault, or a loan against Bitcoin.', 'SettlementKernel'],
+            ['6. Pay out', 'Once fully funded, anyone can trigger the payout. Creditors can then save their MUSD in the Savings Vault.', 'SettlementKernel'],
+          ]}
+        />
+      </Block>
+
+      <Block id="target-users" title="Who it is for">
         <div className={styles.userGrid}>
           <div className={styles.userCard}>
-            <div className={styles.userRole}>DAO Working Groups & Collectives</div>
-            <p className={styles.userDesc}>
-              SubDAOs and workstreams with continuous reciprocal reimbursements for tools, audits, bounties, and contributors.
-            </p>
+            <div className={styles.userRole}>DAO working groups</div>
+            <p className={styles.userDesc}>Workstreams that reimburse each other for tools, audits and contributors.</p>
           </div>
           <div className={styles.userCard}>
-            <div className={styles.userRole}>Web3 Agency & Freelance Pods</div>
-            <p className={styles.userDesc}>
-              Ad-hoc teams collaborating on client deliverables where developers, copywriters, and designers share infrastructure costs.
-            </p>
+            <div className={styles.userRole}>Small teams and agencies</div>
+            <p className={styles.userDesc}>Collaborators who share costs on client work and settle in MUSD.</p>
           </div>
           <div className={styles.userCard}>
-            <div className={styles.userRole}>Cross-Project Venture Syndicates</div>
-            <p className={styles.userDesc}>
-              Co-investors and ecosystem builders sharing legal expenses, event costs, and co-sponsorship pools on Mezo.
-            </p>
+            <div className={styles.userRole}>Mezo ecosystem builders</div>
+            <p className={styles.userDesc}>Teams who hold Bitcoin on Mezo and want to pay each other without selling it.</p>
           </div>
         </div>
-      </div>
+        <P>These are the intended users. Netteo has not yet been tested with real groups, so treat them as a hypothesis.</P>
+      </Block>
 
-      <div id="core-pillars" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>The Four Pillars of Autonomous Netting</h2>
-        <div className={styles.pillarsGrid}>
-          <div className={styles.pillarItem}>
-            <div className={styles.pillarNumber}>01</div>
-            <div className={styles.pillarTitle}>Mathematical Solvency</div>
-            <div className={styles.pillarText}>Strict zero-sum check: total net debits must precisely equal total net credits ($\sum b_i = 0$).</div>
-          </div>
-          <div className={styles.pillarItem}>
-            <div className={styles.pillarNumber}>02</div>
-            <div className={styles.pillarTitle}>Escrow With No Admin Keys</div>
-            <div className={styles.pillarText}>Funds are held directly in the SettlementKernel contract, which has no owner, admin or pause function. No relayer ever holds them.</div>
-          </div>
-          <div className={styles.pillarItem}>
-            <div className={styles.pillarNumber}>03</div>
-            <div className={styles.pillarTitle}>Gross Audit Trail</div>
-            <div className={styles.pillarText}>Original claims stay on record after netting, and each cycle stores a hash of its claim set on-chain.</div>
-          </div>
-          <div className={styles.pillarItem}>
-            <div className={styles.pillarNumber}>04</div>
-            <div className={styles.pillarTitle}>Mezo Native Settlement</div>
-            <div className={styles.pillarText}>Settlement executes in canonical Mezo MUSD with Bitcoin-secured finality and deterministic gas bounds.</div>
-          </div>
-        </div>
-      </div>
+      <Block id="honest-status" title="What is real, and what is not">
+        <Table
+          head={['Area', 'Status']}
+          rows={[
+            ['Settlement on Mezo Mainnet', <>Live. Two real MUSD cycles have completed (see <em>Mainnet Evidence</em>).</>],
+            ['MUSD Savings Vault', 'Live. A real approve, deposit and withdraw were run on mainnet.'],
+            ['Borrowing against Bitcoin', 'Built and tested against real mainnet contract state on a fork. Not executed on mainnet by the team, because a new Mezo loan needs at least 1,800 MUSD of debt.'],
+            ['Smart-contract audit', 'Not independently audited.'],
+            ['MEZO token and Mezo Passport', 'Not integrated.'],
+            ['Demo mode', 'Sample data stored in your browser only. Nothing in it is on-chain.'],
+          ]}
+        />
+      </Block>
     </div>
   );
 }
@@ -145,56 +197,46 @@ export function SectionOverview() {
 export function SectionTheMath() {
   return (
     <div className={styles.sectionBody}>
-      <div id="canonical-example" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Canonical 3-Party Example (60% Volume Reduction)</h2>
-        <p className={styles.paragraph}>
-          The foundation of multilateral netting is matrix simplification of reciprocal debts.
-          Given three parties $A$, $B$, and $C$, their gross obligations form a directed graph $G = (V, E)$:
-        </p>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>GRAPH DEBT REDUCTION EQUATION</span>
-            <span className={styles.codeLang}>MATH</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`Gross Obligations:
-  A → B : 100 MUSD
-  B → C :  80 MUSD
-  C → A :  20 MUSD
-  Gross Volume = 100 + 80 + 20 = 200 MUSD
+      <Block id="net-position" title="Net position">
+        <P>For each person, the net position is what they are owed minus what they owe, across the approved claims in the cycle. All amounts are whole numbers in the token&apos;s smallest unit, never floating point.</P>
+        <Code title="NET POSITION" lang="MATH">
+{`net[p] = (sum of claims owed to p) - (sum of claims p owes)
 
-Net Balance Calculation (Credits Received - Debits Owed):
-  Net(A) = (+20) - 100 = -80 MUSD (Net Debtor owes 80)
-  Net(B) = (+100) - 80 = +20 MUSD (Net Creditor receives 20)
-  Net(C) = (+80) - 20  = +60 MUSD (Net Creditor receives 60)
+net[p] < 0   p is a net debtor and deposits |net[p]|
+net[p] > 0   p is a net creditor and receives net[p]
+net[p] = 0   p neither deposits nor receives
 
-Zero-Sum Invariant Check:
-  Σ Net = (-80) + (+20) + (+60) = 0 MUSD [STRICT BALANCE VALIDATED]
+The net positions always sum to zero.`}
+        </Code>
+      </Block>
 
-Settlement Execution:
-  A deposits 80 MUSD into SettlementKernel
-  Kernel distributes 20 MUSD to B and 60 MUSD to C
-  Net Settlement Volume = 80 MUSD (60.0% reduction in capital lockup)`}
-          </pre>
-        </div>
-      </div>
+      <Block id="canonical-example" title="Worked example: $200 becomes $80">
+        <Code title="THREE-PARTY CYCLE" lang="EXAMPLE">
+{`Approved claims
+  A owes B  100
+  B owes C   80
+  C owes A   20            gross = 200
 
-      <div id="graph-reduction" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Graph Reduction & Circular Debt Resolution</h2>
-        <p className={styles.paragraph}>
-          When obligations form a closed circle (e.g. $A \to B \to C \to D \to A$ with equal amounts of 50 MUSD),
-          the netting solver calculates net positions of exactly <strong>0 MUSD for all participants</strong>.
-          The debt is reconciled and closed on-chain without moving a single wei of token balance.
-        </p>
-      </div>
+Net positions
+  A:  +20 - 100 = -80      deposits 80
+  B: +100 -  80 = +20      receives 20
+  C:  +80 -  20 = +60      receives 60
+                    sum = 0
 
-      <div id="capital-efficiency" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Capital Efficiency & Gas Conservation</h2>
-        <p className={styles.paragraph}>
-          In groups with dense interaction, the net-to-gross ratio routinely drops below 25%, meaning participants need
-          only 1/4th of the capital they would otherwise need to maintain in active wallets.
-        </p>
-      </div>
+Result: 80 is deposited (not 200). The kernel pays B 20 and C 60.`}
+        </Code>
+        <P>The real MUSD cycles in <em>Mainnet Evidence</em> use this same shape at a smaller scale.</P>
+      </Block>
+
+      <Block id="what-it-does-not-claim" title="What netting does not promise">
+        <Bullets
+          items={[
+            <>The saving depends on how circular the group&apos;s debts are. A group with no loops saves nothing.</>,
+            <>It reduces how much must be <em>deposited</em>. It is not a guaranteed saving in fees.</>,
+            <>Netteo uses a deterministic way to allocate debtors to creditors. It does not claim the smallest possible number of transfers.</>,
+          ]}
+        />
+      </Block>
     </div>
   );
 }
@@ -202,156 +244,120 @@ Settlement Execution:
 export function SectionQuickstart() {
   return (
     <div className={styles.sectionBody}>
-      <div id="prerequisites" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>System Prerequisites</h2>
-        <p className={styles.paragraph}>Ensure your workstation has the following toolchains installed:</p>
-        <ul className={styles.bulletList}>
-          <li><strong>Node.js:</strong> Version &gt;= 20.x LTS</li>
-          <li><strong>Foundry:</strong> <code>forge</code> and <code>cast</code> installed for contract compilation</li>
-          <li><strong>Web3 Wallet:</strong> EVM wallet configured with Mezo Mainnet (Chain ID 31612)</li>
-        </ul>
-      </div>
+      <Block id="prerequisites" title="Prerequisites">
+        <Bullets
+          items={[
+            <>Node.js 22 and npm</>,
+            <>Foundry (<code>forge</code>, <code>cast</code>, <code>anvil</code>) for the contracts and the fork tests</>,
+            <>A Supabase project for the private claim ledger (the free plan works)</>,
+          ]}
+        />
+      </Block>
 
-      <div id="clone-install" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Clone & Dependency Installation</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>BASH TERMINAL</span>
-            <span className={styles.codeLang}>SHELL</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`# 1. Clone the repository
-git clone https://github.com/syther069/netteo.git
+      <Block id="clone-install" title="Clone and install">
+        <Code title="TERMINAL" lang="SHELL">
+{`git clone https://github.com/syther069/netteo.git
 cd netteo
+npm install
+cp .env.example .env.local`}
+        </Code>
+        <P>For a fresh Supabase project, run <code>src/lib/db/schema.sql</code> in the SQL editor. The files in <code>src/lib/db/migrations</code> are only for upgrading an older database.</P>
+      </Block>
 
-# 2. Install workspace dependencies
-npm install`}
-          </pre>
-        </div>
-      </div>
+      <Block id="env-vars" title="Environment variables">
+        <Table
+          head={['Variable', 'Purpose']}
+          rows={[
+            [<code key="a">NEXT_PUBLIC_SETTLEMENT_KERNEL_FACTORY_ADDRESS</code>, 'The factory. See Deployed Contracts for the current address.'],
+            [<code key="b">NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD / _MUSDC / _MUSDT</code>, 'One kernel per token. A token is selectable in Live mode only once its kernel is set.'],
+            [<code key="c">NEXT_PUBLIC_SETTLEMENT_KERNEL_DEPLOY_BLOCK</code>, 'Where the indexer starts reading.'],
+            [<code key="d">NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY</code>, 'Public. The anon key can only read the chain-derived projection tables.'],
+            [<code key="e">SUPABASE_SERVICE_ROLE_KEY</code>, 'Server only. The API cannot reach the private tables without it and fails closed.'],
+            [<code key="f">SESSION_SECRET</code>, 'At least 32 random characters. Signs wallet session tokens. Sign-in fails closed without it.'],
+            [<code key="g">INDEXER_CRON_SECRET</code>, 'Optional. Protects /api/indexer for an external scheduler.'],
+            [<code key="h">NEXT_PUBLIC_MEZO_MAINNET_RPC_URL</code>, 'Optional. A dedicated RPC. Other providers are used automatically as fallbacks.'],
+          ]}
+        />
+        <P>The deploy key is never an environment variable here. Contract deployment uses Foundry&apos;s encrypted keystore (see the repository README).</P>
+      </Block>
 
-      <div id="env-vars" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Environment Configuration</h2>
-        <p className={styles.paragraph}>
-          Copy the example environment configuration into <code>.env.local</code>:
-        </p>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>.env.local</span>
-            <span className={styles.codeLang}>ENV</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`# Mezo Mainnet Chain Parameters
-NEXT_PUBLIC_CHAIN_ID=31612
-NEXT_PUBLIC_MEZO_MAINNET_RPC_URL="https://mezo-mainnet.boar.network"
-NEXT_PUBLIC_MEZO_MAINNET_EXPLORER_URL="https://explorer.mezo.org"
+      <Block id="local-dev" title="Run the app">
+        <Code title="TERMINAL" lang="SHELL">
+{`npm run dev        # http://localhost:3000
+npm run build      # production build`}
+        </Code>
+      </Block>
 
-# One SettlementKernel per token, created by script/Deploy.s.sol. 0x000...0 means not deployed.
-# Tokens are not configured here: Netteo settles only in its verified Mezo registry (MUSD, mUSDC, mUSDT).
-NEXT_PUBLIC_SETTLEMENT_KERNEL_FACTORY_ADDRESS="0x0000000000000000000000000000000000000000"
-NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD="0x0000000000000000000000000000000000000000"
-NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSDC="0x0000000000000000000000000000000000000000"
-NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSDT="0x0000000000000000000000000000000000000000"
+      <Block id="running-tests" title="Run the tests">
+        <Code title="TERMINAL" lang="SHELL">
+{`npx tsc --noEmit   # typecheck
+npm test           # TypeScript tests (some read live from Mezo Mainnet)
+forge test         # Solidity tests
 
-# Supabase Realtime & Persistence
-NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"`}
-          </pre>
-        </div>
-      </div>
+# Skip the live-chain reads, for example offline:
+SKIP_CHAIN_PROBE=1 npm test
 
-      <div id="local-dev" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Running Locally (App Router)</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>START DEV SERVER</span>
-            <span className={styles.codeLang}>SHELL</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`npm run dev
-
-# Open http://localhost:3000 to access the workspace desk.`}
-          </pre>
-        </div>
-      </div>
-
-      <div id="running-tests" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Running Automated Test Suites</h2>
-        <p className={styles.paragraph}>Netteo includes comprehensive mathematical and invariant test suites:</p>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>EXECUTE TESTS</span>
-            <span className={styles.codeLang}>SHELL</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`# Run full netting and unit test suite
-npm test
-
-# Run TypeScript compilation and strict type check
-npm run typecheck`}
-          </pre>
-        </div>
-      </div>
+# Run the Mezo borrowing and savings test on a free local fork of mainnet:
+anvil --fork-url https://mezo-mainnet.boar.network --port 8547
+MEZO_MAINNET_FORK_URL=http://127.0.0.1:8547 npx tsx src/lib/mezo/fork.test.ts`}
+        </Code>
+        <P>
+          Two tests read the live chain and fail if the documentation drifts from reality: <code>deployments.test.ts</code> checks every address, token binding,
+          cycle amount and transaction listed in these docs, and <code>protocol.test.ts</code> checks the Mezo contracts Netteo depends on.
+        </P>
+      </Block>
     </div>
   );
 }
 
+/* ---------------------------------------------------------------------------------------------- */
+/* Architecture & security                                                                        */
+/* ---------------------------------------------------------------------------------------------- */
+
 export function SectionSystemArchitecture() {
   return (
     <div className={styles.sectionBody}>
-      <div id="three-layer-model" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>The 3-Layer System Model</h2>
-        <p className={styles.paragraph}>
-          Netteo is architected into three distinct layers to ensure separation of concerns, high throughput, and strict security:
-        </p>
+      <Block id="boundary" title="One boundary: who owns what">
+        <Callout pill="Principle" title="The contract owns money. The app owns the workflow.">
+          Only the SettlementKernel can move funds. The database and indexer explain and index what the chain did, and can never authorise a transfer.
+        </Callout>
+        <Table
+          head={['Kind of truth', 'Owner', 'Examples']}
+          rows={[
+            ['Claims', 'Private database, behind the API', 'Who owes whom, approval signatures, group membership'],
+            ['Settlement', 'SettlementKernel (on-chain)', 'Net amounts, deposits, payouts, refunds, cycle state'],
+            ['Presentation', 'Indexed projections', 'Cycle lists, funding progress, receipts'],
+          ]}
+        />
+      </Block>
 
-        <div className={styles.architectureFlow}>
-          <div className={styles.archBox}>
-            <div className={styles.archHeader}>1. Client Web3 Desk Layer</div>
-            <div className={styles.archDesc}>
-              Next.js 16 App Router, React 19, Viem 2.x, Wagmi 3.x, TanStack Query, Roundo typography, and the signature Warm Minimal fintech design tokens.
-            </div>
-          </div>
-          <div className={styles.archArrow}>↓ Hash commitments & wallet-signed actions</div>
-          <div className={styles.archBox}>
-            <div className={styles.archHeader}>2. State & Audit Projection Layer</div>
-            <div className={styles.archDesc}>
-              Supabase PostgreSQL with Row Level Security (RLS) policies, an idempotent event projection indexer, and a keccak256 snapshot commitment calculator.
-            </div>
-          </div>
-          <div className={styles.archArrow}>↓ Atomic On-Chain Settlement Payouts</div>
-          <div className={styles.archBox}>
-            <div className={styles.archHeader}>3. Smart Contract Settlement Layer</div>
-            <div className={styles.archDesc}>
-              Solidity 0.8.24 (via_ir = true), OpenZeppelin Contracts v5 (SafeERC20, ReentrancyGuard), targeting Mezo Mainnet (Chain ID 31612). The mainnet kernel must be deployed before live settlements are enabled.
-            </div>
-          </div>
-        </div>
-      </div>
+      <Block id="components" title="Components">
+        <Table
+          head={['Component', 'What it does']}
+          rows={[
+            [<strong key="1">Browser app</strong>, 'Next.js with wagmi and viem. Signs messages and sends transactions from the user’s own wallet. Reads Mezo directly for loans and savings.'],
+            [<strong key="2">API routes</strong>, 'Every private read and write goes through /api. Requires a signed wallet session; each action carries its own signature; rate limited.'],
+            [<strong key="3">Supabase</strong>, 'Postgres. The private tables have row-level security on and no public policy, so only the API (service role) can touch them.'],
+            [<strong key="4">Indexer</strong>, 'Reads kernel events into projection tables, one cursor per kernel. It runs when cycles are loaded and via a protected /api/indexer endpoint.'],
+            [<strong key="5">SettlementKernelFactory</strong>, 'Creates one kernel per token and keeps a registry, so a cycle in one token can never touch another token’s funds.'],
+            [<strong key="6">SettlementKernel</strong>, 'The settlement contract. No owner, no admin, no pause.'],
+            [<strong key="7">RPC fallback</strong>, 'Three Mezo providers are tried in turn, so one provider outage does not take the app down.'],
+          ]}
+        />
+      </Block>
 
-      <div id="client-layer" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Client Web3 Workspace (Viem & Wagmi)</h2>
-        <p className={styles.paragraph}>
-          The client provides dual modes: a <strong>Live Mezo Mainnet Mode</strong> for executing transactions with real MUSD
-          and a <strong>Demo Sandbox Mode</strong> for instant exploration without requiring a wallet connection.
-        </p>
-      </div>
-
-      <div id="indexer-layer" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>State & Event Projection Indexer</h2>
-        <p className={styles.paragraph}>
-          A deterministic indexer listens to Mezo Mainnet block events (<code>CycleCreated</code>, <code>DepositReceived</code>, <code>SettlementExecuted</code>),
-          maintaining clean materialized query tables with complete historical auditability.
-        </p>
-      </div>
-
-      <div id="settlement-kernel" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>SettlementKernel Smart Contract</h2>
-        <p className={styles.paragraph}>
-          The settlement core is a Solidity smart contract (not independently audited) that enforces the collect-then-distribute invariant:
-          funds are locked until 100% of required net deposits arrive, after which payouts become permissionless and atomic.
-        </p>
-      </div>
+      <Block id="data-flow" title="A settlement end to end">
+        <Code title="SEQUENCE" lang="FLOW">
+{`Debtor wallet  --sign claim approval-->  API  -->  Supabase (private)
+Creator wallet --createCycle(net amounts)-->  SettlementKernel
+Creator wallet --register cycle-->  API   (recomputes the netting from the approved claims,
+                                           compares it with the on-chain cycle, and only then
+                                           marks it "registered")
+Debtor wallets --approve + deposit-->  SettlementKernel   (blocked in the app until registered)
+Anyone         --executeSettlement-->  SettlementKernel  --MUSD-->  creditors
+Indexer        <--events--  SettlementKernel  -->  projection tables  -->  receipts`}
+        </Code>
+      </Block>
     </div>
   );
 }
@@ -359,82 +365,42 @@ export function SectionSystemArchitecture() {
 export function SectionStateMachine() {
   return (
     <div className={styles.sectionBody}>
-      <div id="lifecycle-states" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>CycleState Enumeration</h2>
-        <p className={styles.paragraph}>
-          Every settlement cycle exists in exactly one authoritative on-chain state:
-        </p>
-        <div className={styles.tableWrapper}>
-          <table className={styles.specTable}>
-            <thead>
-              <tr>
-                <th>State</th>
-                <th>Enum Value</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>NonExistent</code></td>
-                <td>0</td>
-                <td>Cycle has not been registered on-chain.</td>
-              </tr>
-              <tr>
-                <td><code>Funding</code></td>
-                <td>1</td>
-                <td>Cycle created; net debtors can deposit their required MUSD allocations.</td>
-              </tr>
-              <tr>
-                <td><code>ReadyToSettle</code></td>
-                <td>2</td>
-                <td>100% of required net debtor funds have been deposited into escrow.</td>
-              </tr>
-              <tr>
-                <td><code>Completed</code></td>
-                <td>3</td>
-                <td>Settlement executed; all net creditors have received their payouts. Terminal state.</td>
-              </tr>
-              <tr>
-                <td><code>Expired</code></td>
-                <td>4</td>
-                <td>Funding deadline elapsed before 100% funding was achieved.</td>
-              </tr>
-              <tr>
-                <td><code>Refunded</code></td>
-                <td>5</td>
-                <td>Depositors have claimed their 100% principal refunds. Terminal state.</td>
-              </tr>
-              <tr>
-                <td><code>Cancelled</code></td>
-                <td>6</td>
-                <td>Cycle cancelled before any funds were deposited.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Block id="lifecycle-states" title="States">
+        <Table
+          head={['State', 'Meaning']}
+          rows={[
+            [<code key="1">Funding</code>, 'Created and waiting for every net debtor to deposit.'],
+            [<code key="2">ReadyToSettle</code>, 'Fully funded. Anyone may execute the payout.'],
+            [<code key="3">Completed</code>, 'Paid out. Terminal.'],
+            [<code key="4">Expired</code>, 'Not completed in time. Depositors can reclaim their deposits.'],
+            [<code key="5">Refunded</code>, 'Every deposit has been reclaimed. Terminal.'],
+            [<code key="6">Cancelled</code>, 'Cancelled by the creator before full funding. Depositors can reclaim.'],
+          ]}
+        />
+      </Block>
 
-      <div id="state-transitions" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Deterministic State Transitions</h2>
-        <p className={styles.paragraph}>
-          Transitions are strictly enforced by SettlementKernel methods:
-        </p>
-        <ul className={styles.bulletList}>
-          <li><code>createCycle()</code>: transitions from <code>NonExistent</code> to <code>Funding</code>.</li>
-          <li><code>deposit()</code>: updates funded totals; triggers transition to <code>ReadyToSettle</code> when 100% funded.</li>
-          <li><code>executeSettlement()</code>: distributes tokens to all creditors; transitions to <code>Completed</code>.</li>
-          <li><code>claimRefund()</code>: callable if <code>block.timestamp &gt; fundingDeadline</code> without full funding.</li>
-        </ul>
-      </div>
+      <Block id="state-transitions" title="Transitions">
+        <Code title="CYCLE LIFECYCLE" lang="FLOW">
+{`createCycle        -> Funding
+Funding            -> ReadyToSettle   when the last debtor deposits
+ReadyToSettle      -> Completed       executeSettlement (anyone)
+Funding            -> Cancelled       cancelCycle (creator only, before full funding)
+Funding            -> Expired         first claimRefund after the funding deadline
+ReadyToSettle      -> Expired         first claimRefund after deadline + 3 days
+Expired/Cancelled  -> Refunded        when the last deposit is reclaimed`}
+        </Code>
+        <P>Once a cycle starts refunding it can never pay out, and a completed cycle can never refund.</P>
+      </Block>
 
-      <div id="deadlines-and-timeouts" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Funding Deadlines & Expiry Enforcements</h2>
-        <p className={styles.paragraph}>
-          Cycles configure a funding window between <strong>1 hour</strong> and <strong>30 days</strong> (default: 72 hours).
-          If a single net debtor fails to deposit before the deadline, no creditor funds are locked indefinitely: every depositor
-          can immediately reclaim their funds in full.
-        </p>
-      </div>
+      <Block id="deadlines-and-timeouts" title="Deadlines, grace period and refunds">
+        <Bullets
+          items={[
+            <>The funding window is chosen at creation, from 1 hour to 30 days. The app uses <strong>72 hours</strong>.</>,
+            <>Refunds are not automatic. After the deadline, each depositor calls <code>claimRefund</code> and gets back exactly what they deposited.</>,
+            <>A fully funded cycle that cannot pay out (for example, a token blocks one creditor) is not locked forever: after the deadline plus a <strong>3 day grace period</strong>, deposits can be reclaimed.</>,
+          ]}
+        />
+      </Block>
     </div>
   );
 }
@@ -442,61 +408,33 @@ export function SectionStateMachine() {
 export function SectionProtocolInvariants() {
   return (
     <div className={styles.sectionBody}>
-      <div id="invariant-1-zero-sum" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>1. Zero-Sum Balance (Σ net = 0)</h2>
-        <p className={styles.paragraph}>
-          The contract verifies that total net debits equal total net credits down to the single wei before storing the cycle.
-          If total debits do not equal total credits (Σ debits ≠ Σ credits), the transaction reverts with <code>DebitCreditMismatch</code>.
-        </p>
-      </div>
+      <Block id="guarantees" title="Guarantees and how they are tested">
+        <Table
+          head={['Guarantee', 'How it is enforced and tested']}
+          rows={[
+            ['Net debits equal net credits', 'createCycle reverts with ImbalancedNetPositions otherwise.'],
+            ['Collect, then distribute', 'executeSettlement requires the cycle to be exactly ReadyToSettle.'],
+            ['Pay out or refund, never both', 'Once refunds start the state leaves ReadyToSettle, so a payout reverts. A dedicated test covers it.'],
+            ['No payout from another cycle’s deposits', 'The strict ReadyToSettle guard replaced an older check that allowed it. A test with a second funded cycle fails if the old guard returns.'],
+            ['Exact deposits only', 'A deposit must raise the kernel’s balance by exactly the amount booked, so fee-on-transfer tokens revert (UnexpectedTransferAmount).'],
+            ['No cycle-id squatting', 'The stored id is keccak256(creator, salt), so nobody can pre-create an id another wallet will use.'],
+            ['Bounded gas', 'At most 10 participants per cycle.'],
+            ['No admin powers', 'The contract has no owner, admin or pause function. There is no way for anyone to take deposited funds except through settlement or refund.'],
+            ['Reentrancy safety', 'ReentrancyGuard plus state changes before token transfers.'],
+          ]}
+        />
+        <P>The Solidity suite includes mutation checks: reverting a fix makes a test fail. The same kernel was also run against the real MUSD, mUSDC and mUSDT contracts on a fork of mainnet.</P>
+      </Block>
 
-      <div id="invariant-2-agreement" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>2. Agreement Before Arithmetic</h2>
-        <p className={styles.paragraph}>
-          An obligation must have debtor acknowledgment before becoming eligible for netting. Disputed claims are excluded
-          from calculation, preventing malicious unilateral deductions.
-        </p>
-      </div>
-
-      <div id="invariant-3-gross-preservation" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>3. Preservation of Gross Obligations</h2>
-        <p className={styles.paragraph}>
-          Netting is a settlement mechanism, not an eraser of historical records. The gross obligations remain preserved in the audit
-          ledger, cryptographically linked to the on-chain cycle via the <code>snapshotCommitment</code> hash.
-        </p>
-      </div>
-
-      <div id="invariant-4-collect-distribute" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>4. Collect-Then-Distribute Enforcement</h2>
-        <p className={styles.paragraph}>
-          No payouts can occur until 100% of required net deposits have been collected. There is no partial payout state where
-          some creditors are paid while others are left stranded.
-        </p>
-      </div>
-
-      <div id="invariant-5-mutual-refund" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>5. Mutual-Exclusion Refund Guarantee</h2>
-        <p className={styles.paragraph}>
-          If the cycle deadline passes without 100% funding, depositors call <code>claimRefund(cycleId)</code> to withdraw their exact
-          deposited amount. No admin intervention is required.
-        </p>
-      </div>
-
-      <div id="invariant-6-bounded-gas" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>6. Bounded Gas Execution (Max 10 Participants)</h2>
-        <p className={styles.paragraph}>
-          Cycles enforce a maximum of 10 participants (<code>MAX_PARTICIPANTS = 10</code>) to guarantee that the distribution loop
-          executes within standard EVM block gas limits on Mezo without risk of running out of gas.
-        </p>
-      </div>
-
-      <div id="invariant-7-reentrancy-safety" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>7. Checks-Effects-Interactions & Non-Custodial Safety</h2>
-        <p className={styles.paragraph}>
-          SettlementKernel uses OpenZeppelin&apos;s <code>ReentrancyGuard</code> and strictly mutates internal state prior to executing external
-          ERC-20 token transfers, ensuring non-custodial and secure execution.
-        </p>
-      </div>
+      <Block id="not-guaranteed" title="What the contract does not guarantee">
+        <Bullets
+          items={[
+            <>It does not know the underlying claims. <code>createCycle</code> is open to anyone, so a cycle on-chain proves nothing about who agreed to it. That is why the app verifies a cycle against the approved claims before it allows deposits (see Snapshot Commitments).</>,
+            <>It does not verify the snapshot commitment against the claims; it stores it.</>,
+            <>It has not been independently audited.</>,
+          ]}
+        />
+      </Block>
     </div>
   );
 }
@@ -504,310 +442,424 @@ export function SectionProtocolInvariants() {
 export function SectionSnapshotCommitments() {
   return (
     <div className={styles.sectionBody}>
-      <div id="snapshot-hash" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Canonical Snapshot Commitment Hash</h2>
-        <p className={styles.paragraph}>
-          Every cycle calculates an immutable cryptographic fingerprint of the underlying obligation set.
-          This commitment is stored directly on Mezo in <code>CycleStorage.snapshotCommitment</code>.
-        </p>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>TYPESCRIPT / VIEM COMMITMENT HASH</span>
-            <span className={styles.codeLang}>TS</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`import { encodeAbiParameters, keccak256 } from 'viem';
+      <Block id="snapshot-hash" title="What the hash covers">
+        <P>Each cycle stores a keccak256 hash of its claim set on-chain. It is built from three sorted lists, so the order claims were added in cannot change it.</P>
+        <Code title="COMMITMENT" lang="KECCAK256">
+{`obligationsHash = keccak256( sorted "id:debtor:creditor:amount" entries )
+positionsHash   = keccak256( "address:grossPayable:grossReceivable:net" per participant, sorted )
+allocationsHash = keccak256( sorted "from:to:amount" entries )
 
-export function calculateSnapshotCommitment(
-  chainId: number,
-  tokenAddress: string,
-  obligations: { id: string; debtor: string; creditor: string; amount: bigint }[]
-): \`0x\${string}\` {
-  // Sort canonically by obligation ID
-  const sorted = [...obligations].sort((a, b) => a.id.localeCompare(b.id));
+commitment = keccak256( abi.encode(
+  chainId, tokenAddress, algorithmVersion,
+  obligationsHash, positionsHash, allocationsHash ) )
 
-  // Encode with chain ID and settlement token address sensitivity
-  const encoded = encodeAbiParameters(
-    [
-      { type: 'uint256' },
-      { type: 'address' },
-      {
-        type: 'tuple[]',
-        components: [
-          { name: 'id', type: 'bytes32' },
-          { name: 'debtor', type: 'address' },
-          { name: 'creditor', type: 'address' },
-          { name: 'amount', type: 'uint256' },
-        ],
-      },
-    ],
-    [BigInt(chainId), tokenAddress as \`0x\${string}\`, sorted]
-  );
+algorithmVersion = "netteo-v1.0-deterministic"`}
+        </Code>
+        <P>Because the chain ID and token are inside the hash, the same claims in a different token, or on a different chain, produce a different commitment. The tests check order independence and sensitivity to amounts, token and chain.</P>
+      </Block>
 
-  return keccak256(encoded);
-}`}
-          </pre>
-        </div>
-      </div>
-
-      <div id="order-independence" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Canonical Sorting & Order Independence</h2>
-        <p className={styles.paragraph}>
-          The commitment algorithm sorts obligations by their canonical ID before hashing, guaranteeing that shuffled inputs produce the
-          identical deterministic hash.
-        </p>
-      </div>
-
-      <div id="parameter-sensitivity" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Chain ID & Token Address Sensitivity</h2>
-        <p className={styles.paragraph}>
-          Cross-chain replay attacks are prevented by including the Mezo Chain ID (<code>31612</code>) and the settlement token address
-          inside the commitment domain.
-        </p>
-      </div>
+      <Block id="who-checks" title="Who checks it">
+        <Bullets
+          items={[
+            <>The <strong>contract</strong> stores the hash but does not check it.</>,
+            <>The <strong>API</strong> checks it. When the creator registers a cycle, the server recomputes the netting from the group&apos;s approved claims and requires the commitment, totals, participants and every per-wallet amount on-chain to match. The creator&apos;s wallet must also be the on-chain creator.</>,
+            <>The <strong>app</strong> keeps Deposit and Approve disabled for any cycle that is not registered, and says why.</>,
+            <>The <strong>receipt export</strong> lists every original claim next to the hash.</>,
+          ]}
+        />
+      </Block>
     </div>
   );
 }
 
+export function SectionSecurityModel() {
+  return (
+    <div className={styles.sectionBody}>
+      <Block id="sign-in" title="Sign-in and sessions">
+        <P>
+          A wallet signs a short message once (it costs no gas and moves no funds). The API verifies it and returns a session token signed with
+          <code> SESSION_SECRET</code>, valid for one hour. Reads of private data need a valid token and return only what that wallet may see.
+        </P>
+      </Block>
+
+      <Block id="signed-actions" title="Signed actions and replay protection">
+        <Bullets
+          items={[
+            <>Creating a group, proposing a claim, and approving, disputing or withdrawing one each need a fresh signature from the right wallet. The signed text includes the exact amount, token and ids, so a request cannot be altered after signing.</>,
+            <>A signature is only valid for five minutes, and each nonce can be used once. Used nonces are stored in the database, so a replay is refused even across serverless instances.</>,
+            <>Signatures are standard wallet message signatures (EIP-191, <code>personal_sign</code>), not typed-data signatures.</>,
+            <>Claim status changes follow a fixed state machine, applied atomically, so two requests cannot both succeed.</>,
+          ]}
+        />
+      </Block>
+
+      <Block id="database-access" title="Database access">
+        <Table
+          head={['Tables', 'Who can access them']}
+          rows={[
+            ['groups, group_members, obligations, cycles, cycle_obligations, consumed_nonces', 'Row-level security on and no policy for the public key. Only the API, using the service role, can read or write them.'],
+            ['cycle_projection, participant_position_projection', 'Public read (they only mirror public chain data). Written by the indexer only.'],
+            ['indexed_events, indexer_cursor', 'Service role only.'],
+          ]}
+        />
+        <P>The service-role key is never sent to the browser. If the database is unreachable the API returns an error; it never answers with an empty list that looks like real data.</P>
+      </Block>
+
+      <Block id="abuse-protection" title="Rate limiting and safe errors">
+        <Table
+          head={['Endpoint kind', 'Limit per caller']}
+          rows={[
+            ['Sign-in', '10 per minute'],
+            ['Signed writes', '30 per minute'],
+            ['Reads', '120 per minute'],
+          ]}
+        />
+        <P>Over the limit, the API answers 429 with a Retry-After header. Error messages shown to users are plain language and never include stack traces, SQL or internal paths.</P>
+      </Block>
+
+      <Block id="known-limits" title="Known limits">
+        <Bullets
+          items={[
+            <>The contracts have not been independently audited.</>,
+            <>The rate limiter keeps its counters in each server instance&apos;s memory, so the real limit is per instance. A shared store would tighten it.</>,
+            <>Approvals live in the private database and are not anchored on-chain. The server verifies a cycle against them before deposits open, but the contract itself cannot.</>,
+          ]}
+        />
+      </Block>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Mezo & MUSD                                                                                    */
+/* ---------------------------------------------------------------------------------------------- */
+
 export function SectionMezoOverview() {
   return (
     <div className={styles.sectionBody}>
-      <div id="mezo-vision" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Why Mezo for Autonomous Settlement</h2>
-        <p className={styles.paragraph}>
-          Mezo is the <strong>Bitcoin Layer 2 Economic Substrate</strong> designed specifically to expand the productive utility of Bitcoin.
-          By combining Bitcoin-anchored security with an EVM-compatible execution layer and native MUSD stablecoin settlement,
-          Mezo offers the ideal foundation for high-trust financial debt clearing.
-        </p>
-      </div>
+      <Block id="network-parameters" title="Network parameters">
+        <Table
+          head={['Parameter', 'Value']}
+          rows={[
+            ['Network', 'Mezo Mainnet'],
+            ['Chain ID', <code key="1">31612</code>],
+            ['Gas token', 'BTC (18 decimals). Gas is paid in Bitcoin, so every wallet needs a little BTC as well as MUSD.'],
+            ['Explorer', <Ext key="2" href={MEZO_MAINNET_EXPLORER_URL}>{MEZO_MAINNET_EXPLORER_URL} ↗</Ext>],
+          ]}
+        />
+      </Block>
 
-      <div id="network-parameters" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Network Parameters (Chain ID 31612)</h2>
-        <div className={styles.tableWrapper}>
-          <table className={styles.specTable}>
-            <tbody>
-              <tr>
-                <td><strong>Network Name</strong></td>
-                <td>Mezo Mainnet</td>
-              </tr>
-              <tr>
-                <td><strong>Chain ID</strong></td>
-                <td><code>31612</code> (Hex: <code>0x7B7C</code>)</td>
-              </tr>
-              <tr>
-                <td><strong>Currency Symbol</strong></td>
-                <td><code>BTC</code> (18 decimals)</td>
-              </tr>
-              <tr>
-                <td><strong>Settlement Asset</strong></td>
-                <td>Canonical Mezo MUSD (18 decimals)</td>
-              </tr>
-              <tr>
-                <td><strong>RPC Endpoint</strong></td>
-                <td><code>https://mezo-mainnet.boar.network</code></td>
-              </tr>
-              <tr>
-                <td><strong>Block Explorer</strong></td>
-                <td><a href="https://explorer.mezo.org" target="_blank" rel="noreferrer" className={styles.link}>https://explorer.mezo.org</a></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Block id="rpc-and-explorer" title="RPC providers and explorer">
+        <P>The app tries these providers in order and moves to the next if one fails:</P>
+        <Bullets
+          items={[
+            <code key="1">https://mezo-mainnet.boar.network</code>,
+            <code key="2">https://rpc_evm-mezo.imperator.co</code>,
+            <code key="3">https://mainnet.mezo.public.validationcloud.io</code>,
+          ]}
+        />
+        <P>Set <code>NEXT_PUBLIC_MEZO_MAINNET_RPC_URL</code> to put your own provider first.</P>
+      </Block>
 
-      <div id="rpc-and-explorer" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Official RPC & Block Explorer</h2>
-        <p className={styles.paragraph}>
-          Mainnet transactions and state can be monitored on the official Mezo Explorer.
-        </p>
-      </div>
+      <Block id="costs" title="What a settlement costs">
+        <P>
+          The real v2 cycle (approve, create, deposit, execute) cost <strong>0.0000008134 BTC</strong> in total gas, about five US cents at roughly $66,500 per BTC.
+          The three-transaction Savings Vault round trip cost 0.00000047 BTC. Amounts depend on the BTC price and network conditions.
+        </P>
+      </Block>
     </div>
   );
 }
 
 export function SectionMusdToken() {
+  const tokens = Object.values(CANONICAL_MEZO_TOKENS).filter((t) => ['MUSD', 'mUSDC', 'mUSDT'].includes(t.symbol));
+  const v2 = V2_DEPLOYMENT.kernels as Record<string, string>;
   return (
     <div className={styles.sectionBody}>
-      <div id="canonical-address" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Official Mezo MUSD Token Address</h2>
-        <p className={styles.paragraph}>
-          Netteo settles exclusively in the official canonical Mezo Mainnet MUSD token:
-        </p>
-        <div className={styles.contractCard}>
-          <div className={styles.contractLabel}>CANONICAL MEZO MUSD ADDRESS</div>
-          <div className={styles.contractValue}>{MEZO_MAINNET_MUSD}</div>
-          <a
-            href={`https://explorer.mezo.org/token/${MEZO_MAINNET_MUSD}`}
-            target="_blank"
-            rel="noreferrer"
-            className={styles.explorerButton}
-          >
-            View Token on Mezo Explorer ↗
-          </a>
-        </div>
-      </div>
+      <Block id="canonical-tokens" title="Supported tokens">
+        <Table
+          head={['Token', 'Address', 'Decimals', 'Settlement kernel']}
+          rows={tokens.map((t) => [
+            <strong key={t.symbol}>{t.symbol}</strong>,
+            <span key="a">{addr(t.address)} {addressLink(t.address, 'explorer')}</span>,
+            t.decimals,
+            addressLink(v2[t.symbol]),
+          ])}
+        />
+        <P>The registry in <code>src/lib/chain/tokens.ts</code> is the only place tokens are defined. A test re-reads every address and its decimals from Mezo Mainnet, so a wrong or made-up token cannot be added. An unknown address never falls back to MUSD.</P>
+      </Block>
 
-      <div id="token-parameters" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>ERC-20 Token Parameters (18 Decimals)</h2>
-        <p className={styles.paragraph}>
-          MUSD behaves as a standard ERC-20 token with 18 decimals of precision. 1 MUSD equals <code>1,000,000,000,000,000,000 wei</code>.
-        </p>
-      </div>
+      <Block id="one-token-per-cycle" title="One token per cycle">
+        <P>
+          Each token has its own kernel, bound to that token permanently, and a cycle settles in exactly one token. MUSD uses 18 decimals and mUSDC and mUSDT use 6, so
+          amounts in different tokens are never comparable and Netteo never nets them together. Amount parsing takes the selected token&apos;s decimals, so 1.5 mUSDC is exactly 1,500,000 units.
+        </P>
+      </Block>
 
-      <div id="approval-contract" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Spender Allowance Contract Safety</h2>
-        <p className={styles.paragraph}>
-          Prior to funding a settlement cycle, net debtors grant an allowance to the configured Mainnet SettlementKernel (<code>{CONTRACT_ADDRESSES.settlementKernel}</code>). Live approvals remain disabled until its on-chain MUSD binding is verified.
-          The contract transfers only the exact required net debit amount via <code>transferFrom</code> during <code>deposit()</code>.
-        </p>
-      </div>
+      <Block id="excluded-tokens" title="Not supported">
+        <Bullets
+          items={[
+            <><strong>The native BTC token and MEZO:</strong> both are implemented by Mezo-native code rather than a standard ERC-20 contract, so they cannot be tested on a fork. They are excluded until each has been tested with real funds on mainnet.</>,
+            <>Other bridged tokens, until their behaviour has been verified in the same way.</>,
+          ]}
+        />
+      </Block>
     </div>
   );
 }
 
 export function SectionDeployedContracts() {
+  const rows = (d: typeof V2_DEPLOYMENT | typeof V1_DEPLOYMENT) => [
+    ['SettlementKernelFactory', addr(d.factory), addressLink(d.factory)],
+    ['SettlementKernel (MUSD)', addr(d.kernels.MUSD), addressLink(d.kernels.MUSD)],
+    ['SettlementKernel (mUSDC)', addr(d.kernels.mUSDC), addressLink(d.kernels.mUSDC)],
+    ['SettlementKernel (mUSDT)', addr(d.kernels.mUSDT), addressLink(d.kernels.mUSDT)],
+  ];
   return (
     <div className={styles.sectionBody}>
-      <div id="contract-registry" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Live Contract Deployment Registry</h2>
-        <div className={styles.tableWrapper}>
-          <table className={styles.specTable}>
-            <thead>
-              <tr>
-                <th>Contract</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th>Explorer</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>SettlementKernel (Mainnet)</strong></td>
-                <td><code>{CONTRACT_ADDRESSES.settlementKernel === '0x0000000000000000000000000000000000000000' ? 'Pending deployment' : CONTRACT_ADDRESSES.settlementKernel}</code></td>
-                <td>{CONTRACT_ADDRESSES.settlementKernel === '0x0000000000000000000000000000000000000000' ? 'Pending deployment' : 'Configured; verify on explorer'}</td>
-                <td>{CONTRACT_ADDRESSES.settlementKernel === '0x0000000000000000000000000000000000000000' ? '—' : <a href={`https://explorer.mezo.org/address/${CONTRACT_ADDRESSES.settlementKernel}`} target="_blank" rel="noreferrer" className={styles.link}>Explorer ↗</a>}</td>
-              </tr>
-              <tr>
-                <td><strong>Canonical Mezo MUSD</strong></td>
-                <td><code>{MEZO_MAINNET_MUSD}</code></td>
-                <td><span className={styles.activePill}>Official Token</span></td>
-                <td><a href={`https://explorer.mezo.org/token/${MEZO_MAINNET_MUSD}`} target="_blank" rel="noreferrer" className={styles.link}>Explorer ↗</a></td>
-              </tr>
-              <tr>
-                <td><strong>Legacy Testnet SettlementKernel</strong></td>
-                <td><code>0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA</code></td>
-                <td><span className={styles.deprecatedPill}>Deprecated</span></td>
-                <td><a href="https://explorer.test.mezo.org/address/0x50bb6B07138414fE509B2E2936cF31C9de3e1BbA" target="_blank" rel="noreferrer" className={styles.link}>Testnet Explorer ↗</a></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Block id="contract-registry" title="Contract registry (v2)">
+        <P>Deployed {V2_DEPLOYMENT.deployedOn}, blocks {V2_DEPLOYMENT.deployBlock} to {V2_DEPLOYMENT.deployBlock + 1}. This is the version the app uses.</P>
+        <Table head={['Contract', 'Address', 'Explorer']} rows={rows(V2_DEPLOYMENT)} />
+        <Table
+          head={['Deployment step', 'Block', 'Transaction']}
+          rows={V2_DEPLOYMENT.txs.map((t) => [t.name, t.block, txLink(t.hash)])}
+        />
+        <P>Checked on-chain: the factory lists three tokens, <code>getKernel(token)</code> returns the matching kernel, each kernel&apos;s <code>musdToken()</code> returns its own token, and <code>REFUND_GRACE</code> is 259,200 seconds. A test repeats these checks against mainnet.</P>
+      </Block>
 
-      <div id="compiler-settings" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Foundry Compiler Settings (via_ir = true)</h2>
-        <p className={styles.paragraph}>
-          Contracts are compiled with Foundry using Solidity <code>0.8.24</code>, optimizer enabled with 200 runs, and <code>via_ir = true</code>.
-        </p>
-      </div>
+      <Block id="superseded" title="Superseded v1">
+        <P>
+          v1 was deployed {V1_DEPLOYMENT.deployedOn} and settled a real cycle, but an audit found three bugs that cannot be patched in a deployed contract (locked funds in a stuck cycle, fee-on-transfer tokens, and cycle-id squatting).
+          v2 fixes them. v1 holds no funds and the app does not use it.
+        </P>
+        <Table head={['Contract', 'Address', 'Explorer']} rows={rows(V1_DEPLOYMENT)} />
+      </Block>
 
-      <div id="block-explorer-links" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Mezo Explorer Direct Links</h2>
-        <p className={styles.paragraph}>
-          The Mainnet MUSD token is listed on the Mezo Explorer. The Netteo SettlementKernel will appear after deployment.
-        </p>
-      </div>
+      <Block id="compiler-settings" title="Compiler settings">
+        <Table
+          head={['Setting', 'Value']}
+          rows={[
+            ['Solidity', '0.8.24'],
+            ['EVM version', <code key="1">cancun</code>],
+            ['Optimizer', 'enabled, 200 runs, via_ir'],
+            ['Libraries', 'OpenZeppelin 5.x (SafeERC20, ReentrancyGuard)'],
+          ]}
+        />
+        <P>The deployed runtime code was disassembled to confirm it uses only PUSH0 beyond the older london instruction set, which is already proven to run on Mezo.</P>
+      </Block>
     </div>
   );
 }
 
-export function SectionLiveSettlementProof() {
+export function SectionMainnetEvidence() {
   return (
     <div className={styles.sectionBody}>
-      <div id="settlement-scenario" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Historical Testnet 3-Party Cycle</h2>
-        <p className={styles.paragraph}>
-          This recorded cycle completed on Mezo Testnet using testnet MUSD. It demonstrates the contract flow but is not a Mainnet transaction or proof of real-value settlement:
-        </p>
-        <ul className={styles.bulletList}>
-          <li>Gross Volume: <strong>200 MUSD</strong></li>
-          <li>Net Volume: <strong>80 MUSD</strong> (60% volume reduction)</li>
-          <li>Net Debtor: Participant A deposited <strong>80 MUSD</strong></li>
-          <li>Net Creditor B received: <strong>20 MUSD</strong></li>
-          <li>Net Creditor C received: <strong>60 MUSD</strong></li>
-        </ul>
-      </div>
+      <Block id="settled-cycles" title="Settled cycles">
+        <P>Both cycles use the three-party shape: one debtor deposits, two creditors are paid, and the kernel finishes with a zero balance.</P>
+        {SETTLED_CYCLES.map((c) => (
+          <div key={c.id} style={{ marginBottom: 'var(--space-lg)' }}>
+            <Table
+              head={[c.label, 'Value']}
+              rows={[
+                ['Cycle ID', <code key="1">{c.id}</code>],
+                ['Gross claims', `${c.gross} MUSD`],
+                ['Net deposited', `${c.netFunded} MUSD`],
+                ['Paid out', `${c.payouts[0]} and ${c.payouts[1]} MUSD`],
+                ['Final state', 'Completed, 0 MUSD left in the kernel'],
+              ]}
+            />
+            <Table head={['Step', 'Block', 'Transaction']} rows={c.txs.map((t) => [t.name, t.block, txLink(t.hash)])} />
+          </div>
+        ))}
+      </Block>
 
-      <div id="cycle-identifier" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Cycle ID: 0x156915a7...</h2>
-        <div className={styles.hashCard}>
-          <code>0x156915a716581f2b7358b4561e75c90ae14f7404ed9aca9a30c5c4872a82ef4f</code>
-        </div>
-      </div>
+      <Block id="savings-round-trip" title="Savings Vault round trip">
+        <P>
+          The same code path Netteo uses to fund a deposit from savings, or to save a payout, was run for real: {SAVINGS_ROUND_TRIP.amount} approved, deposited (minting exactly 0.01 sMUSD)
+          and withdrawn (every wei returned).
+        </P>
+        <Table head={['Step', 'Block', 'Transaction']} rows={SAVINGS_ROUND_TRIP.txs.map((t) => [t.name, t.block, txLink(t.hash)])} />
+      </Block>
 
-      <div id="transaction-hashes" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>4-Step Verified Transaction Hashes</h2>
-        <div className={styles.txList}>
-          <div className={styles.txRow}>
-            <div className={styles.txStep}>1. MUSD Allowance Approval</div>
-            <a href="https://explorer.test.mezo.org/tx/0xb64b38c26b6014ef704d380805ccca2de64a1667fff439f07062f5e66f512291" target="_blank" rel="noreferrer" className={styles.txHashLink}>
-              0xb64b38c26b6014ef704d380805ccca2de64a1667fff439f07062f5e66f512291 ↗
-            </a>
-          </div>
-          <div className={styles.txRow}>
-            <div className={styles.txStep}>2. Cycle Creation (createCycle)</div>
-            <a href="https://explorer.test.mezo.org/tx/0x313721ea293d6511735a44cfa30d4d60890f3879397d6bf6c4f6ca8e7eb97341" target="_blank" rel="noreferrer" className={styles.txHashLink}>
-              0x313721ea293d6511735a44cfa30d4d60890f3879397d6bf6c4f6ca8e7eb97341 ↗
-            </a>
-          </div>
-          <div className={styles.txRow}>
-            <div className={styles.txStep}>3. Net Debtor Funding (deposit)</div>
-            <a href="https://explorer.test.mezo.org/tx/0x6c99d70ef12fef7b87405cd09ea828068cbcf61f745b91055b1374fcd05c382f" target="_blank" rel="noreferrer" className={styles.txHashLink}>
-              0x6c99d70ef12fef7b87405cd09ea828068cbcf61f745b91055b1374fcd05c382f ↗
-            </a>
-          </div>
-          <div className={styles.txRow}>
-            <div className={styles.txStep}>4. Atomic Settlement Payout (executeSettlement)</div>
-            <a href="https://explorer.test.mezo.org/tx/0x87b397ec8053f1d4c58dd23bdcc633d7f480cc137f18d496fb2fcec59f7dc491" target="_blank" rel="noreferrer" className={styles.txHashLink}>
-              0x87b397ec8053f1d4c58dd23bdcc633d7f480cc137f18d496fb2fcec59f7dc491 ↗
-            </a>
-          </div>
-        </div>
-      </div>
+      <Block id="verify-yourself" title="Verify it yourself">
+        <Code title="TERMINAL" lang="SHELL">
+{`RPC=https://mezo-mainnet.boar.network
+K=${V2_DEPLOYMENT.kernels.MUSD}
 
-      <div id="terminal-state-proof" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>On-Chain Terminal State Verification</h2>
-        <p className={styles.paragraph}>
-          The cycle reached the terminal <code>Completed</code> state on-chain with zero stranded balances,
-          on Mezo Testnet. Mainnet settlement requires a separate deployment and acceptance transaction.
-        </p>
-      </div>
+# state 3 = Completed; also prints gross, net, funded and distributed totals
+cast call $K "getCycle(bytes32)(bytes32,string,uint256,uint256,uint256,uint256,uint256,uint256,uint8,address)" \\
+  ${SETTLED_CYCLES[0].id} --rpc-url $RPC
+
+# the kernel retains nothing
+cast call ${CANONICAL_MEZO_TOKENS.MUSD.address} "balanceOf(address)(uint256)" $K --rpc-url $RPC`}
+        </Code>
+      </Block>
+
+      <Block id="verification-scope" title="What was verified where">
+        <Table
+          head={['Feature', 'Verified on mainnet', 'Verified on a mainnet fork']}
+          rows={[
+            ['Settlement in MUSD', 'Yes, two cycles', 'Yes'],
+            ['mUSDC and mUSDT kernels', 'Deployed; no cycle run', 'Yes, against the real token code'],
+            ['Savings Vault deposit and withdraw', 'Yes, real round trip', 'Yes'],
+            ['Borrow against Bitcoin', 'Read-only (live loans and parameters)', 'Yes, with the real Mezo contracts and a real trove'],
+          ]}
+        />
+        <P>The borrow transaction itself was not executed on mainnet, because opening a new Mezo loan needs at least 1,800 MUSD of debt.</P>
+      </Block>
     </div>
   );
 }
+
+export function SectionFundingSources() {
+  return (
+    <div className={styles.sectionBody}>
+      <Block id="why" title="Why it exists">
+        <P>
+          Mezo&apos;s promise is that you can live off your Bitcoin without selling it. Netteo applies that to group payments: net first so less MUSD is needed, then cover what is left from the
+          Savings Vault or a loan against Bitcoin you already hold, and put payouts to work. When a connected debtor&apos;s wallet holds less than their deposit, the settlement screen shows these options
+          instead of a dead end.
+        </P>
+      </Block>
+
+      <Block id="savings-vault" title="MUSD Savings Vault">
+        <Bullets
+          items={[
+            <>Withdraw from the vault to fund a deposit. Mezo describes no lock-up on withdrawals.</>,
+            <>After a settlement pays you out, deposit the MUSD in one step, and claim any yield.</>,
+            <>The vault mints sMUSD 1:1. Yield is variable and is claimed separately; Netteo shows no yield figure it cannot read from chain.</>,
+          ]}
+        />
+      </Block>
+
+      <Block id="borrow-against-btc" title="Borrow against your Bitcoin">
+        <P>If the wallet already has an active Mezo loan, Netteo can borrow exactly the missing MUSD against the Bitcoin locked in it.</P>
+        <Bullets
+          items={[
+            <>It reads your live loan: collateral, debt (principal plus interest), and collateral ratio.</>,
+            <>Before you sign, a review step shows the issuance fee (added to your debt), about 30 days of interest, your ratio before and after, and the BTC price at which the loan could be liquidated.</>,
+            <>The wallet receives exactly the amount requested. The fee is added to the debt, not deducted.</>,
+            <>A wallet with no loan is pointed to the Mezo app. A new loan needs at least 1,800 MUSD of debt plus a 200 MUSD gas deposit, so it suits larger positions.</>,
+          ]}
+        />
+      </Block>
+
+      <Block id="safety-rules" title="Safety rules">
+        <Table
+          head={['Rule', 'Why']}
+          rows={[
+            ['Never build a borrow that leaves the loan under 150% collateral', 'Mezo can liquidate a loan below 110%. A settlement is not worth a liquidation.'],
+            ['Offer a smaller, safe amount when the full amount would breach the floor', 'The user can still make progress without taking on risk.'],
+            ['Block borrowing in Mezo Recovery Mode', 'Mezo restricts new borrowing then.'],
+            ['Re-read, re-plan and simulate at click time', 'Prices and debt change; a plan from a minute ago may be unsafe.'],
+            ['Use the same debt figure Mezo uses', 'Netteo’s ratio matches TroveManager.getCurrentICR exactly on a real loan.'],
+            ['Never move funds without an explicit confirmation', 'Every borrow, withdrawal and deposit is its own wallet transaction behind a review step.'],
+          ]}
+        />
+      </Block>
+
+      <Block id="funding-check" title="Funding Check page">
+        <P>
+          <code>/funding</code> is a read-only tool. Paste any address, or pick one of the real Bitcoin-backed loans that exist on Mezo Mainnet, enter an amount, and see what that wallet could do. Borrowing and
+          withdrawing are enabled only when you connect the wallet being checked.
+        </P>
+      </Block>
+
+      <Block id="limits" title="Limits">
+        <Bullets
+          items={[
+            <>MUSD cycles only. The Savings Vault and Mezo loans are MUSD products.</>,
+            <>Netteo does not open new loans. It borrows more against an existing one.</>,
+            <>Nothing here is financial advice. Borrowing adds debt and carries liquidation risk.</>,
+          ]}
+        />
+      </Block>
+    </div>
+  );
+}
+
+export function SectionMezoContracts() {
+  const names: Record<string, string> = {
+    borrowerOperations: 'BorrowerOperations',
+    troveManager: 'TroveManager',
+    hintHelpers: 'HintHelpers',
+    sortedTroves: 'SortedTroves',
+    priceFeed: 'PriceFeed',
+    interestRateManager: 'InterestRateManager',
+    savingsVault: 'MUSD Savings Vault (sMUSD, proxy)',
+  };
+  return (
+    <div className={styles.sectionBody}>
+      <Block id="protocol-addresses" title="Addresses">
+        <P>From the official deployment files in the Mezo MUSD repository. A test checks that each has code on Mezo Mainnet.</P>
+        <Table
+          head={['Contract', 'Address', 'Explorer']}
+          rows={Object.entries(MEZO_PROTOCOL).map(([key, a]) => [<strong key={key}>{names[key] ?? key}</strong>, addr(a), addressLink(a)])}
+        />
+      </Block>
+
+      <Block id="functions-used" title="Functions used">
+        <Table
+          head={['Contract', 'Functions']}
+          rows={[
+            ['BorrowerOperations', <code key="1">withdrawMUSD, borrowingRate, getBorrowingFee, minNetDebt</code>],
+            ['TroveManager', <code key="2">getTroveStatus, getEntireDebtAndColl, getTroveInterestRate, getTroveOwnersCount, checkRecoveryMode, MCR, MUSD_GAS_COMPENSATION</code>],
+            ['HintHelpers', <code key="3">computeNominalCR, getApproxHint</code>],
+            ['SortedTroves', <code key="4">findInsertPosition</code>],
+            ['PriceFeed', <code key="5">fetchPrice</code>],
+            ['InterestRateManager', <code key="6">interestRate</code>],
+            ['MUSD Savings Vault', <code key="7">deposit, withdraw, claimYield, claimableYield, balanceOf, musdToken</code>],
+          ]}
+        />
+        <P>The Savings Vault is a custom contract, not ERC-4626: <code>asset()</code> and <code>previewDeposit()</code> do not exist. Netteo uses its real ABI.</P>
+      </Block>
+
+      <Block id="live-parameters" title="Live parameters">
+        <P>Netteo reads these from chain and never hard-codes them. Values at the time of writing (14 November 2026):</P>
+        <Table
+          head={['Parameter', 'Value']}
+          rows={[
+            ['Issuance (borrowing) fee', '0.1% of the amount borrowed, added to debt'],
+            ['Interest', '1% a year, fixed, on principal'],
+            ['Minimum collateral ratio (MCR)', '110%'],
+            ['Minimum net debt for a loan', '1,800 MUSD'],
+            ['Gas deposit', '200 MUSD'],
+          ]}
+        />
+      </Block>
+
+      <Block id="oracle-note" title="A note on the price oracle">
+        <P>
+          PriceFeed is not plain EVM code, so <code>fetchPrice()</code> reverts on a local fork. It works on the live RPC, which is what the app uses. The fork test reads the real price from
+          mainnet and etches a one-line stub at the oracle address. Every other contract in that test runs its genuine mainnet code.
+        </P>
+      </Block>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Using Netteo                                                                                   */
+/* ---------------------------------------------------------------------------------------------- */
 
 export function SectionWorkspaceModes() {
   return (
     <div className={styles.sectionBody}>
-      <div id="live-mezo-mode" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Live Mezo Mainnet Mode</h2>
-        <p className={styles.paragraph}>
-          Interacts directly with Mezo Mainnet (Chain ID 31612). Requires a wallet holding BTC for gas and canonical Mainnet MUSD for deposits. Live settlement stays disabled until the Netteo Mainnet SettlementKernel is deployed and verified.
-        </p>
-      </div>
-      <div id="demo-sandbox-mode" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Demo Sandbox Mode (Zero-Wallet Instant Preview)</h2>
-        <p className={styles.paragraph}>
-          Allows anyone (e.g. new contributors, developers, or external reviewers) to explore all features, submit simulated claims,
-          and execute netting settlements instantly without requiring an external wallet.
-        </p>
-      </div>
-      <div id="mode-switching" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Toggle Mechanism & State Isolation</h2>
-        <p className={styles.paragraph}>
-          The mode switch pill in the top navigation bar toggles between environments cleanly with isolated local state.
-        </p>
-      </div>
+      <Block id="live-mezo-mode" title="Live mode">
+        <P>
+          Live is the default. It runs on Mezo Mainnet with real tokens and real BTC for gas. Your groups and claims are private to your wallet, so you connect a wallet to see them. Transactions cannot be undone.
+        </P>
+      </Block>
+      <Block id="demo-sandbox-mode" title="Demo mode">
+        <P>
+          Demo lets you try the flow without a wallet. It uses sample data stored in your browser and is labelled as a sandbox everywhere. Nothing in Demo is on-chain, no tokens move, and its funding helpers are simulations.
+        </P>
+      </Block>
+      <Block id="mode-switching" title="Switching">
+        <P>
+          Use the Demo / Live toggle in the header (or in the menu on a phone). Moving to Live asks for confirmation. Demo data stays in your browser and can be reset.
+        </P>
+      </Block>
     </div>
   );
 }
@@ -815,24 +867,15 @@ export function SectionWorkspaceModes() {
 export function SectionPartnerGroups() {
   return (
     <div className={styles.sectionBody}>
-      <div id="group-creation" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Creating a Settlement Collective</h2>
-        <p className={styles.paragraph}>
-          A user creates a named group representing their collective, agency, or DAO working group.
-        </p>
-      </div>
-      <div id="member-management" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Managing Counterparty Wallets</h2>
-        <p className={styles.paragraph}>
-          Add verified EVM wallet addresses for each collective participant. Up to 10 members can participate in a settlement cycle.
-        </p>
-      </div>
-      <div id="group-policies" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Group Settlement Policies & Limits</h2>
-        <p className={styles.paragraph}>
-          Define funding deadlines, dispute rules, and approval policies for the group.
-        </p>
-      </div>
+      <Block id="group-creation" title="Creating a group">
+        <P>A group is a named set of wallets that settle together, up to 10 members. Creating one needs a wallet signature, and the creator becomes its admin.</P>
+      </Block>
+      <Block id="member-management" title="Managing members">
+        <P>Only the creator or an admin can change who is in a group. The creator can never be removed, and nobody with an open claim (proposed, approved or in a settlement) can be removed, so history is not rewritten. Addresses are normalised, so the same wallet cannot be added twice with different capitalisation.</P>
+      </Block>
+      <Block id="group-privacy" title="Privacy">
+        <P>Group names and claims are visible only to the wallets in the group. A wallet outside the group sees nothing and cannot guess its way in by changing an id.</P>
+      </Block>
     </div>
   );
 }
@@ -840,67 +883,41 @@ export function SectionPartnerGroups() {
 export function SectionObligationsLifecycle() {
   return (
     <div className={styles.sectionBody}>
-      <div id="recording-claims" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Recording a Payment Claim</h2>
-        <p className={styles.paragraph}>
-          Any participant records an obligation owed to them by specifying the debtor, title, invoice/work reference, and amount in MUSD.
-        </p>
-      </div>
-      <div id="approval-flow" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Debtor Acceptance & Acknowledgment</h2>
-        <p className={styles.paragraph}>
-          Claims appear in the debtor&apos;s Obligations Desk in <strong>Pending Approval</strong> state. The debtor clicks &quot;Accept Claim&quot;
-          to approve it into the eligible pool for the next settlement cycle.
-        </p>
-      </div>
-      <div id="dispute-exclusion" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Dispute Handling & Silent Exclusion</h2>
-        <p className={styles.paragraph}>
-          If a claim is contested, the debtor rejects it with a reason. Disputed claims are excluded from netting cycles,
-          preventing unauthorized deductions.
-        </p>
-      </div>
-      <div id="status-tags" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Obligation Status Tag Matrix</h2>
-        <div className={styles.tableWrapper}>
-          <table className={styles.specTable}>
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Definition</th>
-                <th>Eligible for Netting?</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>Pending</code></td>
-                <td>Claim recorded; awaiting debtor acceptance</td>
-                <td>No</td>
-              </tr>
-              <tr>
-                <td><code>Approved</code></td>
-                <td>Debtor acknowledged; eligible for next cycle</td>
-                <td><strong>Yes</strong></td>
-              </tr>
-              <tr>
-                <td><code>In Cycle</code></td>
-                <td>Committed to an active on-chain settlement cycle</td>
-                <td>Locked</td>
-              </tr>
-              <tr>
-                <td><code>Settled</code></td>
-                <td>Cycle completed; debt fully discharged</td>
-                <td>Closed</td>
-              </tr>
-              <tr>
-                <td><code>Rejected</code></td>
-                <td>Disputed or declined by debtor</td>
-                <td>No</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Block id="recording-claims" title="Recording a claim">
+        <P>
+          A member records who owes whom, the amount, the token and a short reference. Debtor and creditor must be different members of the same group. Amounts are whole numbers in the token&apos;s smallest unit, and the claim is signed by the person recording it.
+          Do not put sensitive details in the reference.
+        </P>
+      </Block>
+
+      <Block id="approval-flow" title="Approval, dispute and withdrawal">
+        <Bullets
+          items={[
+            <>Only the <strong>debtor</strong> can approve or dispute a proposed claim, each with a wallet signature.</>,
+            <>Only the <strong>proposer or creditor</strong> can withdraw a claim that is still proposed.</>,
+            <>A disputed claim is excluded from netting. Netteo never nets a claim silently.</>,
+            <>In Live mode the screen shows each person only the buttons they are allowed to use, and who a claim is waiting for.</>,
+          ]}
+        />
+      </Block>
+
+      <Block id="share-links" title="Share links">
+        <P>On a proposed claim, <strong>Copy link</strong> creates a link such as <code>/obligations?claim=&lt;id&gt;</code>. Opening it takes the debtor to that claim, highlighted, so they find what they were asked to approve. They still need to connect their wallet, and the link reveals nothing to anyone outside the group.</P>
+      </Block>
+
+      <Block id="status-tags" title="Statuses">
+        <Table
+          head={['Status', 'Meaning']}
+          rows={[
+            ['Needs approval', 'Proposed and waiting for the debtor.'],
+            ['Ready to settle', 'Approved and eligible for a cycle.'],
+            ['In settlement', 'Frozen into a registered cycle. It can no longer change.'],
+            ['Settled', 'The cycle completed.'],
+            ['Disputed', 'Flagged by the debtor and excluded from netting.'],
+            ['Withdrawn', 'Cancelled before approval.'],
+          ]}
+        />
+      </Block>
     </div>
   );
 }
@@ -908,38 +925,41 @@ export function SectionObligationsLifecycle() {
 export function SectionSettlementExecution() {
   return (
     <div className={styles.sectionBody}>
-      <div id="cycle-creation-flow" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>1. Grouping Approved Claims into a Cycle</h2>
-        <p className={styles.paragraph}>
-          Select approved obligations and click &quot;Calculate Net Settlements&quot;. The client generates the graph matrix and previews
-          each participant&apos;s net position.
-        </p>
-      </div>
-      <div id="net-preview" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>2. Deterministic Net Position Preview</h2>
-        <p className={styles.paragraph}>
-          Preview reveals gross obligation total, net debt total, participant net breakdown, and verified gross volume reduction percentage.
-        </p>
-      </div>
-      <div id="deposit-locking" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>3. Net Debtor Deposit Locking</h2>
-        <p className={styles.paragraph}>
-          Each net debtor signs an ERC-20 approval and calls <code>deposit()</code> to lock their net debit in the SettlementKernel.
-        </p>
-      </div>
-      <div id="permissionless-execution" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>4. Permissionless Atomic Execution</h2>
-        <p className={styles.paragraph}>
-          Once 100% of required funds are deposited, anyone (the coordinator, debtor, or creditor) calls <code>executeSettlement()</code>,
-          which atomically disperses funds to all creditors in the same transaction.
-        </p>
-      </div>
-      <div id="claim-refund" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>5. Emergency Depositor Refund Flow</h2>
-        <p className={styles.paragraph}>
-          If the funding deadline passes before full funding is achieved, depositors call <code>claimRefund()</code> to reclaim their funds.
-        </p>
-      </div>
+      <Block id="cycle-creation-flow" title="1. Group approved claims">
+        <P>A group member selects approved claims. They must all be in one group and one token, because a cycle settles in exactly one token. Whoever creates the cycle on-chain is its creator, and must be the wallet that registers it.</P>
+      </Block>
+      <Block id="net-preview" title="2. Review the net positions">
+        <P>Netteo shows gross claims, each person&apos;s net position, who deposits and who is paid, and the snapshot hash. The calculation is deterministic and runs in the browser; the contract and server re-check it.</P>
+      </Block>
+      <Block id="register-verify" title="3. Create and verify the cycle">
+        <P>
+          The creator sends <code>createCycle</code>, then the server verifies it against the approved claims and marks it registered. Until then the screen shows an &quot;unverified&quot; notice and disables Deposit and Approve, because anyone can create a cycle that names you as a debtor.
+          The creator can retry verification from the same screen.
+        </P>
+      </Block>
+      <Block id="deposit-locking" title="4. Fund the net amounts">
+        <Bullets
+          items={[
+            <>Each debtor approves the kernel to spend their token and deposits their exact net amount. The funding window is 72 hours.</>,
+            <>If a connected debtor&apos;s wallet holds less than the deposit, the <strong>Funding sources</strong> panel offers the MUSD Savings Vault and a loan against Bitcoin (MUSD cycles).</>,
+            <>The cycle page also shows how much less had to be funded because claims cancelled, and an estimate of what borrowing that on Mezo would have cost.</>,
+          ]}
+        />
+      </Block>
+      <Block id="permissionless-execution" title="5. Execute the payout">
+        <P>
+          Once every debtor has funded, anyone can call <code>executeSettlement</code>. The kernel pays every creditor in one transaction and marks the cycle Completed. A creditor then sees a <strong>Save your payout</strong> panel for the Savings Vault.
+        </P>
+      </Block>
+      <Block id="claim-refund" title="If something goes wrong: refunds">
+        <Bullets
+          items={[
+            <>If the cycle is not fully funded by the deadline, each depositor calls <code>claimRefund</code> to take back their deposit.</>,
+            <>The creator can cancel a cycle before it is fully funded, which also opens refunds.</>,
+            <>A fully funded cycle that cannot be paid out opens refunds after the deadline plus 3 days.</>,
+          ]}
+        />
+      </Block>
     </div>
   );
 }
@@ -947,106 +967,81 @@ export function SectionSettlementExecution() {
 export function SectionAuditReceipts() {
   return (
     <div className={styles.sectionBody}>
-      <div id="receipt-cards" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Verifiable Payment Receipts</h2>
-        <p className={styles.paragraph}>
-          Each completed cycle produces a cryptographic receipt card displaying cycle ID, snapshot commitment hash, gross and net totals,
-          and links to the verified Mezo transaction.
-        </p>
-      </div>
-      <div id="csv-exports" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Accounting CSV Export Generator</h2>
-        <p className={styles.paragraph}>
-          Export reconciled history to standard CSV format suitable for QuickBooks, Xero, or internal DAO treasury audits.
-        </p>
-      </div>
-      <div id="explorer-reconciliation" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Block Explorer Proof Verification</h2>
-        <p className={styles.paragraph}>
-          Every receipt links directly to the immutable event log on the Mezo Mainnet Explorer.
-        </p>
-      </div>
+      <Block id="receipt-cards" title="Receipts">
+        <P>Each settlement has a receipt with its status, token, gross and net totals, the snapshot hash, the transactions, and the included claims and net positions.</P>
+      </Block>
+      <Block id="csv-exports" title="CSV export">
+        <P>The export lists the cycle ID, status, token and contract, totals in base units and formatted, transaction links, every included claim (id, parties, amount, reference, status), each participant&apos;s positions, and the net transfers.</P>
+      </Block>
+      <Block id="explorer-reconciliation" title="Reconciling with the explorer">
+        <P>Figures come from the contract and its events. To check a receipt, open its transaction links on the Mezo explorer, or run the commands in <em>Mainnet Evidence</em> and compare the totals.</P>
+      </Block>
     </div>
   );
 }
 
+/* ---------------------------------------------------------------------------------------------- */
+/* Smart contract API                                                                             */
+/* ---------------------------------------------------------------------------------------------- */
+
 export function SectionContractMethods() {
   return (
     <div className={styles.sectionBody}>
-      <div id="fn-createcycle" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>createCycle(CycleInput struct)</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>SOLIDITY METHOD SIGNATURE</span>
-            <span className={styles.codeLang}>SOL</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`function createCycle(CycleInput calldata input) external returns (bytes32 cycleId)`}
-          </pre>
-        </div>
-        <p className={styles.paragraph}>
-          Registers a new settlement cycle on-chain. Validates zero-sum invariant (Σ debits == Σ credits),
-          participant limits (≤ 10), and sets the funding deadline.
-        </p>
-      </div>
+      <Block id="fn-createcycle" title="createCycle">
+        <Code title="SOLIDITY" lang="SOLIDITY">
+{`struct CycleInput {
+    bytes32 cycleId;              // a salt; the stored id is computeCycleId(msg.sender, cycleId)
+    bytes32 snapshotCommitment;
+    string  algorithmVersion;
+    uint256 grossObligationTotal;
+    address[] debtors;      uint256[] debitAmounts;
+    address[] creditors;    uint256[] creditAmounts;
+    uint256 fundingDuration;      // 1 hour to 30 days
+}
 
-      <div id="fn-deposit" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>deposit(bytes32 cycleId, uint256 amount)</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>SOLIDITY METHOD SIGNATURE</span>
-            <span className={styles.codeLang}>SOL</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`function deposit(bytes32 cycleId, uint256 amount) external nonReentrant`}
-          </pre>
-        </div>
-        <p className={styles.paragraph}>
-          Net debtors deposit their required MUSD portion. Transfers tokens into escrow using <code>safeTransferFrom</code>.
-        </p>
-      </div>
+function computeCycleId(address creator, bytes32 salt) public pure returns (bytes32);
+function createCycle(CycleInput calldata input) external returns (bytes32);`}
+        </Code>
+        <P>Open to anyone. Reverts if there are no debtors or creditors, more than 10 participants, mismatched arrays, a zero amount or address, a duplicate, an address that is both debtor and creditor, unbalanced totals, or gross below net.</P>
+      </Block>
 
-      <div id="fn-executesettlement" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>executeSettlement(bytes32 cycleId)</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>SOLIDITY METHOD SIGNATURE</span>
-            <span className={styles.codeLang}>SOL</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`function executeSettlement(bytes32 cycleId) external nonReentrant`}
-          </pre>
-        </div>
-        <p className={styles.paragraph}>
-          Permissionless trigger: when 100% funded, atomically distributes MUSD to all creditors and transitions cycle to <code>Completed</code>.
-        </p>
-      </div>
+      <Block id="fn-deposit" title="deposit and depositWithPermit">
+        <Code title="SOLIDITY" lang="SOLIDITY">
+{`function deposit(bytes32 cycleId, uint256 amount) external;
+function depositWithPermit(bytes32 cycleId, uint256 amount, uint256 deadline,
+                           uint8 v, bytes32 r, bytes32 s) external;`}
+        </Code>
+        <P>Only a listed debtor can deposit, only while the cycle is Funding, never more than the amount still due, and the kernel&apos;s balance must rise by exactly the amount. <code>depositWithPermit</code> uses an EIP-2612 signature to skip the separate approval; if the permit fails the deposit falls back to the existing allowance.</P>
+      </Block>
 
-      <div id="fn-claimrefund" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>claimRefund(bytes32 cycleId)</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>SOLIDITY METHOD SIGNATURE</span>
-            <span className={styles.codeLang}>SOL</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`function claimRefund(bytes32 cycleId) external nonReentrant`}
-          </pre>
-        </div>
-        <p className={styles.paragraph}>
-          Allows depositors to claim a 100% refund if the cycle funding window expires without reaching full funding.
-        </p>
-      </div>
+      <Block id="fn-executesettlement" title="executeSettlement">
+        <Code title="SOLIDITY" lang="SOLIDITY">{`function executeSettlement(bytes32 cycleId) external;`}</Code>
+        <P>Permissionless. Requires the cycle to be exactly ReadyToSettle. Marks it Completed before paying every creditor.</P>
+      </Block>
 
-      <div id="fn-views" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>View & Getter Functions</h2>
-        <ul className={styles.bulletList}>
-          <li><code>getCycleDetails(bytes32 cycleId)</code>: Returns core cycle storage metadata and state.</li>
-          <li><code>isCycleFunded(bytes32 cycleId)</code>: Returns boolean indicating whether 100% of net deposits are locked.</li>
-          <li><code>getDebtorStatus(bytes32 cycleId, address debtor)</code>: Returns <code>[required, funded, isFullyFunded]</code>.</li>
-          <li><code>getCreditorPayout(bytes32 cycleId, address creditor)</code>: Returns creditor payout amount.</li>
-        </ul>
-      </div>
+      <Block id="fn-claimrefund" title="cancelCycle and claimRefund">
+        <Code title="SOLIDITY" lang="SOLIDITY">
+{`function cancelCycle(bytes32 cycleId) external;   // creator only, only while Funding and not fully funded
+function claimRefund(bytes32 cycleId) external;   // a depositor reclaims their own deposit`}
+        </Code>
+        <P>See the state machine for when refunds open.</P>
+      </Block>
+
+      <Block id="fn-views" title="View functions">
+        <Code title="SOLIDITY" lang="SOLIDITY">
+{`function getCycle(bytes32) view returns (
+    bytes32 snapshotCommitment, string algorithmVersion,
+    uint256 grossObligationTotal, uint256 netDebtTotal, uint256 totalFunded,
+    uint256 totalDistributed, uint256 totalRefunded, uint256 fundingDeadline,
+    CycleState state, address creator);
+function getCycleParticipants(bytes32) view returns (address[] debtors, address[] creditors);
+function getDebtorStatus(bytes32, address) view returns (uint256 required, uint256 funded, bool isFullyFunded);
+function getCreditorPayout(bytes32, address) view returns (uint256);
+function isCycleFullyFunded(bytes32) view returns (bool);
+function musdToken() view returns (IERC20);   // the one token this kernel is bound to
+uint256 constant MAX_PARTICIPANTS = 10;  REFUND_GRACE = 3 days;  DEFAULT_FUNDING_DURATION = 72 hours;`}
+        </Code>
+      </Block>
     </div>
   );
 }
@@ -1054,188 +1049,144 @@ export function SectionContractMethods() {
 export function SectionEventsErrors() {
   return (
     <div className={styles.sectionBody}>
-      <div id="contract-events" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Indexed Solidity Events</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>SOLIDITY EVENTS</span>
-            <span className={styles.codeLang}>SOL</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`event CycleCreated(
-    bytes32 indexed cycleId,
-    address indexed creator,
-    bytes32 snapshotCommitment,
-    uint256 grossObligationTotal,
-    uint256 netDebtTotal,
-    uint256 fundingDeadline
-);
-
-event DepositReceived(
-    bytes32 indexed cycleId,
-    address indexed debtor,
-    uint256 amount,
-    uint256 totalDebtorFunded,
-    uint256 totalCycleFunded
-);
-
-event SettlementExecuted(
-    bytes32 indexed cycleId,
-    address indexed executor,
-    uint256 totalDistributed,
-    uint256 timestamp
-);
-
+      <Block id="contract-events" title="Events">
+        <Code title="SOLIDITY" lang="SOLIDITY">
+{`event CycleCreated(bytes32 indexed cycleId, bytes32 indexed snapshotCommitment, uint256 netDebtTotal,
+                   uint256 grossObligationTotal, uint256 fundingDeadline, address indexed creator);
+event DepositReceived(bytes32 indexed cycleId, address indexed debtor, uint256 amount,
+                      uint256 totalDebtorFunded, uint256 totalCycleFunded);
+event CycleReadyToSettle(bytes32 indexed cycleId, uint256 totalFunded);
+event CycleSettled(bytes32 indexed cycleId, uint256 totalDistributed, uint256 creditorCount, uint256 timestamp);
 event CycleExpired(bytes32 indexed cycleId, uint256 totalFunded, uint256 timestamp);
+event CycleCancelled(bytes32 indexed cycleId, address indexed creator, uint256 timestamp);
+event RefundClaimed(bytes32 indexed cycleId, address indexed participant, uint256 amount, uint256 timestamp);`}
+        </Code>
+      </Block>
 
-event RefundClaimed(
-    bytes32 indexed cycleId,
-    address indexed participant,
-    uint256 amount,
-    uint256 timestamp
-);`}
-          </pre>
-        </div>
-      </div>
-
-      <div id="custom-revert-errors" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Custom Revert Errors Reference</h2>
-        <ul className={styles.bulletList}>
-          <li><code>ZeroAddressToken()</code>: Token address cannot be address(0).</li>
-          <li><code>CycleAlreadyExists(bytes32 cycleId)</code>: Duplicate cycle ID.</li>
-          <li><code>DebitCreditMismatch(uint256 totalDebits, uint256 totalCredits)</code>: Zero-sum invariant violated.</li>
-          <li><code>TooManyParticipants(uint256 count, uint256 max)</code>: Participant count exceeds 10.</li>
-          <li><code>InvalidDuration(uint256 duration)</code>: Funding duration outside [1 hour, 30 days].</li>
-          <li><code>CycleNotFunding(bytes32 cycleId, CycleState state)</code>: Action requires Funding state.</li>
-          <li><code>FundingDeadlinePassed(bytes32 cycleId, uint256 deadline)</code>: Deposit rejected after deadline.</li>
-          <li><code>DepositExceedsRequired(bytes32 cycleId, address debtor, uint256 attempted, uint256 remaining)</code>: Overfunding rejected.</li>
-          <li><code>CycleNotFullyFunded(bytes32 cycleId, uint256 funded, uint256 required)</code>: Cannot settle without 100% funding.</li>
-          <li><code>CycleNotExpired(bytes32 cycleId, uint256 deadline, uint256 current)</code>: Refund rejected before deadline.</li>
-        </ul>
-      </div>
+      <Block id="custom-revert-errors" title="Custom errors">
+        <Table
+          head={['Error', 'When']}
+          rows={[
+            [<code key="1">CycleAlreadyExists, CycleNotFound</code>, 'The cycle id is already used, or does not exist.'],
+            [<code key="2">InvalidParticipantBounds, ArrayLengthMismatch</code>, 'Zero or more than 10 participants, or mismatched arrays.'],
+            [<code key="3">ZeroAddressParticipant, DuplicateParticipant, DebtorCannotBeCreditor</code>, 'Invalid participant list.'],
+            [<code key="4">InvalidAmount, ImbalancedNetPositions, InvalidGrossTotal</code>, 'A zero amount, debits not equal to credits, or gross below net.'],
+            [<code key="5">InvalidFundingDuration</code>, 'Outside 1 hour to 30 days.'],
+            [<code key="6">CycleNotInFundingState, FundingDeadlineExpired, FundingDeadlineNotReached</code>, 'A deposit or refund at the wrong time.'],
+            [<code key="7">UnauthorizedDebtor, UnauthorizedCaller</code>, 'The caller may not do this.'],
+            [<code key="8">ExcessiveDeposit, UnexpectedTransferAmount</code>, 'Deposit above what is due, or the kernel balance did not rise by the amount.'],
+            [<code key="9">CycleNotReadyToSettle, CycleAlreadyFullyFunded</code>, 'Payout before full funding, or cancelling a funded cycle.'],
+            [<code key="10">CycleNotInRefundableState, RefundNotYetOpen, NoRefundAvailable</code>, 'A refund that is not open yet, or nothing to reclaim.'],
+            [<code key="11">TerminalStateReached</code>, 'The cycle is already Completed or Refunded.'],
+          ]}
+        />
+      </Block>
     </div>
   );
 }
 
 export function SectionIntegrationGuide() {
+  const kernel = V2_DEPLOYMENT.kernels.MUSD;
   return (
     <div className={styles.sectionBody}>
-      <div id="viem-setup" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Mezo Mainnet Viem Client Setup</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>TYPESCRIPT / VIEM CLIENT SETUP</span>
-            <span className={styles.codeLang}>TS</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`import { createPublicClient, http, defineChain } from 'viem';
+      <Block id="viem-setup" title="Client setup">
+        <Code title="TYPESCRIPT" lang="TS">
+{`import { createPublicClient } from 'viem';
+import { mezoMainnet } from '@/lib/chain/config';
+import { mezoTransport } from '@/lib/chain/transport'; // tries three Mezo RPC providers in turn
 
-export const mezoMainnet = defineChain({
-  id: 31612,
-  name: 'Mezo Mainnet',
-  nativeCurrency: { name: 'Bitcoin', symbol: 'BTC', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://mezo-mainnet.boar.network'] },
-  },
-  blockExplorers: {
-    default: { name: 'Mezo Explorer', url: 'https://explorer.mezo.org' },
-  },
-});
+export const client = createPublicClient({ chain: mezoMainnet, transport: mezoTransport() });`}
+        </Code>
+      </Block>
 
-export const publicClient = createPublicClient({
-  chain: mezoMainnet,
-  transport: http(),
-});`}
-          </pre>
-        </div>
-      </div>
+      <Block id="reading-cycle" title="Read a cycle">
+        <Code title="TYPESCRIPT" lang="TS">
+{`import { settlementKernelAbi } from '@/lib/chain/abi';
 
-      <div id="reading-cycle" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Reading Cycle State & Debtor Status</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>READ CONTRACT STATE</span>
-            <span className={styles.codeLang}>TS</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`// One kernel per token; this is the MUSD kernel (use _MUSDC / _MUSDT for the others).
-const SETTLEMENT_KERNEL_ADDRESS = process.env.NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD;
+const KERNEL = '${kernel}'; // MUSD kernel (v2)
 
-// Check if cycle is 100% funded
-const isFunded = await publicClient.readContract({
-  address: SETTLEMENT_KERNEL_ADDRESS,
+const [, , gross, net, funded, distributed, , , state] = await client.readContract({
+  address: KERNEL,
   abi: settlementKernelAbi,
-  functionName: 'isCycleFullyFunded',
-  args: [cycleId],
-});`}
-          </pre>
-        </div>
-      </div>
+  functionName: 'getCycle',
+  args: ['${SETTLED_CYCLES[0].id}'],
+});
+// state 3 = Completed`}
+        </Code>
+      </Block>
 
-      <div id="submitting-txs" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Submitting Approvals & Deposits</h2>
-        <p className={styles.paragraph}>
-          Use standard Wagmi hooks (<code>useWriteContract</code>) to approve MUSD tokens and execute <code>deposit</code>.
-        </p>
-      </div>
+      <Block id="reading-mezo" title="Read a Mezo loan and plan a borrow">
+        <Code title="TYPESCRIPT" lang="TS">
+{`import { readProtocolParams, readTrove } from '@/lib/mezo/chain';
+import { planBorrow } from '@/lib/mezo/borrow';
+
+const [params, trove] = await Promise.all([readProtocolParams(client), readTrove(client, wallet)]);
+const plan = planBorrow(shortfall, trove, params); // pure function, 150% safety floor
+
+if (plan.kind === 'ok') {
+  // plan.fee, plan.newDebt, plan.currentIcr, plan.resultingIcr, plan.monthlyInterest
+}
+// other kinds: 'no-trove' | 'recovery-mode' | 'unsafe' (with the safe maximum)`}
+        </Code>
+        <P><code>planBorrow</code> never touches the network and is covered by unit tests against a real mainnet vector. <code>buildWithdrawHints</code> in the same module builds the hints for <code>withdrawMUSD</code>.</P>
+      </Block>
+
+      <Block id="submitting-txs" title="Approve and deposit">
+        <Code title="TYPESCRIPT" lang="TS">
+{`import { erc20Abi } from 'viem';
+
+const MUSD = '${CANONICAL_MEZO_TOKENS.MUSD.address}';
+
+await wallet.writeContract({ address: MUSD, abi: erc20Abi, functionName: 'approve', args: [KERNEL, amount] });
+await wallet.writeContract({ address: KERNEL, abi: settlementKernelAbi, functionName: 'deposit', args: [cycleId, amount] });`}
+        </Code>
+        <P>In the app, a deposit is blocked until the cycle is registered, and every transaction is simulated before the wallet is asked to sign.</P>
+      </Block>
     </div>
   );
 }
 
 export function SectionCastCommands() {
+  const kernel = V2_DEPLOYMENT.kernels.MUSD;
   return (
     <div className={styles.sectionBody}>
-      <div id="cast-read-kernel" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Inspect SettlementKernel Details</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>CAST CLI COMMAND</span>
-            <span className={styles.codeLang}>BASH</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`cast call "$NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD" \\
-  "musdToken()(address)" \\
-  --rpc-url https://mezo-mainnet.boar.network
+      <Block id="cast-read-kernel" title="Inspect a kernel">
+        <Code title="TERMINAL" lang="SHELL">
+{`RPC=https://mezo-mainnet.boar.network
+K=${kernel}
 
-# Must return: 0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186 (Canonical Mainnet MUSD)`}
-          </pre>
-        </div>
-      </div>
+cast call $K "musdToken()(address)" --rpc-url $RPC      # the token this kernel is bound to
+cast call $K "REFUND_GRACE()(uint256)" --rpc-url $RPC   # 259200 (3 days)
+cast call ${V2_DEPLOYMENT.factory} "getSupportedTokenCount()(uint256)" --rpc-url $RPC   # 3`}
+        </Code>
+      </Block>
 
-      <div id="cast-check-musd" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Check MUSD Balances & Decimals</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>CAST CLI COMMAND</span>
-            <span className={styles.codeLang}>BASH</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`cast call 0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186 \\
-  "decimals()(uint8)" \\
-  --rpc-url https://mezo-mainnet.boar.network
+      <Block id="cast-verify-cycle" title="Check the real v2 cycle">
+        <Code title="TERMINAL" lang="SHELL">
+{`cast call $K "getCycle(bytes32)(bytes32,string,uint256,uint256,uint256,uint256,uint256,uint256,uint8,address)" \\
+  ${SETTLED_CYCLES[0].id} --rpc-url $RPC
 
-# Returns: 18`}
-          </pre>
-        </div>
-      </div>
+cast call ${CANONICAL_MEZO_TOKENS.MUSD.address} "balanceOf(address)(uint256)" $K --rpc-url $RPC   # 0`}
+        </Code>
+      </Block>
 
-      <div id="cast-verify-cycle" className={styles.subBlock}>
-        <h2 className={styles.subHeading}>Query Live Cycle 0x156915a7... Status</h2>
-        <div className={styles.codeBlockWrapper}>
-          <div className={styles.codeHeader}>
-            <span>QUERY COMPLETED CYCLE</span>
-            <span className={styles.codeLang}>BASH</span>
-          </div>
-          <pre className={styles.codeContent}>
-{`cast call "$NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD" \\
-  "isCycleFullyFunded(bytes32)(bool)" \\
-  0x156915a716581f2b7358b4561e75c90ae14f7404ed9aca9a30c5c4872a82ef4f \\
-  --rpc-url https://mezo-mainnet.boar.network
+      <Block id="cast-mezo" title="Read Mezo parameters and a loan">
+        <Code title="TERMINAL" lang="SHELL">
+{`BO=${MEZO_PROTOCOL.borrowerOperations}
+TM=${MEZO_PROTOCOL.troveManager}
 
-# Use a Mainnet cycle ID returned by the deployed Netteo kernel.`}
-          </pre>
-        </div>
-      </div>
+cast call $BO "borrowingRate()(uint256)" --rpc-url $RPC      # 1e15 = 0.1%
+cast call $BO "minNetDebt()(uint256)" --rpc-url $RPC         # 1.8e21 = 1,800 MUSD
+cast call ${MEZO_PROTOCOL.priceFeed} "fetchPrice()(uint256)" --rpc-url $RPC   # BTC price, 18 decimals
+
+# a wallet's loan: status (1 = active) and collateral, principal, interest
+cast call $TM "getTroveStatus(address)(uint8)" <wallet> --rpc-url $RPC
+cast call $TM "getEntireDebtAndColl(address)(uint256,uint256,uint256,uint256,uint256,uint256)" <wallet> --rpc-url $RPC
+
+# Savings Vault position
+cast call ${MEZO_PROTOCOL.savingsVault} "balanceOf(address)(uint256)" <wallet> --rpc-url $RPC`}
+        </Code>
+      </Block>
     </div>
   );
 }
@@ -1256,14 +1207,20 @@ export function DocsContentRenderer({ sectionId }: SectionContentProps) {
       return <SectionProtocolInvariants />;
     case 'snapshot-commitments':
       return <SectionSnapshotCommitments />;
+    case 'security-model':
+      return <SectionSecurityModel />;
     case 'mezo-overview':
       return <SectionMezoOverview />;
     case 'musd-token':
       return <SectionMusdToken />;
     case 'deployed-contracts':
       return <SectionDeployedContracts />;
-    case 'live-settlement-proof':
-      return <SectionLiveSettlementProof />;
+    case 'mainnet-evidence':
+      return <SectionMainnetEvidence />;
+    case 'funding-sources':
+      return <SectionFundingSources />;
+    case 'mezo-contracts':
+      return <SectionMezoContracts />;
     case 'workspace-modes':
       return <SectionWorkspaceModes />;
     case 'partner-groups':

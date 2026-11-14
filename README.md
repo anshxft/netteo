@@ -1,235 +1,256 @@
-# Netteo — Multilateral Obligation Netting & MUSD Settlement on Mezo
+# Netteo
 
-> **Many obligations. One net settlement.**  
-> Reconcile mutual payment obligations across Web3 service collectives and DAO working groups, calculate deterministic zero-sum net positions, and settle atomically in canonical MUSD on Mezo Mainnet.
+**Settle with your Bitcoin, not by selling it.**
 
-[![Mezo Mainnet](https://img.shields.io/badge/Mezo%20Mainnet-Chain%2031612-7F011F.svg)](https://explorer.mezo.org)
-[![Live dApp](https://img.shields.io/badge/Vercel%20Production-netteo--six.vercel.app-success.svg)](https://netteo-six.vercel.app)
-[![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636.svg)](https://docs.soliditylang.org)
-[![Next.js](https://img.shields.io/badge/Next.js-16.4.2-black.svg)](https://nextjs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org)
+Netteo cancels out what a group owes each other, settles only the net amount in MUSD on Mezo Mainnet, and lets each debtor cover their share from the MUSD Savings Vault or a loan against Bitcoin they already hold.
 
-**Live Production Application:** [https://netteo-six.vercel.app](https://netteo-six.vercel.app)  
-**Verified Release & Demo Checklist:** [walkthrough.md](walkthrough.md)
+[![Mezo Mainnet](https://img.shields.io/badge/Mezo%20Mainnet-chain%2031612-7F011F.svg)](https://explorer.mezo.org)
+[![Live app](https://img.shields.io/badge/live%20app-netteo--six.vercel.app-2ea44f.svg)](https://netteo-six.vercel.app)
+[![Built for the Mezo Buildathon](https://img.shields.io/badge/Mezo%20Buildathon-Wave%202-363636.svg)](docs/SUBMISSION.md)
 
 ---
 
-## Mezo integration
+## See it in 60 seconds
 
-Netteo settles in canonical MUSD and plugs into Mezo's own products so a debtor can fund a deposit without selling Bitcoin. All of it lives in [`src/lib/mezo`](src/lib/mezo) and is read live from Mezo Mainnet.
+| | |
+|---|---|
+| **Live app** | https://netteo-six.vercel.app |
+| **Funding Check** (no wallet needed) | https://netteo-six.vercel.app/funding. Pick a real Bitcoin-backed loan on Mezo and see what it could fund. |
+| **Real settlements and their transactions** | The **Evidence** section on the landing page, or [DEPLOYMENTS.md](DEPLOYMENTS.md) |
+| **Documentation** | https://netteo-six.vercel.app/docs |
 
-| Mezo component | What Netteo does | Verified |
+No wallet? Switch to **Demo** in the header to run the full flow on sample data. Demo is clearly labelled and never touches the chain.
+
+---
+
+## The idea
+
+A working group, agency or DAO often owes itself money in loops. Paying every claim on its own means every debtor must find the full amount first, even though most of it cancels out.
+
+| | Pay each claim separately | Netted by Netteo |
 |---|---|---|
-| MUSD, mUSDC, mUSDT | Settlement assets, one kernel per token | Real cycles on mainnet ([DEPLOYMENTS.md](DEPLOYMENTS.md)) |
-| MUSD Savings Vault (sMUSD) | Withdraw to fund a deposit, save a payout, claim yield | **Real mainnet round trip** (3 transactions) |
-| BorrowerOperations, TroveManager, HintHelpers, SortedTroves, PriceFeed | Borrow the missing amount against an existing Bitcoin loan, behind a 150% safety floor (Mezo liquidates at 110%) | Real contracts on a mainnet fork (`fork.test.ts`); live reads in `protocol.test.ts` |
+| A owes B 100, B owes C 80, C owes A 20 | 200 to find up front, 3 transfers | **80 deposited**, one payout transaction |
 
-Try it without a wallet at `/funding`: pick one of the real Bitcoin-backed loans on Mezo and see what it could fund. Submission answers for the Mezo Buildathon are in [docs/SUBMISSION.md](docs/SUBMISSION.md).
+Less MUSD to find means less to sell or borrow. That is the point of Netteo for people who hold their wealth in Bitcoin on Mezo.
 
-Borrowing is verified on a fork, not executed on mainnet by the team: a new Mezo loan needs at least 1,800 MUSD of debt. MEZO and Mezo Passport are not integrated.
+> How much a real group saves depends on how circular its debts are. A group with no loops saves nothing, and the saving is in what must be deposited, not a guaranteed saving in fees.
 
 ---
 
-## Try it in two minutes
+## What you can do
 
-1. **See real evidence first.** The landing page's **Evidence** section links to two real three-party cycles settled in MUSD on Mezo Mainnet, with explorer links for each transaction. The same hashes are in [DEPLOYMENTS.md](DEPLOYMENTS.md).
-2. **No wallet?** Open the app and switch to **Demo** (the header toggle, or the menu on a phone). Demo runs the three-party example on sample data and is labelled as a sandbox; nothing in it is on-chain.
-3. **With a wallet** (Mezo Mainnet, a little BTC for gas, some MUSD): create a group with the other participants, propose claims, have each debtor accept with a wallet signature, then open **Settlements**, start a settlement, deposit, and settle. A real cycle needs at least two wallets, because a debtor must accept their own claims.
-4. **Check the result yourself:** the commands under "Verify it yourself" in [DEPLOYMENTS.md](DEPLOYMENTS.md) read the cycle state and the contract's balance straight from the chain.
-
-The contracts have not been independently audited. Amounts in the evidence cycles are small on purpose.
-
----
-
-## 1. Mainnet Settlement Configuration
-
-The app targets Mezo Mainnet (chain 31612) and settles in canonical MUSD, mUSDC and mUSDT. Each token has its own settlement kernel, immutably bound to that token and deployed by `script/Deploy.s.sol`. A token is selectable in Live mode only once its kernel is deployed and configured; until then live settlement for that token fails closed.
-
-| Contract | Address | Status | Block Explorer |
-|---|---|---|---|
-| **Canonical Mezo MUSD** | `0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186` | Official Mainnet Token | [View on Mezo Explorer](https://explorer.mezo.org/token/0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186) |
-| **Canonical Mezo mUSDC** | `0x04671C72Aab5AC02A03c1098314b1BB6B560c197` | Official Mainnet Token (6 decimals) | [View on Mezo Explorer](https://explorer.mezo.org/token/0x04671C72Aab5AC02A03c1098314b1BB6B560c197) |
-| **Canonical Mezo mUSDT** | `0xeB5a5d39dE4Ea42C2Aa6A57EcA2894376683bB8E` | Official Mainnet Token (6 decimals) | [View on Mezo Explorer](https://explorer.mezo.org/token/0xeB5a5d39dE4Ea42C2Aa6A57EcA2894376683bB8E) |
-| **SettlementKernelFactory (v2)** | `0x95e35305d466dF41EF35E02AA53F1e90Db759a45` | Current, deployed 2026-11-13 | [View](https://explorer.mezo.org/address/0x95e35305d466dF41EF35E02AA53F1e90Db759a45) |
-| **SettlementKernel MUSD (v2)** | `0x427Ff00c792252cC364Cb3240Dc26E6e7872340e` | Current | [View](https://explorer.mezo.org/address/0x427Ff00c792252cC364Cb3240Dc26E6e7872340e) |
-| **SettlementKernel mUSDC (v2)** | `0xE229B3a2020FC19331E8A3e9662a2508fFF78020` | Current | [View](https://explorer.mezo.org/address/0xE229B3a2020FC19331E8A3e9662a2508fFF78020) |
-| **SettlementKernel mUSDT (v2)** | `0xFecBE8a962F5C2628E877AA4C0C90C399549f18f` | Current | [View](https://explorer.mezo.org/address/0xFecBE8a962F5C2628E877AA4C0C90C399549f18f) |
-
-v2 fixes three contract bugs found in an audit (locked funds in a stuck cycle, fee-on-transfer tokens, cycle id squatting). v1 (a real MUSD cycle settled there on 2026-11-12) is superseded, holds no funds, and is not used by the app. Addresses, transaction hashes, fees and what each version proves: see [DEPLOYMENTS.md](DEPLOYMENTS.md).
-Older kernels on Mezo Testnet are not used by the Mainnet app.
+- **Record claims and get them approved.** Each debtor approves or disputes a claim with a wallet signature. Disputed claims are never netted.
+- **Share a link** to a claim so the debtor lands right on it.
+- **See the net positions** before anything touches the chain, then create the settlement cycle on Mezo.
+- **Fund your share without selling Bitcoin.** If your wallet is short on MUSD, withdraw from the **MUSD Savings Vault**, or **borrow against your existing Bitcoin loan**. Netteo shows the fee, the interest, your collateral ratio and the price at which you would be liquidated, and refuses to build a borrow that leaves you under 150%.
+- **Get paid and put it to work.** After a payout, deposit the MUSD in the Savings Vault in one step.
+- **Check any wallet** with the read-only Funding Check.
+- **Keep a record.** Receipts and a CSV export for every settlement, with links to the explorer.
+- **Settle in MUSD, mUSDC or mUSDT.** One token per cycle, never mixed.
 
 ---
 
-## 2. Historical Testnet Acceptance Settlement
+## How it uses Mezo
 
-A multi-party settlement was previously exercised on Mezo Testnet using testnet MUSD. This is historical test evidence, not a Mainnet settlement and not evidence of real-value payouts:
-- **Scenario:** 3 Participants:
-  - Participant A owes Participant B: 100 MUSD gross
-  - Participant B owes Participant C: 80 MUSD gross
-  - Participant C owes Participant A: 20 MUSD gross
-  - *Gross Obligation Volume:* **200 MUSD**
-- **Deterministic Netting Calculation:**
-  - Net Debtor A pays: **80 MUSD**
-  - Net Creditor B receives: **20 MUSD**
-  - Net Creditor C receives: **60 MUSD**
-  - *Net Settlement Volume:* **80 MUSD** (60% reduction in capital lockup & transaction overhead)
+| Mezo component | What Netteo does with it | How it is verified |
+|---|---|---|
+| **MUSD** (and mUSDC, mUSDT) | The settlement asset. One settlement kernel per token. | Two real cycles on mainnet |
+| **MUSD Savings Vault** | Withdraw to fund a deposit, deposit a payout, claim yield | A real mainnet round trip (3 transactions) |
+| **BorrowerOperations, TroveManager, HintHelpers, SortedTroves, PriceFeed** | Read your Bitcoin-backed loan; borrow the missing MUSD against it, with placement hints | Live mainnet reads; the borrow itself on a mainnet fork using the real contracts |
+| **Mezo RPC and explorer** | Three RPC providers with automatic failover; every transaction links to the explorer | Always on |
 
-### Verified Mezo Testnet Transaction Hashes
-
-1. **Step 1: MUSD Allowance Approval**  
-   Hash: [`0xb64b38c26b6014ef704d380805ccca2de64a1667fff439f07062f5e66f512291`](https://explorer.test.mezo.org/tx/0xb64b38c26b6014ef704d380805ccca2de64a1667fff439f07062f5e66f512291)
-2. **Step 2: Cycle Creation (`createCycle`)**  
-   Cycle ID: `0x156915a716581f2b7358b4561e75c90ae14f7404ed9aca9a30c5c4872a82ef4f`  
-   Hash: [`0x313721ea293d6511735a44cfa30d4d60890f3879397d6bf6c4f6ca8e7eb97341`](https://explorer.test.mezo.org/tx/0x313721ea293d6511735a44cfa30d4d60890f3879397d6bf6c4f6ca8e7eb97341)
-3. **Step 3: Net Debtor Funding (`deposit`)**  
-   Hash: [`0x6c99d70ef12fef7b87405cd09ea828068cbcf61f745b91055b1374fcd05c382f`](https://explorer.test.mezo.org/tx/0x6c99d70ef12fef7b87405cd09ea828068cbcf61f745b91055b1374fcd05c382f)
-4. **Step 4: Atomic Settlement Payout (`executeSettlement`)**  
-   Hash: [`0x87b397ec8053f1d4c58dd23bdcc633d7f480cc137f18d496fb2fcec59f7dc491`](https://explorer.test.mezo.org/tx/0x87b397ec8053f1d4c58dd23bdcc633d7f480cc137f18d496fb2fcec59f7dc491)
-
-*Result:* Creditor B received 20 MUSD, Creditor C received 60 MUSD atomically. Cycle reached terminal `Completed` state.
+Protocol parameters (the 0.1% issuance fee, 1% interest, 110% minimum ratio, 1,800 MUSD minimum loan) are **read from the chain**, never hard-coded. Details are in the in-app docs under *Funding Without Selling Bitcoin* and *Mezo Protocol Contracts*.
 
 ---
 
-## 3. Architecture & Core Invariants
+## Proof it is real
+
+Everything below was run on Mezo Mainnet, and `src/lib/chain/deployments.test.ts` re-checks every address, token binding, amount and transaction against the live chain.
+
+| What | Result | Transactions |
+|---|---|---|
+| **v2 settlement** (current contracts) | A deposited 0.32 MUSD, B received 0.08, C received 0.24. Gross claims 0.80. Kernel left at 0. | [create](https://explorer.mezo.org/tx/0xdaceb9e491895ea5eb09caeb7c537f7d87b4318803c53cb1ee2ee47da122955e) · [deposit](https://explorer.mezo.org/tx/0x0340fd70a4e04fcf6d3b0787e5f8726cc99176b45e5f412610213bc8d3b457ce) · [execute](https://explorer.mezo.org/tx/0x9795326bd5fb24acd1fbbb869027bbdad231be58e9be98ab85d89226f3971f45) |
+| **v1 settlement** (superseded) | A deposited 0.40 MUSD, B received 0.10, C received 0.30. Gross 1.00. | [create](https://explorer.mezo.org/tx/0xe2f2fb78315deb75edb117e84a401a51a057ed0b6c6d990c7f20a8688e2f7dce) · [deposit](https://explorer.mezo.org/tx/0x902a4912efc9fd508886f7ff767b294468312ed99fcaadc49dc597cc1a4a35b1) · [execute](https://explorer.mezo.org/tx/0x4093d636a434ae210740be916a0c10e927b40e6de9b8f1b24bdc7b7f159c3c2f) |
+| **Savings Vault round trip** | 0.01 MUSD in, 0.01 MUSD out, every wei returned | [approve](https://explorer.mezo.org/tx/0x465b2b8693049f1fd96eab277a7c5f57d9c00f1fe67967c4887ae0ee6b5cd4a4) · [deposit](https://explorer.mezo.org/tx/0x582f2266b8408fb3126ef58e7f08bbe7021d8a0b006ab697685ea1c30d506091) · [withdraw](https://explorer.mezo.org/tx/0x2006cdd63fde64e2b0778522569431305dac09c1627a81d038e9bb4e9d9ba15c) |
+
+Check a settlement yourself:
+
+```bash
+RPC=https://mezo-mainnet.boar.network
+K=0x427Ff00c792252cC364Cb3240Dc26E6e7872340e   # MUSD kernel (v2)
+
+# state 3 = Completed; also prints gross, net, funded and distributed totals
+cast call $K "getCycle(bytes32)(bytes32,string,uint256,uint256,uint256,uint256,uint256,uint256,uint8,address)" \
+  0x7ff4cbf39083469093a005be46bf698bd2d36b2d0c343374d4fecb224d32d420 --rpc-url $RPC
+```
+
+### Contracts (v2, current)
+
+| Contract | Address |
+|---|---|
+| SettlementKernelFactory | [`0x95e35305d466dF41EF35E02AA53F1e90Db759a45`](https://explorer.mezo.org/address/0x95e35305d466dF41EF35E02AA53F1e90Db759a45) |
+| SettlementKernel, MUSD | [`0x427Ff00c792252cC364Cb3240Dc26E6e7872340e`](https://explorer.mezo.org/address/0x427Ff00c792252cC364Cb3240Dc26E6e7872340e) |
+| SettlementKernel, mUSDC | [`0xE229B3a2020FC19331E8A3e9662a2508fFF78020`](https://explorer.mezo.org/address/0xE229B3a2020FC19331E8A3e9662a2508fFF78020) |
+| SettlementKernel, mUSDT | [`0xFecBE8a962F5C2628E877AA4C0C90C399549f18f`](https://explorer.mezo.org/address/0xFecBE8a962F5C2628E877AA4C0C90C399549f18f) |
+
+v2 fixes three bugs found in an audit of v1: funds that could be locked in a stuck cycle, fee-on-transfer tokens, and cycle-id squatting. v1 holds no funds and the app does not use it. Fees, block numbers and what each version proves are in [DEPLOYMENTS.md](DEPLOYMENTS.md).
+
+---
+
+## How a settlement works
 
 ```mermaid
 sequenceDiagram
-    participant D as Net Debtors
-    participant UI as Netteo App Desk
+    participant D as Debtor
+    participant C as Creditor
+    participant App as Netteo app and API
     participant K as SettlementKernel
-    participant M as MUSD Token
-    participant C as Net Creditors
+    participant M as Mezo (Savings, loans)
 
-    Note over UI: Calculate canonical net positions (sum(net) = 0)
-    UI->>K: createCycle(CycleInput struct)
-    loop Each Net Debtor
-        D->>M: approve(SettlementKernel, amount)
-        D->>K: deposit(cycleId, amount)
-        K->>M: transferFrom(debtor, kernel, amount)
+    C->>App: record a claim
+    D->>App: approve it (wallet signature)
+    App->>App: net the approved claims, preview positions
+    D->>K: createCycle(net amounts)
+    App->>K: read the cycle, compare with the approved claims
+    Note over App,K: deposits stay disabled until the cycle is verified
+    opt wallet short on MUSD
+        D->>M: withdraw from Savings, or borrow against BTC
     end
-    Note over K: 100% funded check passed
-    UI->>K: executeSettlement(cycleId) [Permissionless trigger]
-    loop Each Net Creditor
-        K->>M: transfer(creditor, payout)
-        M-->>C: Credit received
+    D->>K: approve and deposit the net amount
+    Note over K: fully funded
+    C->>K: executeSettlement (anyone may call it)
+    K-->>C: MUSD payout, in one transaction
+    opt save the payout
+        C->>M: deposit into the Savings Vault
     end
-    Note over K: Terminal Completed state reached
 ```
 
-### Safety & Integrity Invariants
-1. **Zero-Sum Balance ($\sum \text{net} = 0$):** Contract strictly verifies that total net debits equal total net credits before freezing a cycle.
-2. **Collect-Then-Distribute:** No funds can be distributed until 100% of required net deposits have been locked.
-3. **Mutual-Exclusion Refund:** If the funding deadline passes before 100% funding is reached, any deposited debtor can claim a 100% refund (`claimRefund`).
-4. **Bounded Gas:** Participation is capped at 10 participants per cycle to guarantee execution within EVM block gas limits.
-5. **Checks-Effects-Interactions & ReentrancyGuard:** Cycle state transitions occur prior to external token transfers.
+If a cycle is not fully funded by the deadline, each depositor takes back exactly what they deposited with `claimRefund`.
 
 ---
 
-## 4. Technology Stack
+## Safety and trust
 
-- **Smart Contracts:** Solidity `0.8.24`, OpenZeppelin Contracts v5 (`SafeERC20`, `ReentrancyGuard`), Foundry toolchain.
-- **Frontend:** Next.js 16 (App Router, Turbopack), React 19, TypeScript strict mode.
-- **Web3 Integration:** Viem 2.x, Wagmi 3.x, TanStack React Query.
-- **Database & SSR:** Supabase (`@supabase/ssr`, `@supabase/supabase-js`) with Postgres Row-Level Security (RLS).
-- **Design System:** Bespoke Netteo token system (`tokens.css`), Roundo typography, 120–240ms motion tokens, zero AI-slop guarantees.
+- **The contract has no owner, admin or pause function.** Funds leave it only through settlement or refund.
+- **Every claim action is signed by the right wallet.** Signatures expire after five minutes and can be used once, so a replay is refused.
+- **The browser cannot read or write private data.** The private tables have row-level security and no public policy; everything goes through an API that needs a signed wallet session.
+- **A cycle must match the approved claims before anyone can deposit.** Anyone can create a cycle that names you as a debtor, so the server recomputes the netting and compares it with the chain first.
+- **Borrowing has a safety floor.** Netteo never builds a borrow under 150% collateral. Mezo liquidates at 110%.
+- **The API is rate limited** and shows users plain-language errors, never stack traces.
 
 ---
 
-## 5. Local Development & Testing
+## Honest limits
 
-### Prerequisites
-- Node.js >= 20.x
-- Foundry (`forge`, `cast`)
+- **The contracts have not been independently audited.**
+- **Borrowing against Bitcoin was not executed on mainnet by the team.** A new Mezo loan needs at least 1,800 MUSD of debt, far more than the test wallet holds. It is verified against the real Mezo contracts on a mainnet fork, and the reads are live. Netteo only borrows against a loan you already have.
+- **MEZO and Mezo Passport are not integrated.** Passport pins React 18 and wagmi 2; this app is on React 19 and wagmi 3. MEZO needs testing with real funds on mainnet first.
+- **Claim approvals live in the private database,** not on-chain. The server checks a cycle against them before deposits open, but the contract itself cannot.
+- **Not yet tested with real groups.** The intended users are a hypothesis.
+- **The rate limiter keeps counts per server instance,** so the effective limit is per instance.
 
-### Setup
+---
+
+## Run it yourself
+
+You need Node.js 22, [Foundry](https://book.getfoundry.sh/getting-started/installation), and a free [Supabase](https://supabase.com) project.
+
 ```bash
-# Clone the repository
 git clone https://github.com/syther069/netteo.git
 cd netteo
-
-# Install dependencies
 npm install
-
-# Copy environment variables
 cp .env.example .env.local
 ```
 
-### Run Tests
+1. In Supabase, run [`src/lib/db/schema.sql`](src/lib/db/schema.sql) in the SQL editor.
+2. In `.env.local`, fill in `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` and `SESSION_SECRET` (the file explains each). The Mezo contract addresses are already filled in with the public v2 deployment.
+3. Run the app:
+
 ```bash
-# Run unit and integration tests (25/25 passing)
-npm test
-
-# Run Solidity tests: kernel invariants, v2 fixes, 6-decimal tokens, deploy/acceptance script safety
-forge test
-
-# Run the same kernel against the REAL deployed MUSD / mUSDC / mUSDT bytecode on a local fork
-# (skipped unless the URL is set; nothing is broadcast to the real chain)
-MEZO_MAINNET_FORK_URL=https://mezo-mainnet.boar.network forge test --match-contract Fork -vv
-
-# Run TypeScript typecheck
-npm run typecheck
-
-# Run production build
-npm run build
+npm run dev    # http://localhost:3000
 ```
 
-### Deploy to Mezo Mainnet
+### Tests
 
-Deployment is irreversible and costs real BTC for gas (v2 cost 0.0000093827 BTC, about a dollar). **Keep the deployer key out of plain-text env files.** Import it into Foundry's encrypted keystore once (you type a password; nothing is stored in the repo):
+```bash
+npx tsc --noEmit    # typecheck
+npm test            # TypeScript tests
+forge test          # Solidity tests
+npm run build       # production build
+```
+
+Some TypeScript tests read the live Mezo chain, so they catch a wrong address or a docs claim that drifted from reality: `deployments.test.ts` (every address, token binding, amount and transaction), `protocol.test.ts` (the Mezo contracts Netteo depends on) and `tokens.test.ts`. Set `SKIP_CHAIN_PROBE=1` to run offline.
+
+The Mezo borrowing and Savings Vault test runs the real Mezo contracts on a free local fork of mainnet. Nothing is sent to the real chain:
+
+```bash
+anvil --fork-url https://mezo-mainnet.boar.network --port 8547
+MEZO_MAINNET_FORK_URL=http://127.0.0.1:8547 npx tsx src/lib/mezo/fork.test.ts
+```
+
+The same kernel is also run against the real MUSD, mUSDC and mUSDT contract code: `MEZO_MAINNET_FORK_URL=https://mezo-mainnet.boar.network forge test --match-contract Fork`.
+
+---
+
+## Deploy
+
+### The contracts
+
+Deployment is irreversible and costs real BTC for gas (v2 cost 0.0000093827 BTC, roughly 60 US cents at today's BTC price). **Keep the deployer key out of plain-text files.** Import it into Foundry's encrypted keystore once:
 
 ```bash
 cast wallet import deployer --interactive
 ```
 
-Then pass the signer on the command line instead of `DEPLOYER_PRIVATE_KEY`:
-
 ```bash
-# 1. Dry run: verifies every token's code, decimals and symbol on-chain, deploys nothing
-CONFIRM_MAINNET_DEPLOY=true forge script script/Deploy.s.sol:Deploy   --rpc-url https://mezo-mainnet.boar.network --account deployer --sender <your-address>
+# 1. Dry run: checks every token's code, decimals and symbol on-chain, deploys nothing
+CONFIRM_MAINNET_DEPLOY=true forge script script/Deploy.s.sol:Deploy \
+  --rpc-url https://mezo-mainnet.boar.network --account deployer --sender <your-address>
 
-# 2. Broadcast: deploys SettlementKernelFactory, then one kernel each for MUSD, mUSDC and mUSDT
-CONFIRM_MAINNET_DEPLOY=true forge script script/Deploy.s.sol:Deploy   --rpc-url https://mezo-mainnet.boar.network --account deployer --sender <your-address> --broadcast
+# 2. Broadcast: deploys the factory, then one kernel each for MUSD, mUSDC and mUSDT
+CONFIRM_MAINNET_DEPLOY=true forge script script/Deploy.s.sol:Deploy \
+  --rpc-url https://mezo-mainnet.boar.network --account deployer --sender <your-address> --broadcast
 ```
 
-If an old `DEPLOYER_PRIVATE_KEY` is still set in your environment or `.env`, Foundry uses it instead of the keystore. Foundry also takes the FIRST of two duplicate lines in a `.env` file; delete stale ones.
+The script prints the `NEXT_PUBLIC_SETTLEMENT_KERNEL_*` values to use. `script/AcceptanceTest.s.sol` runs a real three-party cycle (read its header; `ACCEPTANCE_PERCENT` scales it down, and mainnet runs need `CONFIRM_MAINNET_ACCEPTANCE=true`). Rehearse for free first with `anvil --fork-url ...`.
 
-The script prints the `NEXT_PUBLIC_SETTLEMENT_KERNEL_*` values for `.env.local` and your hosting provider. Set `NEXT_PUBLIC_SETTLEMENT_KERNEL_DEPLOY_BLOCK` to the factory block shown in `broadcast/Deploy.s.sol/31612/run-latest.json`, then verify each kernel's `musdToken()` on the explorer.
+### The web app
 
-A real three-party cycle is `script/AcceptanceTest.s.sol` (read its header for the environment). Set `ACCEPTANCE_PERCENT` (1 to 100) to scale it down, for example 80 settles a net 0.32 of the token. Its post-checks run against simulated state, so confirm the transaction hashes and balances on the explorer. Mainnet runs need `CONFIRM_MAINNET_ACCEPTANCE=true`.
-
-Rehearse for free first: `MEZO_MAINNET_FORK_URL=https://mezo-mainnet.boar.network forge test --match-contract Fork` runs the kernel against the real token contracts on a local fork, and `anvil --fork-url ...` lets you run the deploy scripts against a local copy of mainnet.
-
-### Deploy the web app
-
-The app's database access is locked down: the browser's public key cannot read or write the private tables, and every read and write goes through the API (`src/app/api/*`), which uses the Supabase service role.
-
-Set these on your hosting provider (names only; see `.env.example`):
+Set these on your host (names only; see `.env.example`):
 
 | Variable | Purpose |
 |---|---|
-| `SUPABASE_SERVICE_ROLE_KEY` | Server only. The API cannot reach the database without it and fails closed. |
-| `SESSION_SECRET` | At least 32 random characters. Signs wallet session tokens; without it sign-in fails closed. |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public. The anon key can only read the chain-derived projection tables. |
-| `NEXT_PUBLIC_SETTLEMENT_KERNEL_FACTORY_ADDRESS`, `NEXT_PUBLIC_SETTLEMENT_KERNEL_MUSD`, `..._MUSDC`, `..._MUSDT`, `NEXT_PUBLIC_SETTLEMENT_KERNEL_DEPLOY_BLOCK` | The v2 addresses above. |
-| `NEXT_PUBLIC_MEZO_MAINNET_RPC_URL` | Optional. A dedicated RPC provider; the other providers Mezo lists are used automatically as fallbacks. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server only. The API cannot reach the database without it. |
+| `SESSION_SECRET` | At least 32 random characters. Without it, sign-in fails closed. |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public. The anon key can only read chain-derived tables. |
+| `NEXT_PUBLIC_SETTLEMENT_KERNEL_FACTORY_ADDRESS`, `..._MUSD`, `..._MUSDC`, `..._MUSDT`, `..._DEPLOY_BLOCK` | The deployment addresses above. |
+| `INDEXER_CRON_SECRET` (optional) | Protects `/api/indexer` for an external scheduler. |
 
-**Database, in this order:**
-1. Deploy the new app first (with `SESSION_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` set).
-2. Back up, then run `src/lib/db/migrations/002_multi_token.sql` (drops and rebuilds the two chain projection tables, which are rebuilt from chain events) and `src/lib/db/migrations/003_lock_down_access.sql` (removes the public read/write policies and the old seed rows), then `004_widen_algorithm_version.sql` (one column too narrow for cycle registration). Running 003 before step 1 locks out the old app, which wrote to these tables directly.
-3. Fresh installs only need `src/lib/db/schema.sql`.
+**Upgrading an existing database, in this order:** deploy the new app first, then back up and run `src/lib/db/migrations/002` to `004` in order. Running `003` first locks out an older app. A fresh database only needs `schema.sql`.
 
-Indexing needs no scheduler: loading cycles queues a throttled index run. `/api/indexer` also accepts GET and POST with `Authorization: Bearer $CRON_SECRET` (or `INDEXER_CRON_SECRET`) for an external scheduler.
-
-### Run Dev Server
-```bash
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Indexing needs no scheduler: loading cycles queues a throttled run.
 
 ---
 
-## 6. Disclosures & Known Limitations
+## Project map
 
-- **Gas Limit Boundaries:** Cycles are hard-capped at 10 participants to bound single-transaction loops within Mezo block gas limits. Larger groups settle in multiple sub-cycles.
-- **Token Scope:** Each cycle settles in exactly one token: MUSD (18 decimals), mUSDC or mUSDT (6 decimals). Obligations in different tokens are never netted together, since that would need FX conversion. Other Mezo tokens (BTC, MEZO, mSolvBTC and the rest) are not supported until each has been tested on-chain.
-- **Coordinator Liveness Independence:** Once 100% funded, `executeSettlement` is permissionless and can be triggered by any participant or automated bot.
+| Path | What is there |
+|---|---|
+| `contracts/` | `SettlementKernel` and `SettlementKernelFactory` (Solidity 0.8.24) |
+| `test/contracts/` | Foundry tests, including mutation-checked fixes and real-token fork tests |
+| `script/` | Deploy and acceptance scripts, with mainnet confirmation guards |
+| `src/app/` | Next.js pages and the API routes (`/api/session`, `groups`, `obligations`, `cycles`, `indexer`) |
+| `src/features/` | Product areas: claims, groups, settlements, funding, receipts, docs |
+| `src/lib/mezo/` | The Mezo integration: borrowing math, chain reads, Savings Vault, hooks |
+| `src/lib/chain/` | Token registry, deployments, RPC fallback, contract hooks |
+| `src/lib/api/`, `src/lib/auth/` | Request handling, wallet sessions, signatures, rate limiting |
+| `src/lib/db/` | Database schema and migrations |
+
+---
+
+## Read more
+
+- **In-app documentation:** https://netteo-six.vercel.app/docs (architecture, security model, contract API, Mezo integration)
+- [DEPLOYMENTS.md](DEPLOYMENTS.md): addresses, transactions, fees and what each deployment proves
+- [docs/SUBMISSION.md](docs/SUBMISSION.md): answers for the Mezo Buildathon submission
+- [PrD.md](PrD.md) and [architecture.md](architecture.md): the original product and architecture plans. They were written before the mainnet work, so the in-app docs and DEPLOYMENTS.md are the current source of truth.

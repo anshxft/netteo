@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createPublicClient, getAddress, http } from 'viem';
-import { MEZO_MAINNET_MUSD, mezoMainnet, MEZO_MAINNET_RPC_URL } from '../chain/config';
+import { MEZO_MAINNET_MUSD, mezoMainnet } from '../chain/config';
+import { mezoTransport } from '../chain/transport';
 import { readProtocolParams } from './chain';
 import { MEZO_PROTOCOL, savingsVaultAbi } from './protocol';
 
@@ -19,7 +20,7 @@ if (process.env.SKIP_CHAIN_PROBE === '1') {
 }
 
 async function probe() {
-  const client = createPublicClient({ chain: mezoMainnet, transport: http(MEZO_MAINNET_RPC_URL) });
+  const client = createPublicClient({ chain: mezoMainnet, transport: mezoTransport() });
 
   for (const [name, address] of entries) {
     const code = await client.getCode({ address });

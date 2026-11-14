@@ -8,7 +8,8 @@ import {
   requireTokenByAddress,
   isSupportedSettlementToken,
 } from './tokens';
-import { mezoMainnet, MEZO_MAINNET_RPC_URL, MEZO_MAINNET_CHAIN_ID } from './config';
+import { mezoMainnet, MEZO_MAINNET_CHAIN_ID } from './config';
+import { mezoTransport } from './transport';
 
 const entries = Object.entries(CANONICAL_MEZO_TOKENS);
 
@@ -79,10 +80,10 @@ async function verifyOnChain() {
     return;
   }
 
-  const client = createPublicClient({ chain: mezoMainnet, transport: http(MEZO_MAINNET_RPC_URL) });
+  const client = createPublicClient({ chain: mezoMainnet, transport: mezoTransport() });
 
   const chainId = await client.getChainId();
-  assert.equal(chainId, MEZO_MAINNET_CHAIN_ID, `RPC ${MEZO_MAINNET_RPC_URL} is not Mezo Mainnet`);
+  assert.equal(chainId, MEZO_MAINNET_CHAIN_ID, "the RPC is not Mezo Mainnet");
 
   for (const [key, token] of entries) {
     const [decimals, symbol, code] = await Promise.all([
