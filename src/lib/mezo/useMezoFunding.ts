@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useReducer, useRef } from 'react';
+import { txReducer, type MezoTxState } from './txMachine';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePublicClient, useWriteContract } from 'wagmi';
 import { erc20Abi, type Address, type Hex } from 'viem';
@@ -53,12 +54,7 @@ export function useMezoFunding(owner?: Address) {
   };
 }
 
-export type MezoTxState =
-  | { status: 'idle' }
-  | { status: 'wallet'; label: string }
-  | { status: 'confirming'; label: string; hash: Hex }
-  | { status: 'success'; label: string; hash: Hex }
-  | { status: 'error'; label: string; message: string };
+export type { MezoTxState } from './txMachine';
 
 /** Plain-language messages only: no stack traces, contract internals or RPC details reach the screen. */
 export function sanitizeMezoError(err: unknown): string {
@@ -76,28 +72,28 @@ export function useMezoActions(owner: Address | undefined, onConfirmed?: () => v
   const client = usePublicClient({ chainId: MEZO_MAINNET_CHAIN_ID });
   const { writeContractAsync } = useWriteContract();
   const queryClient = useQueryClient();
-  const [tx, setTx] = useState<MezoTxState>({ status: 'idle' });
+  const [tx, dispatch] = useReducer(txReducer, { status: 'idle' } as MezoTxState);
   const busy = useRef(false); // blocks a second submit before React re-renders
 
   const run = useCallback(
     async (label: string, send: () => Promise<Hex>) => {
       if (busy.current) return;
       if (!client || !owner) {
-        setTx({ status: 'error', label, message: 'Connect your wallet on Mezo Mainnet first.' });
+        dispatch({ type: 'failed', label, message: 'Connect your wallet on Mezo Mainnet first.' });
         return;
       }
       busy.current = true;
-      setTx({ status: 'wallet', label });
+      dispatch({ type: 'start', label });
       try {
         const hash = await send();
-        setTx({ status: 'confirming', label, hash });
+        dispatch({ type: 'submitted', hash });
         const receipt = await client.waitForTransactionReceipt({ hash });
         if (receipt.status !== 'success') throw new NetteoGuardError('The transaction was mined but reverted. Nothing changed.');
-        setTx({ status: 'success', label, hash });
+        dispatch({ type: 'confirmed' });
         await queryClient.invalidateQueries({ queryKey: ['mezo'] });
         onConfirmed?.();
       } catch (err) {
-        setTx({ status: 'error', label, message: sanitizeMezoError(err) });
+        dispatch({ type: 'failed', label, message: sanitizeMezoError(err) });
       } finally {
         busy.current = false;
       }
@@ -176,5 +172,5 @@ export function useMezoActions(owner: Address | undefined, onConfirmed?: () => v
       return writeContractAsync(request);
     });
 
-  return { tx, reset: () => setTx({ status: 'idle' }), borrow, withdrawSavings, approveVault, depositSavings, claimYield };
+  return { tx, reset: () => dispatch({ type: 'reset' }), borrow, withdrawSavings, approveVault, depositSavings, claimYield };
 }

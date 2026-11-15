@@ -1,5 +1,6 @@
 'use client';
 
+import { deriveScreenState } from '@/lib/screenState';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from './ObligationsView.module.css';
@@ -109,6 +110,8 @@ export function ObligationsView() {
   const grossAcceptedTotal = obligations
     .filter((o) => o.status === 'Accepted')
     .reduce((sum, o) => sum + o.amount, 0n);
+
+  const screen = deriveScreenState({ isLoading, error, count: obligations.length, needsWallet });
 
   return (
     <div>
@@ -293,10 +296,10 @@ export function ObligationsView() {
       )}
 
       {/* --- STATE 3a: Live mode without a wallet: not "empty", just not signed in --- */}
-      {!isLoading && !error && obligations.length === 0 && needsWallet && <WalletRequiredState what="your payments" />}
+      {screen === 'needs-wallet' && <WalletRequiredState what="your payments" />}
 
       {/* --- STATE 3: Empty State --- */}
-      {!isLoading && !error && obligations.length === 0 && !needsWallet && (
+      {screen === 'empty' && (
         <div className={styles.emptyState}>
           <div
             style={{
@@ -327,7 +330,7 @@ export function ObligationsView() {
       )}
 
       {/* --- STATE 4: Success / Populated Ledger --- */}
-      {!isLoading && !error && obligations.length > 0 && (
+      {screen === 'ready' && (
         <ObligationsLedger
           obligations={obligations}
           onUpdate={fetchObligations}

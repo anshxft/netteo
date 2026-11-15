@@ -172,6 +172,7 @@ async function main() {
     const a = obligation();
     db.tables.obligations = [a];
     assert.equal((await act(carol, 'accept', a.id)).status, 403, 'the creditor cannot accept for the debtor');
+    assert.equal((await act(carol, 'accept', a.id)).body.code, 'not_debtor', 'refusals carry a machine-readable code');
     assert.equal((await act(alice, 'accept', a.id)).status, 403, 'the proposer cannot accept for the debtor');
     const accepted = await act(bob, 'accept', a.id);
     assert.equal(accepted.status, 200);
@@ -183,6 +184,7 @@ async function main() {
     assert.equal((await act(alice, 'withdraw', a.id)).status, 409, 'an accepted claim cannot be withdrawn');
     assert.equal((await act(carol, 'withdraw', a.id)).status, 409);
     assert.equal((await act(bob, 'accept', a.id)).status, 409);
+    assert.equal((await act(bob, 'accept', a.id)).body.code, 'wrong_state');
     assert.equal(statusOf(a.id), 'accepted');
 
     // The revival attack: withdrawn claims stay withdrawn.

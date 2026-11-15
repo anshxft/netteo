@@ -5,31 +5,17 @@ import type { Address } from 'viem';
 import { ExternalLink } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
-import { TransactionStatus, type TransactionLifecycleState } from '@/components/common/TransactionStatus';
+import { TransactionStatus } from '@/components/common/TransactionStatus';
 import { formatBaseUnitsToDisplay } from '@/features/obligations/store';
 import { ONE, nettingBenefit, planBorrow, type BorrowPlan, type ProtocolParams } from '@/lib/mezo/borrow';
 import { MEZO_LINKS } from '@/lib/mezo/protocol';
-import { useMezoActions, useMezoFunding, type MezoTxState } from '@/lib/mezo/useMezoFunding';
+import { useMezoActions, useMezoFunding } from '@/lib/mezo/useMezoFunding';
+import { isInFlight, txToLifecycle, type MezoTxState } from '@/lib/mezo/txMachine';
 import styles from './FundingSources.module.css';
 
 const money = (v: bigint) => formatBaseUnitsToDisplay(v, 'MUSD');
 const pct = (ratio: bigint) => `${(Number((ratio * 10000n) / ONE) / 100).toFixed(1)}%`;
 const usd = (v: bigint) => `$${Number(v / ONE).toLocaleString()}`;
-
-function txToLifecycle(tx: MezoTxState): { state: TransactionLifecycleState; hash?: string; message?: string; title: string } | null {
-  switch (tx.status) {
-    case 'wallet':
-      return { state: 'awaiting_signature', title: `${tx.label}: confirm in your wallet` };
-    case 'confirming':
-      return { state: 'pending', hash: tx.hash, title: `${tx.label}: confirming on Mezo` };
-    case 'success':
-      return { state: 'confirmed', hash: tx.hash, title: `${tx.label}: confirmed` };
-    case 'error':
-      return { state: 'reverted', message: tx.message, title: `${tx.label}: not completed` };
-    default:
-      return null;
-  }
-}
 
 function TxStatus({ tx, onDismiss }: { tx: MezoTxState; onDismiss: () => void }) {
   const life = txToLifecycle(tx);
@@ -62,7 +48,7 @@ export function FundingSourcesPanel({ owner, shortfall, disabled, onFunded }: Fu
   const funding = useMezoFunding(owner);
   const actions = useMezoActions(owner, onFunded);
   const [reviewing, setReviewing] = useState(false);
-  const inFlight = actions.tx.status === 'wallet' || actions.tx.status === 'confirming';
+  const inFlight = isInFlight(actions.tx);
   const locked = disabled || inFlight;
 
   const { params, trove, savings } = funding;
@@ -267,7 +253,7 @@ export interface SavePayoutPanelProps {
 export function SavePayoutPanel({ owner, payout, walletBalance, disabled, onDone }: SavePayoutPanelProps) {
   const funding = useMezoFunding(owner);
   const actions = useMezoActions(owner, onDone);
-  const inFlight = actions.tx.status === 'wallet' || actions.tx.status === 'confirming';
+  const inFlight = isInFlight(actions.tx);
   const locked = disabled || inFlight;
   const amount = payout < walletBalance ? payout : walletBalance;
   const { savings, vaultAllowance } = funding;

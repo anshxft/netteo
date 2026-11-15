@@ -405,6 +405,46 @@ Expired/Cancelled  -> Refunded        when the last deposit is reclaimed`}
           ]}
         />
       </Block>
+
+      <Block id="app-state-machines" title="State machines in the app">
+        <P>
+          Each lifecycle is one small pure module with no UI or network code, so the API, the screens and the tests all ask the same function and
+          cannot drift apart. An event that is not legal in the current state is ignored or refused; it never half-applies.
+        </P>
+        <Table
+          head={['Lifecycle', 'States', 'Module']}
+          rows={[
+            [
+              'Payment claim',
+              <><code key="o">proposed</code> to <code key="a">accepted</code>, <code key="d">disputed</code> or <code key="w">withdrawn</code>; then <code key="f">frozen</code> and <code key="s">settled</code> by a cycle</>,
+              <code key="m1">src/lib/obligations/machine.ts</code>,
+            ],
+            [
+              'Settlement cycle',
+              <>The six on-chain states above, plus which actions each allows (deposit, execute, cancel, refund)</>,
+              <code key="m2">src/features/settlement-cycles/machine.ts</code>,
+            ],
+            [
+              'Wallet transaction',
+              <><code key="t1">idle</code>, <code key="t2">wallet</code>, <code key="t3">confirming</code>, <code key="t4">success</code> or <code key="t5">error</code></>,
+              <code key="m3">src/lib/mezo/txMachine.ts</code>,
+            ],
+            [
+              'List screen',
+              <><code key="l1">loading</code>, <code key="l2">error</code>, <code key="l3">ready</code>, <code key="l4">needs-wallet</code>, <code key="l5">empty</code></>,
+              <code key="m4">src/lib/screenState.ts</code>,
+            ],
+          ]}
+        />
+        <Bullets
+          items={[
+            <>Only the debtor can accept or dispute a proposed claim; the proposer or creditor can withdraw it. The API enforces this with a stored status check, so two requests cannot both succeed. The claims screen reads the same rules to decide which buttons to show.</>,
+            <>A second wallet transaction cannot start while one is waiting for a signature or confirmation, and a late failure cannot overwrite a confirmed one.</>,
+            <>Executing a settlement is only offered for a fully funded cycle that is still live, never for a cancelled, expired or refunded one.</>,
+            <>Failures carry a machine-readable code (for example <code>wrong_state</code>, <code>not_debtor</code>, <code>not_party</code>) next to the plain-language message, so a script or agent can branch without parsing prose.</>,
+          ]}
+        />
+      </Block>
     </div>
   );
 }

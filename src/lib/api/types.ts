@@ -7,7 +7,8 @@ export interface ApiResult {
   body: Record<string, unknown>;
 }
 
-export const fail = (status: number, error: string): ApiResult => ({ status, body: { error } });
+/** `code` is an optional machine-readable reason (for example `wrong_state`); `error` stays the plain-language message. */
+export const fail = (status: number, error: string, code?: string): ApiResult => ({ status, body: code ? { error, code } : { error } });
 export const ok = (body: Record<string, unknown>, status = 200): ApiResult => ({ status, body });
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

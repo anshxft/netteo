@@ -94,16 +94,17 @@ export const DOC_GROUPS: DocGroup[] = [
       {
         id: 'state-machine',
         slug: 'state-machine',
-        title: 'Cycle State Machine',
+        title: 'State Machines',
         badge: 'Solidity',
         group: 'Architecture & Security',
-        description: 'The states a settlement cycle can be in, how it moves between them, and when deposits can be refunded.',
+        description: 'The lifecycle of a settlement cycle, a payment claim and a wallet transaction: states, legal transitions, and where each rule lives in code.',
         subsections: [
           { id: 'lifecycle-states', title: 'States' },
           { id: 'state-transitions', title: 'Transitions' },
           { id: 'deadlines-and-timeouts', title: 'Deadlines, grace period and refunds' },
+          { id: 'app-state-machines', title: 'State machines in the app' },
         ],
-        keywords: ['state machine', 'lifecycle', 'funding', 'completed', 'expired', 'refunded', 'cancelled', 'grace'],
+        keywords: ['state machine', 'transitions', 'obligation', 'transaction', 'lifecycle', 'funding', 'completed', 'expired', 'refunded', 'cancelled', 'grace'],
       },
       {
         id: 'protocol-invariants',

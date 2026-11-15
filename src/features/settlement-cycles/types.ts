@@ -1,11 +1,7 @@
 import { NettingResult } from './netting';
 
-export type CycleState =
-  | 'Funding'
-  | 'ReadyToSettle'
-  | 'Completed'
-  | 'Expired'
-  | 'Refunded';
+import type { CycleState } from './machine';
+export type { CycleState };
 
 export interface SettlementCycle {
   id: string;

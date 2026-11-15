@@ -3,6 +3,7 @@
 import { Obligation, ObligationStatus, ProposeObligationInput } from './types';
 import { normalizeAddress } from '../settlement-cycles/netting';
 import { DEFAULT_SETTLEMENT_TOKEN, getTokenBySymbol, requireTokenByAddress } from '@/lib/chain/tokens';
+import { actionForState } from '@/lib/obligations/machine';
 
 const STORAGE_KEY = 'netteo_obligations_v1';
 
@@ -237,6 +238,11 @@ export function updateObligationStatus(
   const target = obligations[index];
   if (target.status === 'Frozen' || target.status === 'Settled') {
     throw new Error(`Cannot modify obligation in ${target.status} status.`);
+  }
+  // A user response (accept / dispute / withdraw) is only valid on a proposed claim; freeze and settle are cycle-driven.
+  const response = actionForState(newStatus);
+  if (response && target.status !== 'Proposed') {
+    throw new Error(`A ${target.status.toLowerCase()} obligation cannot be ${newStatus.toLowerCase()}.`);
   }
 
   const now = new Date().toISOString();

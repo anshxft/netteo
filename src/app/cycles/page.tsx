@@ -1,5 +1,6 @@
 'use client';
 
+import { cycleLabel } from '@/features/settlement-cycles/machine';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -53,23 +54,6 @@ export default function CyclesPage() {
       isCancelled = true;
     };
   }, [mode, resetCounter]);
-
-  const formatStateLabel = (state: string) => {
-    switch (state) {
-      case 'Proposed':
-        return 'Planning';
-      case 'Depositing':
-        return 'Waiting for Deposits';
-      case 'Executing':
-        return 'Processing Transfers';
-      case 'Completed':
-        return 'Settled & Completed';
-      case 'Failed':
-        return 'Failed';
-      default:
-        return state;
-    }
-  };
 
   return (
     <AppLayout>
@@ -178,7 +162,7 @@ export default function CyclesPage() {
                           border: '1px solid var(--color-border)',
                         }}
                       >
-                        {formatStateLabel(c.state)}
+                        {cycleLabel(c.state)}
                       </span>
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--color-muted)', fontFamily: 'var(--font-mono, monospace)', overflowWrap: 'anywhere' }}>

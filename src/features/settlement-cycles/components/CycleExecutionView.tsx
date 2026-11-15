@@ -1,5 +1,6 @@
 'use client';
 
+import { cycleCapabilities, cycleLabel } from '../machine';
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useAccount } from 'wagmi';
@@ -348,6 +349,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   // A fully funded cycle that cannot pay out is refundable once the grace period after its deadline has passed.
   const refundOpensAt = new Date(displayCycle.fundingDeadline.toString()).getTime() + REFUND_GRACE_SECONDS * 1000;
   const isStuckRefundOpen = displayCycle.state === 'ReadyToSettle' && Date.now() > refundOpensAt;
+  const can = cycleCapabilities(displayCycle.state, { isFunded, refundGraceElapsed: isStuckRefundOpen });
 
   const handleVerify = async () => {
     if (!cycle) return;
@@ -545,7 +547,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
     // In Demo Mode: simulate instant cancellation
     try {
       if (cycle) {
-        cycle.state = 'Cancelled' as any;
+        cycle.state = 'Cancelled';
       }
       refreshCycle();
       setActionSuccess('[Demo Sandbox] Settlement cycle cancelled. Depositors can now claim immediate refunds.');
@@ -611,11 +613,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                 border: '1px solid var(--color-border)',
               }}
             >
-              {displayCycle.state === 'ReadyToSettle'
-                ? 'Ready to Settle (100% Funded)'
-                : displayCycle.state === 'Cancelled'
-                ? 'Cancelled (Refunds Active)'
-                : displayCycle.state}
+              {cycleLabel(displayCycle.state, 'detail')}
             </span>
             <span
               style={{
@@ -643,7 +641,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             </Button>
           </Link>
 
-          {isFunded && displayCycle.state !== 'Completed' && (
+          {can.canSettle && (
             <Button
               variant="primary"
               icon={<Icon icon={Zap} size="sm" color="#FFFFFF" />}
@@ -658,7 +656,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
             </Button>
           )}
 
-          {displayCycle.state === 'Funding' && !isFunded && (mode === 'demo' || (userAddress && displayCycle.creatorAddress && userAddress.toLowerCase() === displayCycle.creatorAddress.toLowerCase())) && (
+          {can.canCancel && (mode === 'demo' || (userAddress && displayCycle.creatorAddress && userAddress.toLowerCase() === displayCycle.creatorAddress.toLowerCase())) && (
             <Button
               variant="destructive"
               disabled={isOffline || isSubmitting || isKernelPending}
@@ -1104,7 +1102,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
                     </div>
                   )}
 
-                  {(displayCycle.state === 'Expired' || displayCycle.state === 'Cancelled' || isStuckRefundOpen) && deposit.funded > 0n && (
+                  {can.refundsOpen && deposit.funded > 0n && (
                     <Button
                       variant="destructive"
                       disabled={isOffline || isSubmitting || isKernelPending}

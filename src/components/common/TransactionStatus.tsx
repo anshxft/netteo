@@ -7,7 +7,8 @@ import { Button } from './Button';
 import { CheckCircle2, AlertCircle, ExternalLink, Copy, Check, X } from 'lucide-react';
 import { MEZO_MAINNET_EXPLORER_URL } from '@/lib/chain/config';
 
-export type TransactionLifecycleState = 'awaiting_signature' | 'pending' | 'confirmed' | 'reverted';
+import type { TransactionLifecycleState } from '@/lib/mezo/txMachine';
+export type { TransactionLifecycleState };
 
 export interface TransactionStatusProps {
   state: TransactionLifecycleState;

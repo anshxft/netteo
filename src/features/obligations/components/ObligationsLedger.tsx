@@ -7,6 +7,7 @@ import { updateObligationStatus, getParticipantDisplayName } from '../store';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { useAccount, useSignMessage } from 'wagmi';
 import { buildObligationActionMessage } from '@/lib/auth/challenge';
+import { actionForState, availableActions, decide } from '@/lib/obligations/machine';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
 import { Check, X, Ban, Copy, Link2 } from 'lucide-react';
@@ -68,36 +69,24 @@ export function ObligationsLedger({
         return;
       }
 
-      // Check role permissions before prompting signature
-      if (newStatus === 'Accepted' || newStatus === 'Disputed') {
-        if (targetObligation.debtorAddress.toLowerCase() !== userAddress.toLowerCase()) {
-          setActionError(
-            `Forbidden: Only designated debtor (${targetObligation.debtorAddress.slice(0, 6)}...${targetObligation.debtorAddress.slice(-4)}) can ${newStatus.toLowerCase()} this debt obligation.`
-          );
-          return;
-        }
-      }
-
-      if (newStatus === 'Withdrawn') {
-        const isProposer = targetObligation.proposerAddress.toLowerCase() === userAddress.toLowerCase();
-        const isCreditor = targetObligation.creditorAddress.toLowerCase() === userAddress.toLowerCase();
-        if (!isProposer && !isCreditor) {
-          setActionError('Forbidden: Only the proposer or creditor can withdraw this obligation.');
-          return;
-        }
+      // Refuse before prompting a signature: same rules the server enforces.
+      const pending = actionForState(newStatus);
+      const check = pending
+        ? decide(
+            pending,
+            targetObligation.status.toLowerCase(),
+            { debtor: targetObligation.debtorAddress, creditor: targetObligation.creditorAddress, proposer: targetObligation.proposerAddress },
+            userAddress
+          )
+        : null;
+      if (check && !check.ok) {
+        setActionError(`Forbidden: ${check.reason}.`);
+        return;
       }
 
       setIsAuthorizing(true);
       try {
-        const actionMap: Record<string, 'accept' | 'dispute' | 'withdraw'> = {
-          Accepted: 'accept',
-          accepted: 'accept',
-          Disputed: 'dispute',
-          disputed: 'dispute',
-          Withdrawn: 'withdraw',
-          withdrawn: 'withdraw',
-        };
-        const action = actionMap[newStatus] || (newStatus.toLowerCase() as 'accept' | 'dispute' | 'withdraw');
+        const action = pending ?? (newStatus.toLowerCase() as 'accept' | 'dispute' | 'withdraw');
         const nonce = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `nonce-${Date.now()}`;
         const timestamp = Date.now();
 
@@ -194,13 +183,14 @@ export function ObligationsLedger({
 
   const claimLink = (id: string) => `${window.location.origin}/obligations?claim=${id}`;
 
-  /** Who may respond to a proposed claim: the debtor accepts or disputes; the proposer or creditor may withdraw it. */
+  /** Which responses this wallet may sign for a claim, from the shared obligation machine. */
   const canActOn = (ob: Obligation) => {
-    const me = userAddress?.toLowerCase();
-    return {
-      debtor: !!me && me === ob.debtorAddress.toLowerCase(),
-      party: !!me && (me === ob.proposerAddress.toLowerCase() || me === ob.creditorAddress.toLowerCase()),
-    };
+    const actions = availableActions(
+      ob.status.toLowerCase(),
+      { debtor: ob.debtorAddress, creditor: ob.creditorAddress, proposer: ob.proposerAddress },
+      userAddress
+    );
+    return { debtor: actions.includes('accept'), party: actions.includes('withdraw') };
   };
 
   const getStatusBadgeClass = (status: ObligationStatus) => {

@@ -7,30 +7,9 @@ import {
   verifyChallengeSignature,
 } from '@/lib/auth/challenge';
 import { getTokenByAddress } from '@/lib/chain/tokens';
+import { decide, normalizeAction } from '@/lib/obligations/machine';
 import { DatabaseUnavailableError, groupAccess, groupIdsForWallet } from './access';
 import { MAX_AMOUNT_UNITS, OBLIGATION_COLUMNS, fail, isUsableUuid, ok, type ApiResult, type Db } from './types';
-
-/**
- * Obligation lifecycle (PRD Journey B): Proposed -> Accepted | Disputed | Withdrawn. Nothing else.
- * Frozen and Settled are set by cycle registration, never by these actions. Accepting a withdrawn claim,
- * withdrawing an accepted one, or flipping a dispute back are all refused.
- */
-export const TRANSITIONS = {
-  accept: { from: ['proposed'], to: 'accepted' },
-  dispute: { from: ['proposed'], to: 'disputed' },
-  withdraw: { from: ['proposed'], to: 'withdrawn' },
-} as const;
-
-export type ObligationAction = keyof typeof TRANSITIONS;
-
-const ACTION_ALIASES: Record<string, ObligationAction> = {
-  accept: 'accept',
-  accepted: 'accept',
-  dispute: 'dispute',
-  disputed: 'dispute',
-  withdraw: 'withdraw',
-  withdrawn: 'withdraw',
-};
 
 /** Only what the wallet may see: obligations in its own groups, or naming it as debtor, creditor or proposer. */
 export async function listObligations(db: Db, wallet: string): Promise<ApiResult> {
@@ -128,7 +107,7 @@ export async function proposeObligation(db: Db, body: any): Promise<ApiResult> {
 export async function changeObligationStatus(db: Db, body: any): Promise<ApiResult> {
   const { action, obligationId, signerAddress, signature, nonce, timestamp } = body ?? {};
 
-  const normalized = typeof action === 'string' ? ACTION_ALIASES[action] : undefined;
+  const normalized = normalizeAction(action);
   if (!normalized) return fail(400, 'Unsupported action');
   if (!isUsableUuid(obligationId)) return fail(400, 'Invalid obligation id');
   if (typeof signerAddress !== 'string' || !isAddress(signerAddress)) return fail(400, 'Invalid wallet address');
@@ -160,26 +139,19 @@ export async function changeObligationStatus(db: Db, body: any): Promise<ApiResu
   if (readError) throw new DatabaseUnavailableError(); // a failed read is not "not found"
   if (!existing) return fail(404, 'Obligation not found');
 
-  const rule = TRANSITIONS[normalized];
-  if (!(rule.from as readonly string[]).includes(existing.status)) {
-    return fail(409, `A ${existing.status} obligation cannot be ${rule.to}`);
-  }
-
-  // Accept and dispute belong to the debtor; withdraw to whoever raised or is owed the claim.
-  if (normalized === 'accept' || normalized === 'dispute') {
-    if (String(existing.debtor_address).toLowerCase() !== signer) {
-      return fail(403, 'Only the designated debtor can accept or dispute this obligation');
-    }
-  } else {
-    const isProposer = String(existing.proposer_address).toLowerCase() === signer;
-    const isCreditor = String(existing.creditor_address).toLowerCase() === signer;
-    if (!isProposer && !isCreditor) return fail(403, 'Only the proposer or creditor can withdraw this obligation');
-  }
+  // Lifecycle rules (state first, then role) live in one shared machine; see src/lib/obligations/machine.ts.
+  const decision = decide(
+    normalized,
+    existing.status,
+    { debtor: existing.debtor_address, creditor: existing.creditor_address, proposer: existing.proposer_address },
+    signer
+  );
+  if (!decision.ok) return fail(decision.status, decision.reason, decision.code);
 
   const now = new Date().toISOString();
-  const patch: Record<string, string> = { status: rule.to, updated_at: now };
-  if (rule.to === 'accepted') patch.accepted_at = now;
-  if (rule.to === 'disputed') patch.disputed_at = now;
+  const patch: Record<string, string> = { status: decision.to, updated_at: now };
+  if (decision.to === 'accepted') patch.accepted_at = now;
+  if (decision.to === 'disputed') patch.disputed_at = now;
 
   // The status in the WHERE clause makes this atomic: if another request changed the row after we read it,
   // nothing matches and we answer 409 instead of silently overwriting that change.

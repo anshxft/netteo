@@ -1,5 +1,6 @@
 'use client';
 
+import { deriveScreenState } from '@/lib/screenState';
 import React, { useState, useEffect } from 'react';
 import styles from './GroupsView.module.css';
 import { Group } from '../types';
@@ -85,6 +86,8 @@ export function GroupsView() {
     setTimeout(() => setSuccessNotice(null), 3000);
   };
 
+  const screen = deriveScreenState({ isLoading, error, count: groups.length, needsWallet });
+
   return (
     <div>
       {/* Unified Page Header */}
@@ -136,10 +139,10 @@ export function GroupsView() {
       )}
 
       {/* --- STATE 3a: Live mode without a wallet: not "empty", just not signed in --- */}
-      {!isLoading && !error && groups.length === 0 && needsWallet && <WalletRequiredState what="your groups" />}
+      {screen === 'needs-wallet' && <WalletRequiredState what="your groups" />}
 
       {/* --- STATE 3: Empty State --- */}
-      {!isLoading && !error && groups.length === 0 && !needsWallet && (
+      {screen === 'empty' && (
         <div className={styles.emptyState}>
           <div
             style={{
@@ -171,7 +174,7 @@ export function GroupsView() {
       )}
 
       {/* --- STATE 4: Success / Populated State --- */}
-      {!isLoading && !error && groups.length > 0 && (
+      {screen === 'ready' && (
         <div className={styles.groupGrid}>
           {groups.map((group) => (
             <article key={group.id} className={styles.groupCard}>
