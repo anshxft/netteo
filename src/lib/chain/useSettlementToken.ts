@@ -7,6 +7,7 @@ import {
   MEZO_MAINNET_MUSD,
   isDeployed,
   isSupportedNetwork,
+  canReadMezo,
   kernelForToken,
 } from './config';
 import { getTokenByAddress, isSupportedSettlementToken } from './tokens';
@@ -72,7 +73,7 @@ export function useSettlementToken(
     abi: settlementKernelAbi,
     functionName: 'musdToken',
     chainId: MEZO_MAINNET_CHAIN_ID,
-    query: { enabled: isCorrectNetwork && isDeployed(kernel), staleTime: Infinity },
+    query: { enabled: canReadMezo(chainId) && isDeployed(kernel), staleTime: Infinity },
   });
 
   const isKernelVerified =

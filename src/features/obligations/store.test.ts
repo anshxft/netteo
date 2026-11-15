@@ -60,6 +60,8 @@ assert.notEqual(
 );
 assert.equal(formatBaseUnitsToDisplay(0n, 'mUSDC'), '0.00 mUSDC');
 assert.equal(formatBaseUnitsToDisplay(250_250_000n, 'mUSDC'), '250.25 mUSDC');
+assert.equal(formatBaseUnitsToDisplay(4_000n, 'mUSDC'), '0.004 mUSDC', 'a tiny real amount is not shown as 0.00');
+assert.equal(formatBaseUnitsToDisplay(1n, 'mUSDC'), '0.000001 mUSDC');
 
 // An explicit decimals argument still wins, for callers holding TokenMetadata.
 assert.equal(formatBaseUnitsToDisplay(1_000_000n, 'mUSDC', 6), '1.00 mUSDC');

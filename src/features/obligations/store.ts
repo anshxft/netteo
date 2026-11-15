@@ -53,7 +53,12 @@ export function formatBaseUnitsToDisplay(
   const abs = negative ? -amount : amount;
   const whole = abs / base;
   const rem = abs % base;
-  const fracStr = rem.toString().padStart(Number(dec), '0').slice(0, 2);
+  const full = rem.toString().padStart(Number(dec), '0');
+  let fracStr = full.slice(0, 2);
+  // A real but tiny amount (0.004 mUSDC) must not read as 0.00: show digits up to the first non-zero one.
+  if (whole === 0n && rem > 0n && fracStr === '00') {
+    fracStr = full.slice(0, full.search(/[1-9]/) + 1);
+  }
   return `${negative ? '-' : ''}${whole.toLocaleString()}.${fracStr} ${symbol}`;
 }
 

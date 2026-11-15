@@ -9,6 +9,7 @@ import {
   MEZO_MAINNET_MUSD,
   isDeployed,
   isSupportedNetwork,
+  canReadMezo,
   kernelForToken,
   validateChainConfiguration,
 } from './config';
@@ -61,7 +62,7 @@ function useKernelAddress(tokenAddress?: string | null) {
   const kernel = kernelForToken(tokenAddress ?? MEZO_MAINNET_MUSD);
   return {
     kernel,
-    isEnabled: isSupportedNetwork(chainId) && isDeployed(kernel),
+    isEnabled: canReadMezo(chainId) && isDeployed(kernel),
   };
 }
 
@@ -88,7 +89,7 @@ export function useCycleKernelToken(cycleId?: `0x${string}` | null) {
       chainId: MEZO_MAINNET_CHAIN_ID,
     })),
     allowFailure: true,
-    query: { enabled: !!cycleId && isSupportedNetwork(chainId) && candidates.length > 0 },
+    query: { enabled: !!cycleId && canReadMezo(chainId) && candidates.length > 0 },
   });
 
   // getCycle reverts CycleNotFound for an unknown id, so a successful call means it exists here.
@@ -397,7 +398,7 @@ export function useSettlementKernel(tokenAddress?: string | null) {
     abi: settlementKernelAbi,
     functionName: 'musdToken',
     chainId: MEZO_MAINNET_CHAIN_ID,
-    query: { enabled: isCorrectNetwork && isDeployed(contractAddress), staleTime: Infinity },
+    query: { enabled: canReadMezo(chainId) && isDeployed(contractAddress), staleTime: Infinity },
   });
 
   const isKernelVerified =

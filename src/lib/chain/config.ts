@@ -71,6 +71,11 @@ export const CONTRACT_ADDRESSES = {
   settlementKernelFactory: (process.env.NEXT_PUBLIC_SETTLEMENT_KERNEL_FACTORY_ADDRESS || ZERO_ADDRESS) as `0x${string}`,
 };
 
+/** Public reads are pinned to Mezo Mainnet, so they work with no wallet at all; only a wallet on another chain blocks them. */
+export function canReadMezo(chainId: number | undefined | null): boolean {
+  return chainId == null || chainId === MEZO_MAINNET_CHAIN_ID;
+}
+
 export function isSupportedNetwork(chainId: number | undefined | null): boolean {
   return chainId === MEZO_MAINNET_CHAIN_ID;
 }

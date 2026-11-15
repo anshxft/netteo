@@ -773,7 +773,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
         </div>
       )}
 
-      {isUnverifiedLive && (
+      {isUnverifiedLive && !can.isFinal && (
         <div
           role="alert"
           style={{
