@@ -24,7 +24,7 @@ export function MainnetEvidence() {
           Real MUSD settled on Mezo Mainnet
         </h2>
         <p className={styles.subtitle}>
-          Two three-party cycles settled in MUSD, and a real round trip through Mezo's Savings Vault. Open any transaction to check it yourself.
+          Three three-party cycles settled on Mezo Mainnet (two in MUSD, one in the 6-decimal mUSDC), and a real round trip through Mezo's Savings Vault. Open any transaction to check it yourself.
         </p>
       </div>
 
@@ -35,21 +35,21 @@ export function MainnetEvidence() {
             <dl className={styles.facts}>
               <div>
                 <dt>Gross claims</dt>
-                <dd>{c.gross} MUSD</dd>
+                <dd>{c.gross} {c.symbol}</dd>
               </div>
               <div>
                 <dt>Funded (net)</dt>
-                <dd>{c.netFunded} MUSD</dd>
+                <dd>{c.netFunded} {c.symbol}</dd>
               </div>
               <div>
                 <dt>Paid out</dt>
                 <dd>
-                  {c.payouts[0]} and {c.payouts[1]} MUSD
+                  {c.payouts[0]} and {c.payouts[1]} {c.symbol}
                 </dd>
               </div>
               <div>
                 <dt>Final state</dt>
-                <dd>Completed, 0 MUSD left in the contract</dd>
+                <dd>Completed, 0 {c.symbol} left in the contract</dd>
               </div>
             </dl>
             <ul className={styles.links}>

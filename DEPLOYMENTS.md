@@ -94,6 +94,25 @@ cast call $K "getCycle(bytes32)(bytes32,string,uint256,uint256,uint256,uint256,u
 cast call 0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186 "balanceOf(address)(uint256)" $K --rpc-url $RPC
 ```
 
+## Real settlement cycle in mUSDC on v2 (2026-11-15)
+
+The same three-party shape, in the 6-decimal token, scaled to 1% (`ACCEPTANCE_PERCENT=1`): A owes B and C, nets to one deposit, and the kernel pays both creditors. It proves the 6-decimal path with real funds, where amounts are exact in the token's own base units.
+
+- **Cycle ID:** `0x1ba7aa0cd7725361f28167fd5f21a83a7e47678e07f2373d0358340052fb1674`
+- **Kernel:** mUSDC kernel `0xE229B3a2020FC19331E8A3e9662a2508fFF78020` (bound to mUSDC `0x04671C72Aab5AC02A03c1098314b1BB6B560c197`)
+- **Debtor A (signer):** `0xb31B137c24e5f020bF07D93BBa99DAf950908a9e`; **creditors B and C:** the same two wallets as the MUSD cycles
+
+| Step | Block | Gas used | Transaction |
+|---|---|---|---|
+| approve(kernel, 0.004 mUSDC) | 13244499 | 51,364 | [`0x93cd5158…3a3969`](https://explorer.mezo.org/tx/0x93cd5158f1e4badce6b474ada6eefb5be6ca3219101a8963620ccdcf583a3969) |
+| createCycle | 13244500 | 371,792 | [`0xa995a681…5cbcb8`](https://explorer.mezo.org/tx/0xa995a681dd58fde22b3bee90820c0611ed498a55d7ef1d833ef5641c4e5cbcb8) |
+| deposit(0.004 mUSDC) | 13244501 | 126,670 | [`0xb64b8fce…3b019d`](https://explorer.mezo.org/tx/0xb64b8fce7afa90a3cbd31d196b452f09b31934afbfa5d7f3fd2d7434423b019d) |
+| executeSettlement | 13244502 | 126,063 | [`0xc1b24776…c5547e`](https://explorer.mezo.org/tx/0xc1b2477636805830b8e661467f711f18f173e6527c42ffecd4b6bfd112c5547e) |
+
+**Total fee paid: 0.0000008787 BTC.**
+
+Read back from the chain: cycle state `3` (Completed); gross 0.01, net 0.004, funded 0.004, distributed 0.004, refunded 0 mUSDC; creditor B received 0.001 and C received 0.003; mUSDC left in the kernel: 0. mUSDT is deployed but has not run a real cycle.
+
 ## Mezo Savings Vault integration, verified on mainnet (2026-11-14)
 
 Netteo lets a debtor withdraw from the MUSD Savings Vault to fund a deposit, and lets a creditor save a payout in it. The same code path was run for real on Mezo Mainnet with 0.01 MUSD from the deployer wallet. The vault is `0xb4D498029af77680cD1eF828b967f010d06C51CC` (a proxy; it reports `musdToken()` = canonical MUSD).

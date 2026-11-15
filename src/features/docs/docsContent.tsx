@@ -181,7 +181,7 @@ export function SectionOverview() {
         <Table
           head={['Area', 'Status']}
           rows={[
-            ['Settlement on Mezo Mainnet', <>Live. Two real MUSD cycles have completed (see <em>Mainnet Evidence</em>).</>],
+            ['Settlement on Mezo Mainnet', <>Live. Three real cycles have completed, two in MUSD and one in mUSDC (see <em>Mainnet Evidence</em>).</>],
             ['MUSD Savings Vault', 'Live. A real approve, deposit and withdraw were run on mainnet.'],
             ['Borrowing against Bitcoin', 'Built and tested against real mainnet contract state on a fork. Not executed on mainnet by the team, because a new Mezo loan needs at least 1,800 MUSD of debt.'],
             ['Smart-contract audit', 'Not independently audited.'],
@@ -659,17 +659,17 @@ export function SectionMainnetEvidence() {
   return (
     <div className={styles.sectionBody}>
       <Block id="settled-cycles" title="Settled cycles">
-        <P>Both cycles use the three-party shape: one debtor deposits, two creditors are paid, and the kernel finishes with a zero balance.</P>
+        <P>Every cycle uses the three-party shape: one debtor deposits, two creditors are paid, and the kernel finishes with a zero balance. The mUSDC cycle proves the 6-decimal path: amounts are exact in the token's own base units.</P>
         {SETTLED_CYCLES.map((c) => (
           <div key={c.id} style={{ marginBottom: 'var(--space-lg)' }}>
             <Table
               head={[c.label, 'Value']}
               rows={[
                 ['Cycle ID', <code key="1">{c.id}</code>],
-                ['Gross claims', `${c.gross} MUSD`],
-                ['Net deposited', `${c.netFunded} MUSD`],
-                ['Paid out', `${c.payouts[0]} and ${c.payouts[1]} MUSD`],
-                ['Final state', 'Completed, 0 MUSD left in the kernel'],
+                ['Gross claims', `${c.gross} ${c.symbol}`],
+                ['Net deposited', `${c.netFunded} ${c.symbol}`],
+                ['Paid out', `${c.payouts[0]} and ${c.payouts[1]} ${c.symbol}`],
+                ['Final state', `Completed, 0 ${c.symbol} left in the kernel`],
               ]}
             />
             <Table head={['Step', 'Block', 'Transaction']} rows={c.txs.map((t) => [t.name, t.block, txLink(t.hash)])} />
@@ -704,7 +704,8 @@ cast call ${CANONICAL_MEZO_TOKENS.MUSD.address} "balanceOf(address)(uint256)" $K
           head={['Feature', 'Verified on mainnet', 'Verified on a mainnet fork']}
           rows={[
             ['Settlement in MUSD', 'Yes, two cycles', 'Yes'],
-            ['mUSDC and mUSDT kernels', 'Deployed; no cycle run', 'Yes, against the real token code'],
+            ['Settlement in mUSDC', 'Yes, one cycle (6 decimals)', 'Yes, against the real token code'],
+            ['mUSDT kernel', 'Deployed; no cycle run', 'Yes, against the real token code'],
             ['Savings Vault deposit and withdraw', 'Yes, real round trip', 'Yes'],
             ['Borrow against Bitcoin', 'Read-only (live loans and parameters)', 'Yes, with the real Mezo contracts and a real trove'],
             ['Wallet flows in the real UI (connect, withdraw from Savings, borrow, save a payout, rejected request)', 'No', 'Yes, driven through the app with a scripted test wallet (see the wallet playground)'],

@@ -26,7 +26,7 @@ Everything below is written to be pasted into the AKINDO form. Every claim is ba
 
 *What Netteo does.* People record claims, the debtor approves each with a wallet signature, and Netteo nets the group's approved claims into one position per person. In the three-party example, $200 of claims needs only $80 deposited, paid to the creditors atomically in one transaction. The contract holds funds only until the cycle is fully funded, has no owner, admin or pause function, and lets depositors take their money back if a cycle is not completed.
 
-*How MUSD and Mezo are used.* MUSD is the settlement asset and unit of account. Two real three-party cycles have settled in MUSD on Mezo Mainnet (links in DEPLOYMENTS.md). On top of that, Netteo plugs into Mezo's own products so a debtor can cover a deposit without selling Bitcoin:
+*How MUSD and Mezo are used.* MUSD is the settlement asset and unit of account. Three real three-party cycles have settled on Mezo Mainnet (two in MUSD, one in mUSDC) (links in DEPLOYMENTS.md). On top of that, Netteo plugs into Mezo's own products so a debtor can cover a deposit without selling Bitcoin:
 
 - **MUSD Savings Vault:** withdraw from it to fund a deposit, and deposit a payout into it after a settlement. Verified on mainnet with a real approve, deposit and withdraw.
 - **Loan against Bitcoin (BorrowerOperations, TroveManager, HintHelpers, SortedTroves, PriceFeed):** borrow only the missing amount against the Bitcoin already locked in the wallet's Mezo loan. Netteo shows the issuance fee, the interest, the collateral ratio before and after, and the Bitcoin price at which the loan could be liquidated. It refuses to build a borrow that would leave a loan under 150% (Mezo liquidates at 110%).
@@ -55,7 +55,7 @@ Everything below is written to be pasted into the AKINDO form. Every claim is ba
 
 The Wave 1 feedback was that the live app used only a team-made mock token and a kernel bound to it. Since then:
 
-- **Real mainnet, real tokens.** Contracts deployed to Mezo Mainnet and bound to canonical MUSD, mUSDC and mUSDT. Two real MUSD cycles settled. The mock token is gone from the live path.
+- **Real mainnet, real tokens.** Contracts deployed to Mezo Mainnet and bound to canonical MUSD, mUSDC and mUSDT. Three real cycles settled (two MUSD, one mUSDC). The mock token is gone from the live path.
 - **Contract v2.** Fixes found in an audit: locked-funds recovery, fee-on-transfer protection, and cycle-id squatting.
 - **Locked-down backend.** The browser can no longer read or write private tables. Every request needs a signed wallet session, every action its own signature, and replays are refused. A live end-to-end test passed 44 checks.
 - **Honest product.** Fabricated testimonials and false technical claims were removed, and a test now fails if they return.
@@ -66,7 +66,8 @@ The Wave 1 feedback was that the live app used only a team-made mock token and a
 | Mezo component | What Netteo does with it | How it was verified |
 |---|---|---|
 | MUSD (canonical token) | Settlement asset for cycles | Two real cycles on mainnet |
-| mUSDC, mUSDT | Additional settlement tokens, one kernel each | Kernels deployed; token behaviour tested against real contract code on a fork |
+| mUSDC | Settlement in a 6-decimal token | One real cycle on mainnet |
+| mUSDC, mUSDT | Additional settlement tokens, one kernel each | Kernels deployed for both. **mUSDC ran a real cycle on mainnet** (6-decimal path); mUSDT is deployed only. Token behaviour tested against real contract code on a fork |
 | MUSD Savings Vault (sMUSD) | Withdraw to fund a deposit; deposit a payout; claim yield | **Real mainnet round trip**, 3 transactions (see DEPLOYMENTS.md) |
 | BorrowerOperations `withdrawMUSD` | Borrow the missing amount against the wallet's existing loan | Real contracts on a mainnet fork, using Netteo's hint builder; refusal of an over-borrow confirmed |
 | TroveManager, HintHelpers, SortedTroves | Read the loan, compute the ratio, build placement hints | Ratio matches `getCurrentICR` to the last wei on a real trove; live read test in CI |
@@ -101,7 +102,7 @@ The Wave 1 feedback was that the live app used only a team-made mock token and a
 |---|---|---|
 | 0:00 to 0:15 | "If you hold Bitcoin on Mezo, paying your group means selling it, or borrowing more than you need. Most of what a group owes each other cancels out." | Landing hero |
 | 0:15 to 0:35 | "Netteo cancels the loop. Three people, two hundred dollars of claims, eighty dollars actually deposited, paid out in one transaction." | The netting simulator, then the cycle page |
-| 0:35 to 0:55 | "This is not a mock. Two real cycles settled in MUSD on Mezo Mainnet. Here is the transaction on the explorer." | Evidence section, click an explorer link |
+| 0:35 to 0:55 | "This is not a mock. Three real cycles settled on Mezo Mainnet, in MUSD and in mUSDC. Here is the transaction on the explorer." | Evidence section, click an explorer link |
 | 0:55 to 1:25 | "Short on MUSD? Netteo reads your Mezo loan live. It shows the fee, the interest, your collateral ratio, and the price where you would be liquidated. It will not build a borrow under one hundred fifty percent." | `/funding`, pick the "Healthy loan", then "Close to liquidation" |
 | 1:25 to 1:40 | "Or withdraw from the MUSD Savings Vault. We ran this on mainnet: deposit, withdraw, every wei returned." | Savings round trip links |
 | 1:40 to 1:55 | "When you get paid, one click puts it into Savings. Net first, fund without selling Bitcoin, save what you receive." | Completed cycle with the save panel |

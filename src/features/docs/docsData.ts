@@ -201,7 +201,7 @@ export const DOC_GROUPS: DocGroup[] = [
         title: 'Mainnet Evidence',
         badge: 'Verified',
         group: 'Mezo & MUSD',
-        description: 'Two real settlements and a real Savings Vault round trip, with every transaction and how to check it.',
+        description: 'Three real settlements (MUSD and mUSDC) and a real Savings Vault round trip, with every transaction and how to check it.',
         subsections: [
           { id: 'settled-cycles', title: 'Settled cycles' },
           { id: 'savings-round-trip', title: 'Savings Vault round trip' },

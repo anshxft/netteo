@@ -38,9 +38,11 @@ export const V1_DEPLOYMENT = {
 export interface SettledCycle {
   id: `0x${string}`;
   label: string;
+  /** The token the cycle settled in. */
+  symbol: 'MUSD' | 'mUSDC';
   /** The kernel the cycle ran on. */
   kernel: string;
-  /** Amounts in MUSD (18 decimals) as display strings. */
+  /** Amounts in the cycle's own token, as display strings. */
   gross: string;
   netFunded: string;
   payouts: [string, string];
@@ -54,6 +56,7 @@ export const SETTLED_CYCLES: SettledCycle[] = [
   {
     id: '0x7ff4cbf39083469093a005be46bf698bd2d36b2d0c343374d4fecb224d32d420',
     label: 'Current contracts (v2)',
+    symbol: 'MUSD',
     kernel: V2_DEPLOYMENT.kernels.MUSD,
     gross: '0.80',
     netFunded: '0.32',
@@ -68,8 +71,26 @@ export const SETTLED_CYCLES: SettledCycle[] = [
     ],
   },
   {
+    id: '0x1ba7aa0cd7725361f28167fd5f21a83a7e47678e07f2373d0358340052fb1674',
+    label: 'mUSDC, 6-decimal token (v2)',
+    symbol: 'mUSDC',
+    kernel: V2_DEPLOYMENT.kernels.mUSDC,
+    gross: '0.01',
+    netFunded: '0.004',
+    payouts: ['+0.001', '+0.003'],
+    grossUnits: 10000n,
+    netUnits: 4000n,
+    txs: [
+      { name: 'approve', block: 13244499, hash: '0x93cd5158f1e4badce6b474ada6eefb5be6ca3219101a8963620ccdcf583a3969' },
+      { name: 'createCycle', block: 13244500, hash: '0xa995a681dd58fde22b3bee90820c0611ed498a55d7ef1d833ef5641c4e5cbcb8' },
+      { name: 'deposit', block: 13244501, hash: '0xb64b8fce7afa90a3cbd31d196b452f09b31934afbfa5d7f3fd2d7434423b019d' },
+      { name: 'executeSettlement', block: 13244502, hash: '0xc1b2477636805830b8e661467f711f18f173e6527c42ffecd4b6bfd112c5547e' },
+    ],
+  },
+  {
     id: '0x8bc95b8945354a78fbf6855e9cca2f6f06d215e7b11d62749057989e27b8ff5c',
     label: 'First cycle (v1, superseded)',
+    symbol: 'MUSD',
     kernel: V1_DEPLOYMENT.kernels.MUSD,
     gross: '1.00',
     netFunded: '0.40',

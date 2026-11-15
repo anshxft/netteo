@@ -54,7 +54,7 @@ Less MUSD to find means less to sell or borrow. That is the point of Netteo for 
 
 | Mezo component | What Netteo does with it | How it is verified |
 |---|---|---|
-| **MUSD** (and mUSDC, mUSDT) | The settlement asset. One settlement kernel per token. | Two real cycles on mainnet |
+| **MUSD** (and mUSDC, mUSDT) | The settlement asset. One settlement kernel per token. | Real cycles on mainnet in MUSD and mUSDC |
 | **MUSD Savings Vault** | Withdraw to fund a deposit, deposit a payout, claim yield | A real mainnet round trip (3 transactions) |
 | **BorrowerOperations, TroveManager, HintHelpers, SortedTroves, PriceFeed** | Read your Bitcoin-backed loan; borrow the missing MUSD against it, with placement hints | Live mainnet reads; the borrow itself on a mainnet fork using the real contracts |
 | **Mezo RPC and explorer** | Three RPC providers with automatic failover; every transaction links to the explorer | Always on |
@@ -70,6 +70,7 @@ Everything below was run on Mezo Mainnet, and `src/lib/chain/deployments.test.ts
 | What | Result | Transactions |
 |---|---|---|
 | **v2 settlement** (current contracts) | A deposited 0.32 MUSD, B received 0.08, C received 0.24. Gross claims 0.80. Kernel left at 0. | [create](https://explorer.mezo.org/tx/0xdaceb9e491895ea5eb09caeb7c537f7d87b4318803c53cb1ee2ee47da122955e) · [deposit](https://explorer.mezo.org/tx/0x0340fd70a4e04fcf6d3b0787e5f8726cc99176b45e5f412610213bc8d3b457ce) · [execute](https://explorer.mezo.org/tx/0x9795326bd5fb24acd1fbbb869027bbdad231be58e9be98ab85d89226f3971f45) |
+| **v2 settlement in mUSDC** (6 decimals) | A deposited 0.004 mUSDC, B received 0.001, C received 0.003. Gross 0.01. Kernel left at 0. | [create](https://explorer.mezo.org/tx/0xa995a681dd58fde22b3bee90820c0611ed498a55d7ef1d833ef5641c4e5cbcb8) · [deposit](https://explorer.mezo.org/tx/0xb64b8fce7afa90a3cbd31d196b452f09b31934afbfa5d7f3fd2d7434423b019d) · [execute](https://explorer.mezo.org/tx/0xc1b2477636805830b8e661467f711f18f173e6527c42ffecd4b6bfd112c5547e) |
 | **v1 settlement** (superseded) | A deposited 0.40 MUSD, B received 0.10, C received 0.30. Gross 1.00. | [create](https://explorer.mezo.org/tx/0xe2f2fb78315deb75edb117e84a401a51a057ed0b6c6d990c7f20a8688e2f7dce) · [deposit](https://explorer.mezo.org/tx/0x902a4912efc9fd508886f7ff767b294468312ed99fcaadc49dc597cc1a4a35b1) · [execute](https://explorer.mezo.org/tx/0x4093d636a434ae210740be916a0c10e927b40e6de9b8f1b24bdc7b7f159c3c2f) |
 | **Savings Vault round trip** | 0.01 MUSD in, 0.01 MUSD out, every wei returned | [approve](https://explorer.mezo.org/tx/0x465b2b8693049f1fd96eab277a7c5f57d9c00f1fe67967c4887ae0ee6b5cd4a4) · [deposit](https://explorer.mezo.org/tx/0x582f2266b8408fb3126ef58e7f08bbe7021d8a0b006ab697685ea1c30d506091) · [withdraw](https://explorer.mezo.org/tx/0x2006cdd63fde64e2b0778522569431305dac09c1627a81d038e9bb4e9d9ba15c) |
 
