@@ -27,7 +27,7 @@ export function ThemeToggle({ className, size = 'md' }: ThemeToggleProps) {
     setMounted(true);
   }, []);
 
-  // Double-click protection during 240ms motion transition (Prototype Checklist §4)
+  // Double-click protection during the 240ms motion transition
   const handleToggle = () => {
     if (isLocked) return;
     setIsLocked(true);

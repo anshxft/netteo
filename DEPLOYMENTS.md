@@ -60,7 +60,7 @@ The contracts are compiled for `cancun` (Mezo's docs recommend `london`, but Ope
 
 ## Real settlement cycle on v2
 
-Run on 2026-11-14 with real MUSD on mainnet, at 80% of the PRD example (`ACCEPTANCE_PERCENT=80`): A owes B 0.40, B owes C 0.32, C owes A 0.08. Net: A pays 0.32, B receives 0.08, C receives 0.24. Gross 0.80, so three obligations settle as one deposit and two payouts.
+Run on 2026-11-14 with real MUSD on mainnet, at 80% of the canonical example (`ACCEPTANCE_PERCENT=80`): A owes B 0.40, B owes C 0.32, C owes A 0.08. Net: A pays 0.32, B receives 0.08, C receives 0.24. Gross 0.80, so three obligations settle as one deposit and two payouts.
 
 - **Cycle ID:** `0x7ff4cbf39083469093a005be46bf698bd2d36b2d0c343374d4fecb224d32d420` (derived from creator and salt, as v2 requires)
 - **Kernel:** MUSD kernel above
@@ -161,7 +161,7 @@ On-chain checks performed after deployment: the factory registers 3 tokens; `get
 
 ## Real settlement cycle in MUSD (on v1)
 
-The PRD example scaled to 1 MUSD: A owes B 0.50, B owes C 0.40, C owes A 0.10. Net: A pays 0.40, B receives 0.10, C receives 0.30. Three obligations (1.00 gross) settle as one deposit and two payouts.
+The canonical example scaled to 1 MUSD: A owes B 0.50, B owes C 0.40, C owes A 0.10. Net: A pays 0.40, B receives 0.10, C receives 0.30. Three obligations (1.00 gross) settle as one deposit and two payouts.
 
 - **Cycle ID:** `0x8bc95b8945354a78fbf6855e9cca2f6f06d215e7b11d62749057989e27b8ff5c`
 - **Kernel:** MUSD kernel above

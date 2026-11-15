@@ -1,7 +1,6 @@
 /* ==========================================================================
    Netteo Obligation Desk Ledger Styles
-   Adheres to design-addendum.md §15 (Ledger layout, no generic cards),
-   UI.md §6 & §8 (Tabular figures, financial precision)
+   Payments ledger: table layout with tabular figures
    ========================================================================== */
 
 .pageHeader {
@@ -88,7 +87,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* --- Financial Ledger Table (design-addendum.md §15) --- */
+/* --- Financial Ledger Table --- */
 .ledgerContainer {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);

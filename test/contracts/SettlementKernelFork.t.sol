@@ -8,8 +8,8 @@ import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC2
 import {SettlementKernel} from "../../contracts/SettlementKernel.sol";
 
 /**
- * @notice Runs the kernel against the REAL deployed Mezo Mainnet token bytecode (PRD section 11:
- * "test the exact deployed token behavior"). Skipped unless MEZO_MAINNET_FORK_URL is set, so the
+ * @notice Runs the kernel against the REAL deployed Mezo Mainnet token bytecode (to
+ * test the exact deployed token behaviour). Skipped unless MEZO_MAINNET_FORK_URL is set, so the
  * default `forge test` never touches the network:
  *
  *   MEZO_MAINNET_FORK_URL=https://mezo-mainnet.boar.network forge test --match-contract Fork -vv
@@ -65,7 +65,7 @@ contract SettlementKernelForkTest is Test {
     /// Full approve -> deposit -> settle round trip with real token code.
     function _roundTrip(address token) internal {
         uint256 unit = 10 ** IERC20Metadata(token).decimals();
-        // The PRD example scaled to 1 token: A pays 0.40, B receives 0.10, C receives 0.30.
+        // The canonical example scaled to 1 token: A pays 0.40, B receives 0.10, C receives 0.30.
         uint256 debit = (unit * 4) / 10;
         uint256 credB = unit / 10;
         uint256 credC = (unit * 3) / 10;

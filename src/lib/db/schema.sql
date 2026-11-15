@@ -1,6 +1,5 @@
 -- ============================================================================
 -- Netteo Postgres Database Schema & Row-Level Security (RLS)
--- Conforms to architecture.md §8 & §9, and Secure_Vibe_Coding.pdf
 -- ============================================================================
 
 -- Extensions
@@ -90,7 +89,7 @@ CREATE TABLE IF NOT EXISTS cycle_obligations (
 );
 
 -- ----------------------------------------------------------------------------
--- 4. On-Chain Event Ingestion & Indexer Projections (architecture.md §8)
+-- 4. On-Chain Event Ingestion & Indexer Projections
 -- ----------------------------------------------------------------------------
 
 -- Canonical event log records (Append-only & strictly idempotent)

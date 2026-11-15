@@ -1,7 +1,7 @@
 /* ==========================================================================
    Netteo Bespoke Theme Toggle Button Styles
    Inspired by Skiper UI ThemeToggleButton2 (Toggles.dev)
-   Adheres to design-addendum.md §8 (Motion tokens) and §7 (Buttons spec)
+   Uses the shared motion and button tokens
    ========================================================================== */
 
 .toggleButton {

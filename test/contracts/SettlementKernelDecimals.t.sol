@@ -83,7 +83,7 @@ contract SettlementKernelDecimalsTest is Test {
         assertEq(MockERC20Decimals(address(musdcKernel.musdToken())).decimals(), 6);
     }
 
-    /// The netteo PRD example, at 6 decimals: A owes B 0.50, B owes C 0.40, C owes A 0.10
+    /// The canonical example, at 6 decimals: A owes B 0.50, B owes C 0.40, C owes A 0.10
     /// => A pays 0.40, B receives 0.10, C receives 0.30 (gross 1.00).
     function test_SixDecimalSettlementPaysExactAmounts() public {
         uint256 debit = 400_000; // 0.40 mUSDC

@@ -77,7 +77,7 @@ export async function proposeObligation(db: Db, body: any): Promise<ApiResult> {
   const consumed = await validateAndConsumeNonce(nonce, timestamp, db);
   if (!consumed.valid) return fail(401, consumed.reason || 'Invalid challenge');
 
-  // Proposer, debtor and creditor must all belong to this group (PRD Journey B).
+  // Proposer, debtor and creditor must all belong to this group.
   const access = await groupAccess(db, groupId, signer);
   if (!access.exists) return fail(404, 'Group not found');
   if (!access.isMember) return fail(403, 'Signer is not a member of this working group');

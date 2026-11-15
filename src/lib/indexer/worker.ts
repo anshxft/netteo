@@ -330,7 +330,7 @@ export async function applyEventProjection(
 /**
  * Indexes one kernel. Each kernel has its own cursor, so a failure or lag on one token's
  * contract never holds back (or skips past) another's.
- * Conforms to architecture.md §8:
+ * Behaviour:
  * - Filter logs by the kernel address and chain ID 31612.
  * - Reorg/confirmation window: only indexes blocks with at least N confirmations.
  * - Idempotent event persistence keyed by (chain_id, transaction_hash, log_index).

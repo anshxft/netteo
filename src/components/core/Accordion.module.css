@@ -1,7 +1,7 @@
 /* ==========================================================================
    Motion Primitives Accordion Styles (Netteo Edition)
    Inspired by motion-primitives.com/docs/accordion
-   Adheres to design-addendum.md §8 (Motion tokens), tokens.css, and WCAG AA
+   Uses the motion tokens in tokens.css; WCAG AA contrast
    ========================================================================== */
 
 .accordionRoot {

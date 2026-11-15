@@ -24,7 +24,6 @@ const EXPLORER_BASE = MEZO_MAINNET_EXPLORER_URL;
 /**
  * TransactionStatus component providing truthful, multi-state visual feedback
  * for Web3 lifecycle (Submitted, Pending, Confirmed, Reverted).
- * Conforms to design-addendum.md §18 and Design-Quality-Codex.pdf Part 7 feedback contract.
  */
 export function TransactionStatus({
   state,

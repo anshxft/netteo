@@ -1,7 +1,6 @@
 /* ==========================================================================
-   Netteo Bespoke Landing Page Styles
-   Warm Minimal Fintech — Roundo Typography, Wine & Sand Palette
-   Follows design-addendum.md §7 & §8, UI.md §1-§4, UX.md §13, and Codex Part 1
+   Netteo Landing Page Styles
+   Landing page: Roundo typography, wine and sand palette
    ========================================================================== */
 
 .pageWrapper {
@@ -18,7 +17,7 @@
 }
 
 /* ==========================================================================
-   1. HERO SECTION (Editorial Warm Minimalist Layout)
+   1. HERO SECTION
    ========================================================================== */
 .heroSection {
   display: flex;
@@ -365,7 +364,7 @@
 }
 
 /* ==========================================================================
-   3. FOUR CORE INSTITUTIONAL ANSWERS (Codex Part 9 & UX §1)
+   3. FOUR CORE ANSWERS
    ========================================================================== */
 .answersSection {
   margin-bottom: var(--space-4xl);

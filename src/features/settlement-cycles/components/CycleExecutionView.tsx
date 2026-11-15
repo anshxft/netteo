@@ -619,7 +619,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
         </div>
       </div>
 
-      {/* Indexer Lag Notice (design-addendum.md §7 Feedback Contracts & Truthful Interfaces) */}
+      {/* Indexer Lag Notice: says which data source is current */}
       {mode === 'live' && authoritative.indexerLag && (
         <div
           style={{
@@ -762,7 +762,7 @@ export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
         </p>
       )}
 
-      {/* Funding Progress Bar (Verified-state progress design-addendum.md §8) */}
+      {/* Funding Progress Bar (on-chain verified amounts) */}
       <div
         style={{
           backgroundColor: 'var(--color-surface)',

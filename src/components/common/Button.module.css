@@ -1,6 +1,6 @@
 /* ==========================================================================
    Netteo Standard Button Styles
-   Adheres to design-addendum.md §7, motion tokens, and Prototype Checklist §4
+   Uses the shared motion tokens; buttons lock briefly after a click to prevent double submits
    ========================================================================== */
 
 .button {

@@ -1,7 +1,7 @@
 /**
  * Netteo Deterministic Obligation Netting Algorithm (Version 1.0)
  *
- * Rules (from PrD.md §8 and architecture.md §4.5):
+ * Rules:
  * 1. Integer token units only (bigint base units, e.g. 18 decimals). Floating-point is strictly prohibited.
  * 2. Invariants enforced:
  *    - Sum of all net positions equals zero: Σ net = 0

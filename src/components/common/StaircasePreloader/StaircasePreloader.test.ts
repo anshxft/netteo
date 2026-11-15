@@ -34,7 +34,7 @@ assert.ok(componentCode.includes("case 'interlocked'"), 'Must support interlocke
 assert.ok(componentCode.includes("case 'center-out'"), 'Must support center-out mode');
 console.log('✔ Passed: Complex timing calculation and smooth easing functions verified across all modes');
 
-// 4. Verify 5 Mandatory Screen States (§4 Prototype Checklist)
+// 4. Verify the five screen states (loading, success, error, empty, offline)
 assert.ok(componentCode.includes("currentState === 'error'"), 'Must handle Error state');
 assert.ok(componentCode.includes("currentState === 'offline'"), 'Must handle Offline state');
 assert.ok(componentCode.includes("currentState === 'success'"), 'Must handle Success state');

@@ -1,7 +1,7 @@
 /* ==========================================================================
    WorkspaceModeSelector.module.css
    Accessible Segmented Control for Demo vs Live Mezo Mode
-   Tokens: design-addendum.md §7, §8, §14 & UI.md §2, §5
+   Uses the shared colour, motion and typography tokens
    ========================================================================== */
 
 .container {

@@ -1,7 +1,6 @@
 /* ==========================================================================
    Netteo Design Tokens
-   Warm Minimal Fintech — Roundo Typography, Wine & Sand Palette
-   Sources: design-addendum.md, rules.md, UI.md, UX.md
+   Roundo typography, wine and sand palette
    ========================================================================== */
 
 :root {
@@ -76,14 +75,14 @@
   --radius-xl: 14px;
   --radius-full: 9999px;
 
-  /* Motion DNA (Codex Part 8, design-addendum §8) */
+  /* Motion */
   --motion-fast: 120ms;
   --motion-base: 180ms;
   --motion-slow: 240ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  /* Icon Tokens (design-addendum §7) */
+  /* Icon Tokens */
   --icon-size-sm: 16px;
   --icon-size-md: 20px;
   --icon-size-lg: 24px;
@@ -95,7 +94,7 @@
   --focus-ring-offset: 2px;
   --focus-ring-width: 2px;
 
-  /* Standardized Typography Scale (UI.md §4, Codex Part 2) */
+  /* Typography Scale */
   --text-xs: 12px;
   --text-xs-line: 16px;
   --text-sm: 14px;

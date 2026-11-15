@@ -14,8 +14,7 @@ import { getTokenByAddress, isSupportedSettlementToken } from './tokens';
 import { settlementKernelAbi } from './abi';
 
 /**
- * Human-readable error messages for Web3 errors (Secure_Vibe_Coding.pdf Rule 04:
- * never leak internal paths, schema or stack traces to the user).
+ * Human-readable error messages for Web3 errors: never leak internal paths, schema or stack traces to the user.
  */
 export function sanitizeWeb3Error(err: unknown, tokenSymbol = 'tokens'): string {
   if (!err) return 'An unexpected error occurred.';

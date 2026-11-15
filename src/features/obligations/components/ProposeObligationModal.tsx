@@ -82,7 +82,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
 
     let isMounted = true;
     const initGroups = async () => {
-      // Phase 1: Immediate local cache load
+      // First: load the local cache immediately
       const local = loadGroups(mode);
       if (isMounted && local.length > 0) {
         setGroups(local);
@@ -95,7 +95,7 @@ export function ProposeObligationModal({ isOpen, onClose, onCreated }: ProposeOb
         saveGroups([CANONICAL_GROUP], 'demo');
       }
 
-      // Phase 2: Remote sync if live or local cache was empty
+      // Then: sync from the server if live or the local cache was empty
       if (mode === 'live' || local.length === 0) {
         setIsLoadingGroups(true);
         try {

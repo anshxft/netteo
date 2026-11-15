@@ -62,7 +62,7 @@ export function formatBaseUnitsToDisplay(
   return `${negative ? '-' : ''}${whole.toLocaleString()}.${fracStr} ${symbol}`;
 }
 
-// PRD §2 Canonical initial obligations
+// Demo seed: the canonical three-party example (A owes B 100, B owes C 80, C owes A 20)
 export const CANONICAL_OBLIGATIONS: Obligation[] = [
   {
     id: '00000000-0000-0000-0000-000000000011',

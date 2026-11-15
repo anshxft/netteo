@@ -45,7 +45,7 @@ export function ParticipantTable({
           throw new Error(serverError);
         }
       }
-      setNewAddress(''); // Only clear upon success (Input preservation principle UX.md §7)
+      setNewAddress(''); // Only clear on success, so a failed add keeps what was typed
       onUpdate();
     } catch (err: any) {
       // Input is strictly preserved in newAddress; sanitized message shown

@@ -1,7 +1,7 @@
 /* ==========================================================================
    StaircasePreloader.module.css
    Advanced dual-direction double staircase preloader for Netteo.
-   Tokens: design-addendum.md §8, UI.md §16-17, Design-Quality-Codex Part 8
+   Uses the shared motion and colour tokens
    ========================================================================== */
 
 .preloaderOverlay {
@@ -322,7 +322,7 @@
   margin-bottom: var(--space-sm);
 }
 
-/* Reduced Motion Mode (UI.md §17, design-addendum §8) */
+/* Reduced Motion Mode */
 @media (prefers-reduced-motion: reduce) {
   .stepTop,
   .stepBottom {

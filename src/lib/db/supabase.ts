@@ -17,7 +17,7 @@ export const supabase: SupabaseClient | null =
 
 /**
  * Server-only service role client.
- * Never invoke or expose this on client bundles (Secure_Vibe_Coding.pdf Rule 02).
+ * Never invoke or expose this in client bundles.
  */
 export function getServiceRoleClient(): SupabaseClient | null {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

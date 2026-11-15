@@ -109,7 +109,7 @@ export function StaircasePreloader({
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Offline detection (Prototype Checklist §4)
+  // Offline detection
   useEffect(() => {
     if (typeof window === 'undefined') return;
     setIsOffline(!navigator.onLine);

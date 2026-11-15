@@ -23,9 +23,9 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
  * Netteo Standard Button Component
  *
  * Adheres to:
- * - design-addendum.md §7 (Netteo button spec, 8-10px radius, 120ms motion, no glow)
- * - Prototype_vs_Production_Checklist §4 (Double-click protection, width-locked spinner)
- * - UX.md §13 (Truthful interface feedback)
+ * - 8-10px radius, 120ms motion, no glow
+ * - Double-click protection and a width-locked loading spinner
+ * - Loading text that says what is actually happening
  */
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {

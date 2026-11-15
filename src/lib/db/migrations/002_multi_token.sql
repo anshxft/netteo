@@ -16,7 +16,7 @@
 --
 -- WHY STEP 3 IS SAFE
 --   Both projections are read models rebuilt entirely from on-chain events
---   (architecture.md ADR-06). indexed_events is kept untouched. Run this BEFORE
+--   (one kernel per token). indexed_events is kept untouched. Run this BEFORE
 --   the first mainnet indexing, or accept a full replay afterwards. Do not run
 --   it if you have written to those two tables by hand.
 --

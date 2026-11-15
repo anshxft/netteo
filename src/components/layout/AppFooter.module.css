@@ -1,6 +1,6 @@
 /* ==========================================================================
    Netteo Architectural Footer
-   Follows design-addendum.md §18, UI.md §11, and Warm Minimal Fintech aesthetic
+   Application footer
    ========================================================================== */
 
 .footerWrapper {
@@ -217,7 +217,7 @@
   }
 }
 
-/* Touch targets: 44px on small screens (design-addendum.md buttons rule). */
+/* Touch targets: 44px on small screens. */
 @media (max-width: 640px) {
   .footerLink,
   .bottomLinks a {

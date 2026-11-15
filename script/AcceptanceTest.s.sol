@@ -7,9 +7,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /**
- * @notice Runs one real three-party settlement cycle (the PRD example) end to end, in one token.
+ * @notice Runs one real three-party settlement cycle (the canonical example) end to end, in one token.
  *
- * The PRD example scaled to 1 token: A owes B 0.50, B owes C 0.40, C owes A 0.10.
+ * The canonical example scaled to 1 token: A owes B 0.50, B owes C 0.40, C owes A 0.10.
  * Net: A pays 0.40, B receives 0.10, C receives 0.30. Gross 1.00, so 3 obligations settle as 2 payouts.
  * Only A signs (DEPLOYER_PRIVATE_KEY). B and C merely receive, so you need just one funded wallet.
  *

@@ -78,7 +78,7 @@ export function AppLayout({
       {/* Network Guard: Displays wrong-network warning if chain != 31612 */}
       <NetworkGuard />
 
-      {/* Offline Banner (Prototype Checklist §4) */}
+      {/* Offline Banner */}
       {isOffline && (
         <aside
           role="alert"

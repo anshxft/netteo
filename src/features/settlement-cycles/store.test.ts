@@ -4,7 +4,7 @@ import { CANONICAL_OBLIGATIONS } from '../obligations/store';
 import { CANONICAL_MEZO_TOKENS } from '@/lib/chain/tokens';
 
 // In Node there is no localStorage, so loadObligations('demo') returns the three canonical
-// PRD obligations. All three are Accepted and denominated in MUSD.
+// Canonical example obligations. All three are Accepted and denominated in MUSD.
 const GROUP = '00000000-0000-0000-0000-000000000001';
 const ids = CANONICAL_OBLIGATIONS.map((o) => o.id);
 const MUSDC = CANONICAL_MEZO_TOKENS.mUSDC.address;

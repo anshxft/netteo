@@ -15,7 +15,6 @@ import { authedFetch, signWithWallet } from '@/lib/auth/clientSession';
  * and return only that wallet's data; writes carry their own signature or session and are checked server-side.
  *
  * The "...FromSupabase" names are kept so callers do not change; they now call the API.
- * Conforms to architecture.md §7 & §9 and PrD.md Journey A & B.
  */
 
 async function readJson(path: string): Promise<any | null> {

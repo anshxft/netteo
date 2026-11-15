@@ -27,7 +27,7 @@ body {
   line-height: 1.5;
 }
 
-/* Tabular Numerals for financial tables and values (UI.md §4 & §6) */
+/* Tabular Numerals for financial tables and values */
 .tabular-nums,
 table,
 .amount-display,
@@ -68,7 +68,7 @@ a {
 }
 
 /* ==========================================================================
-   Light Motion System (Codex Part 8, design-addendum §8)
+   Light Motion System
    Transforms & Opacity Only • Fully Reduced-Motion Safe
    ========================================================================== */
 

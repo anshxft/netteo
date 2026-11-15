@@ -32,7 +32,7 @@ function createIco(pngBuffers) {
 
 async function main() {
   const root = path.resolve(__dirname, '..');
-  const inputPath = path.join(root, 'NETTEO LOGO.PNG');
+  const inputPath = path.join(root, 'assets', 'netteo-logo.png');
   const publicBrandDir = path.join(root, 'public/brand');
   const publicDir = path.join(root, 'public');
   const appDir = path.join(root, 'src/app');

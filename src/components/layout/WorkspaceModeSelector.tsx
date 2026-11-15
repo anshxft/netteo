@@ -17,9 +17,9 @@ export interface WorkspaceModeSelectorProps {
  * WorkspaceModeSelector
  * Accessible segmented mode selector for switching between Demo and Live Mezo workspace modes.
  * Adheres to:
- * - Prototype_vs_Production_Checklist §4 (Double-click protection, state confirmation)
- * - UX.md §13 (Truthful interfaces, honest explanation of on-chain vs simulated execution)
- * - UI.md §2, §5 (Roundo typography, contrast tokens, zero slop)
+ * - Double-click protection and a confirmation of the new mode
+ * - A plain explanation of on-chain (live) versus simulated (demo) execution
+ * - Roundo typography and the shared contrast tokens
  */
 export function WorkspaceModeSelector({ className, style }: WorkspaceModeSelectorProps) {
   const { mode, setMode } = useWorkspace();

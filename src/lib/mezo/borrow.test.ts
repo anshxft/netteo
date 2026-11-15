@@ -68,7 +68,7 @@ assert.equal(planBorrow(ONE, { ...healthy, status: 3 }, params).kind, 'no-trove'
 assert.equal(planBorrow(ONE, healthy, { ...params, recoveryMode: true }).kind, 'recovery-mode');
 assert.equal(planBorrow(0n, healthy, params).kind, 'unsafe', 'a zero borrow is not a plan');
 
-// 7. Netting benefit: the PRD example. A owes 100 gross and nets to 80; B owes 80 and nets to 0 (receives 20);
+// 7. Netting benefit: the canonical example. A owes 100 gross and nets to 80; B owes 80 and nets to 0 (receives 20);
 //    C owes 20 and nets to 0. Borrowing cost avoided is computed from gross minus net, per participant.
 const a = nettingBenefit(100n * ONE, 80n * ONE, params);
 assert.equal(a.avoided, 20n * ONE);

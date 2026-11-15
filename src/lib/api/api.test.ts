@@ -301,7 +301,7 @@ async function main() {
   // 5. CYCLE REGISTRATION: the chain must match the group (finding 5)
   // ===========================================================================================
   {
-    // The PRD example: A owes B 100, B owes C 80, C owes A 20. Net: alice pays 80, bob +20, carol +60.
+    // The canonical example: A owes B 100, B owes C 80, C owes A 20. Net: alice pays 80, bob +20, carol +60.
     const makeDb = () => {
       const db: any = seedDb();
       db.tables.obligations = [

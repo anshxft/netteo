@@ -1,6 +1,6 @@
 /* ==========================================================================
    Netteo Group Management Styles
-   Adheres to design-addendum.md, UI.md §16 tokens, Roundo typography
+   Groups screen: shared tokens and Roundo typography
    ========================================================================== */
 
 .pageHeader {
@@ -161,7 +161,7 @@
   border-color: var(--color-wine);
 }
 
-/* --- Feedback Messages (UX.md §7) --- */
+/* --- Feedback Messages --- */
 .errorBanner {
   background-color: var(--color-danger-bg);
   border: 1px solid var(--color-danger-border);
@@ -189,7 +189,7 @@
   margin-bottom: var(--space-lg);
 }
 
-/* --- Empty State Container (Prototype Checklist §4) --- */
+/* --- Empty State Container --- */
 .emptyState {
   background-color: var(--color-surface);
   border: 1px dashed var(--color-border-strong);

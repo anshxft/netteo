@@ -60,7 +60,7 @@ export function NettingGraph({ nettingResult, includedObligations }: NettingGrap
           </p>
         </div>
 
-        {/* User-Triggered View Toggle (Codex Part 1) */}
+        {/* Gross / net view toggle */}
         <div className={styles.viewToggle} role="group" aria-label="Netting graph view mode">
           <button
             type="button"
@@ -237,7 +237,7 @@ export function NettingGraph({ nettingResult, includedObligations }: NettingGrap
         })}
       </svg>
 
-      {/* Comparison Ledger Table (design-addendum.md §8) */}
+      {/* Comparison Ledger Table */}
       <div className={styles.comparisonContainer}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-sm)' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-ink)', margin: 0 }}>

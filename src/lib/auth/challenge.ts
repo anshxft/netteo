@@ -227,7 +227,7 @@ export async function validateAndConsumeNonce(
         ) {
           return { valid: false, reason: 'Replay attack detected: challenge nonce has already been consumed.' };
         }
-        // Non-blocking notice for unmigrated local DBs (Secure_Vibe_Coding.pdf Rule 04: log server-side only)
+        // Non-blocking notice for unmigrated local DBs (logged server-side only)
         console.warn('Database nonce persistence notice:', error.message);
       }
     } catch (err) {

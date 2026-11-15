@@ -4,7 +4,7 @@ import { calculateNetting, ObligationInput } from './netting';
 function runTests() {
   console.log('Running Netting Algorithm Test Suite...');
 
-  // 1. PRD Canonical 3-Participant Example (PrD.md §2)
+  // 1. Canonical three-participant example
   const addrA = '0x1111111111111111111111111111111111111111';
   const addrB = '0x2222222222222222222222222222222222222222';
   const addrC = '0x3333333333333333333333333333333333333333';
@@ -43,7 +43,7 @@ function runTests() {
   assert.strictEqual(transferToC?.amount, 60n * base, 'C must receive 60 MUSD from A');
   assert.strictEqual(transferToC?.from, addrA, 'C must receive from A');
 
-  console.log('✔ Passed: PRD canonical 3-participant netting example');
+  console.log('✔ Passed: canonical 3-participant netting example');
 
   // 2. Circular Debt with Zero-Net Participants
   const addrD = '0x4444444444444444444444444444444444444444';

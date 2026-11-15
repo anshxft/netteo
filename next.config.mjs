@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Do not generate AGENTS.md during `next dev`.
+  agentRules: false,
   transpilePackages: ['@rainbow-me/rainbowkit'],
   async headers() {
     return [

@@ -1,7 +1,6 @@
 /* ==========================================================================
    Netteo Signature Netting Graph Styles
-   Adheres to design-addendum.md §8 (Signature netting motion --motion-slow: 240ms)
-   Codex Part 1 (Signature moment: gross obligations collapse into net settlement)
+   Gross obligations collapse into net settlement (--motion-slow: 240ms)
    ========================================================================== */
 
 .container {
@@ -78,7 +77,7 @@
   display: block;
 }
 
-/* Transition locked to --motion-slow: 240ms per design-addendum.md §8 */
+/* Transition locked to --motion-slow: 240ms */
 .vectorLine {
   transition:
     d var(--motion-slow) var(--ease-standard),
