@@ -40,9 +40,8 @@ import {
   useCycleKernelToken,
   CYCLE_STATE_LABELS,
   CycleStateOnChain,
-  OnChainCycle,
-  CycleAmounts,
 } from '@/lib/chain/useSettlementKernel';
+import { buildSyntheticCycle } from '../chainCycle';
 import { ZERO_ADDRESS, REFUND_GRACE_SECONDS, isSupportedNetwork, validateChainConfiguration, MEZO_MAINNET_EXPLORER_URL } from '@/lib/chain/config';
 import { TransactionStatus } from '@/components/common/TransactionStatus';
 import { useSettlementEvents } from '@/lib/chain/useSettlementEvents';
@@ -54,56 +53,6 @@ export interface CycleExecutionViewProps {
 }
 
 const EXPLORER_BASE = MEZO_MAINNET_EXPLORER_URL;
-
-function buildSyntheticCycle(
-  cycleId: string,
-  onChain: OnChainCycle,
-  _parts?: { debtors: string[]; creditors: string[] },
-  projection?: any,
-  amounts?: CycleAmounts
-): SettlementCycle {
-  // Real per-wallet amounts from the contract. Until they have loaded, list nobody rather than invent figures:
-  // the old even split showed "A pays 40, B pays 40" for a cycle where A owes 70 and B owes 10, and showed every
-  // creditor receiving 0 before settlement.
-  const debtors = amounts?.debtors ?? [];
-  const creditors = amounts?.creditors ?? [];
-  const deposits: Record<string, { required: bigint; funded: bigint }> = {};
-  debtors.forEach((d) => {
-    deposits[d.address.toLowerCase()] = { required: d.required, funded: d.funded };
-  });
-  return {
-    id: cycleId,
-    groupId: '', // unknown for a cycle seen only on-chain; never a placeholder group id
-    cycleNumber: projection?.cycle_number || 1,
-    snapshotCommitment: onChain.snapshotCommitment,
-    algorithmVersion: onChain.algorithmVersion || 'netteo-v1.0-deterministic',
-    grossObligationTotal: onChain.grossObligationTotal,
-    netDebtTotal: onChain.netDebtTotal,
-    totalFunded: onChain.totalFunded,
-    totalDistributed: onChain.totalDistributed,
-    totalRefunded: onChain.totalRefunded,
-    fundingDeadline: new Date(Number(onChain.fundingDeadline) * 1000).toISOString(),
-    state: (CYCLE_STATE_LABELS[onChain.state as CycleStateOnChain] as any) || 'Funding',
-    creatorAddress: onChain.creator,
-    createdAt: projection?.created_at || new Date().toISOString(),
-    includedObligationIds: [],
-    nettingResult: {
-      algorithmVersion: onChain.algorithmVersion || 'netteo-v1.0-deterministic',
-      participantCount: debtors.length + creditors.length,
-      obligationCount: 0,
-      grossObligationTotal: onChain.grossObligationTotal,
-      netFundingRequirement: onChain.netDebtTotal,
-      positions: {},
-      debtors: debtors.map((d) => ({ address: d.address, amount: d.required })),
-      creditors: creditors.map((c) => ({ address: c.address, amount: c.amount })),
-      zeroPositions: [],
-      allocations: [],
-      canonicalCommitmentHash: onChain.snapshotCommitment,
-    },
-    deposits,
-    txCreationHash: projection?.creation_tx_hash,
-  };
-}
 
 export function CycleExecutionView({ cycleId }: CycleExecutionViewProps) {
   const { mode, resetCounter } = useWorkspace();

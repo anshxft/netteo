@@ -15,6 +15,7 @@ import { SnapshotIcon } from '@/components/icons/netteo';
 import { ArrowLeft, Download, ShieldCheck, CheckCircle, ExternalLink } from 'lucide-react';
 import { kernelForToken, MEZO_MAINNET_EXPLORER_URL } from '@/lib/chain/config';
 import { DEFAULT_SETTLEMENT_TOKEN } from '@/lib/chain/tokens';
+import { useChainCycle } from '@/features/settlement-cycles/chainCycle';
 
 export interface AuditStatementViewProps {
   cycleId?: string;
@@ -24,9 +25,14 @@ const EXPLORER_BASE = MEZO_MAINNET_EXPLORER_URL;
 
 export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
   const { mode } = useWorkspace();
-  const [cycle, setCycle] = useState<SettlementCycle | null>(null);
+  const [localCycle, setCycle] = useState<SettlementCycle | null>(null);
   const [includedObligations, setIncludedObligations] = useState<Obligation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // A cycle with no local record (a shared link, another browser) is read straight from Mezo Mainnet.
+  const chain = useChainCycle(cycleId ?? '', mode === 'live' && !!cycleId && !isLoading && !localCycle);
+  const cycle = localCycle ?? chain.cycle;
+  const chainOnly = !localCycle && !!chain.cycle;
 
   useEffect(() => {
     let isCancelled = false;
@@ -107,7 +113,7 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
     rows.push(`Total Funded (Base Units),${cycle.totalFunded.toString()}`);
     rows.push(`Total Distributed (Base Units),${cycle.totalDistributed.toString()}`);
     rows.push(`Total Refunded (Base Units),${cycle.totalRefunded.toString()}`);
-    rows.push(`Created At,${cycle.createdAt}`);
+    if (!chainOnly) rows.push(`Created At,${cycle.createdAt}`); // a chain-only cycle has no creation time to report
     if (cycle.completedAt) rows.push(`Completed At,${cycle.completedAt}`);
     if (cycle.txCreationHash) rows.push(`Creation Tx Hash,${cycle.txCreationHash},${EXPLORER_BASE}/tx/${cycle.txCreationHash}`);
     if (cycle.txDepositHash) rows.push(`Deposit Tx Hash,${cycle.txDepositHash},${EXPLORER_BASE}/tx/${cycle.txDepositHash}`);
@@ -152,7 +158,7 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
     document.body.removeChild(link);
   };
 
-  if (isLoading) {
+  if (isLoading || (!cycle && chain.isLoading)) {
     return <div style={{ padding: 'var(--space-2xl) 0', color: 'var(--color-muted)' }}>Loading audit statement...</div>;
   }
 
@@ -313,6 +319,64 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
         )}
       </div>
 
+      {chainOnly ? (
+        <>
+          <div
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 'var(--space-lg)',
+              marginBottom: 'var(--space-xl)',
+              fontSize: '13px',
+              lineHeight: 1.6,
+              color: 'var(--color-ink)',
+            }}
+          >
+            <strong>Read from Mezo Mainnet.</strong> This receipt is built from what the settlement contract itself holds: the totals, the
+            net amounts per wallet and the snapshot commitment. The original payment claims are private to the group, so they are not
+            listed here, and the chain records net positions, not who paid whom.
+            <div style={{ marginTop: 'var(--space-sm)', display: 'flex', gap: 'var(--space-lg)', flexWrap: 'wrap', fontVariantNumeric: 'tabular-nums' }}>
+              <span>State: <strong>{cycle.state}</strong></span>
+              <span>Gross claims: <strong>{formatBaseUnitsToDisplay(cycle.grossObligationTotal, cycle.tokenSymbol || 'MUSD')}</strong></span>
+              <span>Net funded: <strong>{formatBaseUnitsToDisplay(cycle.totalFunded, cycle.tokenSymbol || 'MUSD')}</strong></span>
+              <span>Paid out: <strong>{formatBaseUnitsToDisplay(cycle.totalDistributed, cycle.tokenSymbol || 'MUSD')}</strong></span>
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: 'var(--space-sm)' }}>
+            Net positions ({cycle.nettingResult.debtors.length + cycle.nettingResult.creditors.length} wallets)
+          </h3>
+          <div className={obStyles.ledgerContainer}>
+            <table className={obStyles.ledgerTable} aria-label="Net positions read from the contract">
+              <thead>
+                <tr>
+                  <th scope="col">Wallet</th>
+                  <th scope="col">Role</th>
+                  <th scope="col" style={{ textAlign: 'right' }}>Net amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cycle.nettingResult.debtors.map((d) => (
+                  <tr key={`d-${d.address}`}>
+                    <td><span className={obStyles.addressCode}>{d.address.slice(0, 6)}...{d.address.slice(-4)}</span></td>
+                    <td>Paid in (net debtor)</td>
+                    <td style={{ textAlign: 'right' }}><span className={obStyles.amountCell}>{formatBaseUnitsToDisplay(d.amount, cycle.tokenSymbol || 'MUSD')}</span></td>
+                  </tr>
+                ))}
+                {cycle.nettingResult.creditors.map((c) => (
+                  <tr key={`c-${c.address}`}>
+                    <td><span className={obStyles.addressCode}>{c.address.slice(0, 6)}...{c.address.slice(-4)}</span></td>
+                    <td>Received (net creditor)</td>
+                    <td style={{ textAlign: 'right' }}><span className={obStyles.amountCell}>{formatBaseUnitsToDisplay(c.amount, cycle.tokenSymbol || 'MUSD')}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <>
       {/* Section 1: Included Gross Obligations */}
       <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-ink)', marginBottom: 'var(--space-sm)' }}>
         1. Reconciled Payments ({includedObligations.length} payments)
@@ -374,6 +438,8 @@ export function AuditStatementView({ cycleId }: AuditStatementViewProps) {
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   );
 }
