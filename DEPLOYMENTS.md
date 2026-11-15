@@ -1,4 +1,4 @@
-# Netteo — Mezo Mainnet Deployment Record
+# Netteo: Mezo Mainnet Deployment Record
 
 **Network:** Mezo Mainnet, chain ID `31612`
 **Deployer / debtor wallet:** [`0xb31B137c24e5f020bF07D93BBa99DAf950908a9e`](https://explorer.mezo.org/address/0xb31B137c24e5f020bF07D93BBa99DAf950908a9e)
@@ -208,5 +208,5 @@ cast call 0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186 "balanceOf(address)(uint256
 
 ## Not yet done
 
-- No mUSDC or mUSDT cycle has been run on mainnet (v1 or v2). Those kernels are deployed and verified, and the same code was exercised against the real mUSDC/mUSDT contract code on a local fork, but no real funds have moved through them.
+- No mUSDT cycle has been run on mainnet. That kernel is deployed and verified, and the same code was exercised against the real mUSDT contract code on a local fork, but no real funds have moved through it. A real mUSDC cycle ran on the v2 mUSDC kernel (see above).
 - The cycle was created and settled by a single signer. It demonstrates the settlement mechanics and token movement, not a multi-party funding flow.
