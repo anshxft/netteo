@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { useAccount } from 'wagmi';
-import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Wallet } from 'lucide-react';
 import { useWorkspace } from '@/features/workspace/WorkspaceContext';
 import { Button } from '@/components/common/Button';
 import { Icon } from '@/components/icons/Icon';
+import { openWalletModal } from './WalletConnectModal';
 import styles from './WalletRequired.module.css';
 
 /**
@@ -21,7 +21,6 @@ export function useNeedsWallet(): boolean {
 }
 
 export function WalletRequiredState({ what }: { what: string }) {
-  const { openConnectModal } = useConnectModal();
   return (
     <div className={styles.state} role="status">
       <span className={styles.iconWrap}>
@@ -32,7 +31,7 @@ export function WalletRequiredState({ what }: { what: string }) {
         Your groups and claims are private to the wallets in them. Connect the wallet you use on Mezo Mainnet to load
         them, or switch to Demo to try Netteo with sample data.
       </p>
-      <Button variant="primary" onClick={() => openConnectModal?.()} disabled={!openConnectModal}>
+      <Button variant="primary" onClick={openWalletModal}>
         Connect Wallet
       </Button>
     </div>

@@ -5,7 +5,7 @@ import { useAccount, useDisconnect } from 'wagmi';
 import { usePathname } from 'next/navigation';
 import { AppHeader } from './AppHeader';
 import { NetworkGuard } from '../wallet/NetworkGuard';
-import { WalletConnectModal } from '../wallet/WalletConnectModal';
+import { WalletConnectModal, OPEN_WALLET_MODAL_EVENT } from '../wallet/WalletConnectModal';
 import { AlertTriangle, WifiOff } from 'lucide-react';
 import { Icon } from '../icons/Icon';
 import { DemoExplainerBanner } from '@/features/workspace/DemoExplainerBanner';
@@ -38,6 +38,13 @@ export function AppLayout({
   const activeAddress = walletAddress !== undefined ? walletAddress : (isConnected ? wagmiAddress : null);
   const activeChainId = chainId !== undefined ? chainId : wagmiChainId;
   const handleConnect = onConnectWallet || (() => setIsWalletModalOpen(true));
+
+  // Any screen (for example an empty state that needs a wallet) can ask for the dialog.
+  useEffect(() => {
+    const open = () => setIsWalletModalOpen(true);
+    window.addEventListener(OPEN_WALLET_MODAL_EVENT, open);
+    return () => window.removeEventListener(OPEN_WALLET_MODAL_EVENT, open);
+  }, []);
   const handleDisconnect = onDisconnectWallet || (() => disconnect());
 
   useEffect(() => {

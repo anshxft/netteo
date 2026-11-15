@@ -11,6 +11,7 @@ const BANNED: { pattern: RegExp; why: string }[] = [
   { pattern: /uniswap grantee|euler security|genesis infra pod|devdao guild|corelabs studio|station3/i, why: 'invented customers / implied affiliations' },
   { pattern: /verified testimonials|trusted by leading/i, why: 'fabricated social proof' },
   { pattern: /WCAG AA Accessible/i, why: 'accessibility conformance has not been audited' },
+  { pattern: /Open Mezo Passport|via Mezo Passport|Bitcoin Wallets \(Mezo Native\)/i, why: 'Mezo Passport is not integrated, so the wallet dialog cannot offer it' },
 ];
 
 function files(dir: string): string[] {

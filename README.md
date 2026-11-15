@@ -143,6 +143,7 @@ If a cycle is not fully funded by the deadline, each depositor takes back exactl
 ## Honest limits
 
 - **The contracts have not been independently audited.**
+- **Wallet flows were verified on a fork, not with a real wallet extension.** They were driven through the real UI with a scripted test wallet (see the wallet playground). A real wallet such as MetaMask has not yet been used end to end.
 - **Borrowing against Bitcoin was not executed on mainnet by the team.** A new Mezo loan needs at least 1,800 MUSD of debt, far more than the test wallet holds. It is verified against the real Mezo contracts on a mainnet fork, and the reads are live. Netteo only borrows against a loan you already have.
 - **MEZO and Mezo Passport are not integrated.** Passport pins React 18 and wagmi 2; this app is on React 19 and wagmi 3. MEZO needs testing with real funds on mainnet first.
 - **Claim approvals live in the private database,** not on-chain. The server checks a cycle against them before deposits open, but the contract itself cannot.
@@ -178,6 +179,10 @@ npm test            # TypeScript tests
 forge test          # Solidity tests
 npm run build       # production build
 ```
+
+### Try the wallet flows without real funds
+
+No wallet extension and no real money are needed to click through connecting, withdrawing from Savings, borrowing and saving a payout. The [wallet playground](scripts/wallet-playground/README.md) builds a funded test wallet (with a Mezo loan and Savings) on a free local fork of Mezo Mainnet, so the contracts are Mezo's real ones. It takes five short steps.
 
 Some TypeScript tests read the live Mezo chain, so they catch a wrong address or a docs claim that drifted from reality: `deployments.test.ts` (every address, token binding, amount and transaction), `protocol.test.ts` (the Mezo contracts Netteo depends on) and `tokens.test.ts`. Set `SKIP_CHAIN_PROBE=1` to run offline.
 

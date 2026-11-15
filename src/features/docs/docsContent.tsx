@@ -302,6 +302,10 @@ anvil --fork-url https://mezo-mainnet.boar.network --port 8547
 MEZO_MAINNET_FORK_URL=http://127.0.0.1:8547 npx tsx src/lib/mezo/fork.test.ts`}
         </Code>
         <P>
+          To try the wallet flows without real funds or a wallet extension, the repository includes a wallet playground (<code>scripts/wallet-playground</code>): a local fork of
+          Mezo Mainnet with a funded test wallet that holds a Bitcoin-backed loan and Savings. Its README has the five steps.
+        </P>
+        <P>
           Two tests read the live chain and fail if the documentation drifts from reality: <code>deployments.test.ts</code> checks every address, token binding,
           cycle amount and transaction listed in these docs, and <code>protocol.test.ts</code> checks the Mezo contracts Netteo depends on.
         </P>
@@ -703,6 +707,7 @@ cast call ${CANONICAL_MEZO_TOKENS.MUSD.address} "balanceOf(address)(uint256)" $K
             ['mUSDC and mUSDT kernels', 'Deployed; no cycle run', 'Yes, against the real token code'],
             ['Savings Vault deposit and withdraw', 'Yes, real round trip', 'Yes'],
             ['Borrow against Bitcoin', 'Read-only (live loans and parameters)', 'Yes, with the real Mezo contracts and a real trove'],
+            ['Wallet flows in the real UI (connect, withdraw from Savings, borrow, save a payout, rejected request)', 'No', 'Yes, driven through the app with a scripted test wallet (see the wallet playground)'],
           ]}
         />
         <P>The borrow transaction itself was not executed on mainnet, because opening a new Mezo loan needs at least 1,800 MUSD of debt.</P>
